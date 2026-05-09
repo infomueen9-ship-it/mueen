@@ -4,6 +4,8 @@ import api from '../../../api/axios'
 import toast from 'react-hot-toast'
 import { AxiosError } from 'axios'
 
+type AttendanceStatus = 'present' | 'absence' | 'delay' | 'permission'
+
 interface Props {
   classroomId: number
   classroomName: string
@@ -32,7 +34,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const [attendanceMap, setAttendanceMap] = useState<Record<number, string>>({})
+  const [attendanceMap, setAttendanceMap] = useState<Record<number, AttendanceStatus>>({})
   const [savingAttendance, setSavingAttendance] = useState(false)
 
   interface ApiStudent {
@@ -54,7 +56,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
       setStudents(fetchedStudents)
 
       // تهيئة حالات الحضور - افتراض "حاضر" للجميع عند التحميل
-      const initialMap: Record<number, string> = {}
+      const initialMap: Record<number, AttendanceStatus> = {}
       fetchedStudents.forEach(s => { initialMap[s.id] = 'present' })
       setAttendanceMap(initialMap)
 
@@ -66,7 +68,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
   }, [schemaName, classroomId])
 
   useEffect(() => {
-    fetchStudents()
+    void Promise.resolve().then(fetchStudents)
   }, [fetchStudents])
 
   const handleOpenBehaviorModal = (student: Student) => {
@@ -116,7 +118,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
     }
   }
 
-  const handleAttendanceAction = (studentId: number, type: string) => {
+  const handleAttendanceAction = (studentId: number, type: AttendanceStatus) => {
     setAttendanceMap(prev => ({ ...prev, [studentId]: type }))
   }
 
@@ -139,6 +141,9 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
     <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #E5E7EB' }}>
       <div style={headerRow}>
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#374151' }}>طلاب {classroomName}</h2>
+        <button onClick={onClose} style={closeHeaderBtnStyle} aria-label="إغلاق">
+          <X size={18} />
+        </button>
       </div>
 
       <div style={blueHeader}>قائمة الطلاب والإجراءات</div>
@@ -177,16 +182,40 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', gap: '12px', borderLeft: '1px solid #E5E7EB', paddingLeft: '12px', marginLeft: '8px' }}>
                         <label style={radioLabelStyle}>
-                          <input type="radio" name={`att-${student.id}`} defaultChecked onChange={() => handleAttendanceAction(student.id, 'present')} /> حاضر
+                          <input
+                            type="radio"
+                            name={`att-${student.id}`}
+                            checked={attendanceMap[student.id] === 'present'}
+                            onChange={() => handleAttendanceAction(student.id, 'present')}
+                          />
+                          حاضر
                         </label>
                         <label style={radioLabelStyle}>
-                          <input type="radio" name={`att-${student.id}`} onChange={() => handleAttendanceAction(student.id, 'absence')} /> غياب
+                          <input
+                            type="radio"
+                            name={`att-${student.id}`}
+                            checked={attendanceMap[student.id] === 'absence'}
+                            onChange={() => handleAttendanceAction(student.id, 'absence')}
+                          />
+                          غياب
                         </label>
                         <label style={radioLabelStyle}>
-                          <input type="radio" name={`att-${student.id}`} onChange={() => handleAttendanceAction(student.id, 'delay')} /> تأخير
+                          <input
+                            type="radio"
+                            name={`att-${student.id}`}
+                            checked={attendanceMap[student.id] === 'delay'}
+                            onChange={() => handleAttendanceAction(student.id, 'delay')}
+                          />
+                          تأخير
                         </label>
                         <label style={radioLabelStyle}>
-                          <input type="radio" name={`att-${student.id}`} onChange={() => handleAttendanceAction(student.id, 'permission')} /> استئذان
+                          <input
+                            type="radio"
+                            name={`att-${student.id}`}
+                            checked={attendanceMap[student.id] === 'permission'}
+                            onChange={() => handleAttendanceAction(student.id, 'permission')}
+                          />
+                          استئذان
                         </label>
                       </div>
                       <button onClick={() => handleOpenBehaviorModal(student)} style={actionBtnStyle('#E8F4F5', '#2D7D82')}>
@@ -291,6 +320,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
 }
 
 const headerRow: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }
+const closeHeaderBtnStyle: React.CSSProperties = { border: 'none', background: '#F3F4F6', borderRadius: '10px', width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const closeBtnStyle: React.CSSProperties = { border: 'none', background: '#F3F4F6', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const blueHeader: React.CSSProperties = { background: '#9EC5C7', color: '#fff', padding: '12px', borderRadius: '10px', textAlign: 'center', fontWeight: 600, fontSize: '15px', marginBottom: '20px' }
 const searchInputStyle: React.CSSProperties = { width: '100%', height: '38px', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0 40px 0 12px', fontSize: '13px', outline: 'none', textAlign: 'right' }
