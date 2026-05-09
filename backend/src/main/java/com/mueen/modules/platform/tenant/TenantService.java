@@ -113,9 +113,7 @@ jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "students (" +
 
         jdbcTemplate.execute("INSERT INTO " + p + "grade_levels (name, name_en, stage, grade_order) VALUES ('الصف الأول الابتدائي','Grade 1','ELEMENTARY',1),('الصف الثاني الابتدائي','Grade 2','ELEMENTARY',2),('الصف الثالث الابتدائي','Grade 3','ELEMENTARY',3),('الصف الرابع الابتدائي','Grade 4','ELEMENTARY',4),('الصف الخامس الابتدائي','Grade 5','ELEMENTARY',5),('الصف السادس الابتدائي','Grade 6','ELEMENTARY',6),('الصف الأول المتوسط','Grade 7','MIDDLE',7),('الصف الثاني المتوسط','Grade 8','MIDDLE',8),('الصف الثالث المتوسط','Grade 9','MIDDLE',9),('الصف الأول الثانوي','Grade 10','HIGH',10),('الصف الثاني الثانوي','Grade 11','HIGH',11),('الصف الثالث الثانوي','Grade 12','HIGH',12) ON CONFLICT DO NOTHING");
     // منح الصلاحيات لـ mueen_user
-  jdbcTemplate.execute("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO mueen_user");
-jdbcTemplate.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA " + schema + " GRANT ALL ON TABLES TO mueen_user");
-jdbcTemplate.execute("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA " + schema + " TO mueen_user");
+ 
     }
 
     public record CreateTenantRequest(
