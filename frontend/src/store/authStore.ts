@@ -44,16 +44,6 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'mueen-auth',
-
-      onRehydrateStorage: () => (state) => {
-        if (!state) return
-
-        // فقط قراءة، بدون تعديل مباشر
-        const hasToken = !!state.token
-
-        // استخدام set عبر الرجوع للـ store لاحقاً (حل آمن)
-        state.isAuthenticated = hasToken
-      },
     }
   )
 )
