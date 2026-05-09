@@ -63,6 +63,9 @@ public class TenantService {
 
     private void applyTenantMigrations(String schema) {
         String p = schema + ".";
+        jdbcTemplate.execute("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO mueen_user");
+jdbcTemplate.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA " + schema + " GRANT ALL ON TABLES TO mueen_user");
+jdbcTemplate.execute("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA " + schema + " TO mueen_user");
         
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "users (id BIGSERIAL PRIMARY KEY, full_name VARCHAR(255) NOT NULL, national_id VARCHAR(20) UNIQUE, username VARCHAR(50) NOT NULL UNIQUE, email VARCHAR(255) UNIQUE, phone VARCHAR(20), password_hash TEXT NOT NULL, role VARCHAR(20) NOT NULL, gender VARCHAR(6) NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE, last_login_at TIMESTAMPTZ, hire_date DATE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 
