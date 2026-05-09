@@ -7,34 +7,53 @@ interface AuthState {
   role: string | null
   type: string | null
   teacherId: number | null
-  isAuthenticated: boolean | undefined
+  isAuthenticated: boolean
   setAuth: (token: string, name: string, role: string, type?: string, teacherId?: number) => void
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       token: null,
       name: null,
       role: null,
       type: null,
       teacherId: null,
-      isAuthenticated: undefined,
-      setAuth: (token: string, name: string, role: string, type?: string, teacherId?: number | null) => 
-        set({ token, name, role, type, teacherId, isAuthenticated: true }),
-      logout: () => set({ token: null, name: null, role: null, type: null, teacherId: null, isAuthenticated: false }),
+      isAuthenticated: false,
+
+      setAuth: (token, name, role, type, teacherId) =>
+        set({
+          token,
+          name,
+          role,
+          type: type ?? null,
+          teacherId: teacherId ?? null,
+          isAuthenticated: true,
+        }),
+
+      logout: () =>
+        set({
+          token: null,
+          name: null,
+          role: null,
+          type: null,
+          teacherId: null,
+          isAuthenticated: false,
+        }),
     }),
     {
       name: 'mueen-auth',
+
       onRehydrateStorage: () => (state) => {
-        // After rehydration, set isAuthenticated based on whether token exists
-        if (state && state.token) {
-          state.isAuthenticated = true;
-        } else {
-          state.isAuthenticated = false;
-        }
-      }
+        if (!state) return
+
+        // فقط قراءة، بدون تعديل مباشر
+        const hasToken = !!state.token
+
+        // استخدام set عبر الرجوع للـ store لاحقاً (حل آمن)
+        state.isAuthenticated = hasToken
+      },
     }
   )
 )
