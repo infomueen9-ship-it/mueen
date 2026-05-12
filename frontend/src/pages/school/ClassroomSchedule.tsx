@@ -55,13 +55,24 @@ export default function ClassroomSchedule({ classroomId, classroomName, schemaNa
   const handleAddSubject = async () => {
     if (!newSubject.trim()) return
     try {
+      // 1. محاولة إضافة المادة
       await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`, { name: newSubject.trim() })
-      const res = await api.get(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`)
-      setSubjects(res.data)
+      
+      // 2. إذا نجح الطلب، نظهر رسالة نجاح فورية
+      toast.success('تم إضافة المادة بنجاح')
       setNewSubject('')
-      toast.success('تم إضافة المادة')
-    } catch {
-      toast.error('تعذر إضافة المادة')
+
+      // 3. محاولة تحديث القائمة في الخلفية
+      try {
+        const res = await api.get(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`)
+        setSubjects(res.data)
+      } catch (getErr) {
+        console.error("فشل تحديث القائمة (تأكد من وجود عمود teacher_id):", getErr)
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } }
+      const errorMsg = error.response?.data?.message || 'تعذر إضافة المادة'
+      toast.error(errorMsg)
     }
   }
 

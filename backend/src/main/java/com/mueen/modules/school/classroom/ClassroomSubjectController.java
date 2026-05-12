@@ -52,8 +52,18 @@ public class ClassroomSubjectController {
             return ResponseEntity.badRequest().body(Map.of("message", "اسم المادة مطلوب"));
         }
 
+        // التحقق من وجود المادة مسبقاً لتجنب الأخطاء
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? AND name = ?",
+            Integer.class, classroomId, name.trim()
+        );
+
+        if (count != null && count > 0) {
+            return ResponseEntity.ok(Map.of("message", "Subject already exists"));
+        }
+
         jdbcTemplate.update(
-            "INSERT INTO " + schemaName + ".classroom_subjects (classroom_id, name) VALUES (?, ?) ON CONFLICT DO NOTHING",
+            "INSERT INTO " + schemaName + ".classroom_subjects (classroom_id, name) VALUES (?, ?) ON CONFLICT (classroom_id, name) DO NOTHING",
             classroomId, name.trim()
         );
 
