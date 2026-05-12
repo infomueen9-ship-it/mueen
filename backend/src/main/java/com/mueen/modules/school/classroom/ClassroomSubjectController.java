@@ -28,11 +28,15 @@ public class ClassroomSubjectController {
             classroomId
         );
         var result = subjects.stream().map(row -> {
-            Map<String, Object> map = new java.util.HashMap<>();
-            map.put("id", row.get("id"));
-            map.put("name", row.get("name"));
-            map.put("teacherId", row.get("teacher_id"));
-            return map;
+            // توحيد حالة أحرف المفاتيح (Normalization) لتجنب أخطاء التسمية بين DB و Java
+            java.util.Map<String, Object> lowerRow = new java.util.HashMap<>();
+            row.forEach((k, v) -> lowerRow.put(k.toLowerCase(), v));
+
+            java.util.Map<String, Object> resultMap = new java.util.HashMap<>();
+            resultMap.put("id", lowerRow.get("id"));
+            resultMap.put("name", lowerRow.get("name"));
+            resultMap.put("teacherId", lowerRow.get("teacher_id"));
+            return resultMap;
         }).toList();
         return ResponseEntity.ok(result);
     }
@@ -43,10 +47,16 @@ public class ClassroomSubjectController {
             @PathVariable Long classroomId,
             @RequestBody Map<String, String> body) {
 
+        String name = body.get("name");
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "اسم المادة مطلوب"));
+        }
+
         jdbcTemplate.update(
             "INSERT INTO " + schemaName + ".classroom_subjects (classroom_id, name) VALUES (?, ?) ON CONFLICT DO NOTHING",
-            classroomId, body.get("name")
+            classroomId, name.trim()
         );
+
         return ResponseEntity.ok(Map.of("message", "Subject added"));
     }
 
@@ -74,11 +84,16 @@ public class ClassroomSubjectController {
             "SELECT period, day, subject_name FROM " + schemaName + ".classroom_schedule WHERE classroom_id = ?",
             classroomId
         );
-        var result = rows.stream().map(row -> Map.of(
-            "period", row.get("period"),
-            "day", row.get("day"),
-            "subject_name", row.getOrDefault("subject_name", "")
-        )).toList();
+        var result = rows.stream().map(row -> {
+            java.util.Map<String, Object> lowerRow = new java.util.HashMap<>();
+            row.forEach((k, v) -> lowerRow.put(k.toLowerCase(), v));
+
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("period", lowerRow.get("period"));
+            map.put("day", lowerRow.get("day"));
+            map.put("subject_name", lowerRow.getOrDefault("subject_name", ""));
+            return map;
+        }).toList();
         return ResponseEntity.ok(result);
     }
 
