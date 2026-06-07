@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -142,7 +144,8 @@ public class StudentController {
         }
 
         List<StudentForm> students = new ArrayList<>();
-        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+        try (InputStream is = new BufferedInputStream(file.getInputStream());
+             Workbook workbook = WorkbookFactory.create(is)) {
             
             DataFormatter dataFormatter = new DataFormatter();
             // إضافة Evaluator لمعالجة الخلايا التي تحتوي على معادلات
