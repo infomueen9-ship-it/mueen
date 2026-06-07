@@ -402,6 +402,12 @@ const handleSave = async () => {
               يجب أن يكون اسم الطالب في العمود الأول ورقم جوال ولي الأمر في العمود الثاني.
             </p>
 
+            <div style={{ marginBottom: '12px' }}>
+              <a href="/students-template.csv" download style={{ color: '#065f5b', fontWeight: 600 }}>
+                تحميل قالب Excel جاهز (CSV) لملئه — بالنقر سيتم تنزيل ملف قابل للفتح في Excel
+              </a>
+            </div>
+
             <div style={{ marginBottom: '20px' }}>
               <label htmlFor="excel-file-input" style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
