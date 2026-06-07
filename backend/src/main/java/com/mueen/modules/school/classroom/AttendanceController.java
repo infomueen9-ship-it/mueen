@@ -54,6 +54,7 @@ public class AttendanceController {
                 int totalStudents = ((Number) row.get("total_students")).intValue();
                 int presentStudents = ((Number) row.get("present_students")).intValue();
                 int absentStudents = ((Number) row.get("absent_students")).intValue();
+                
 
                 double attendancePercentage = (totalStudents > 0) ? ((double) presentStudents / totalStudents) * 100 : 0.0;
 
