@@ -2,6 +2,7 @@ package com.mueen.modules.school.student;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -116,7 +117,7 @@ public class StudentController {
         return ResponseEntity.ok(Map.of("message", "تم إضافة الطلاب بنجاح"));
     }
 
-    @PostMapping("/batch-excel")
+    @PostMapping(value = "/batch-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Transactional
     public ResponseEntity<?> batchAddStudentsFromExcel(
             @PathVariable String schemaName,
@@ -174,6 +175,18 @@ public class StudentController {
 
         if (students.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "لم يتم العثور على أي بيانات طلاب صالحة في الملف"));
+        }
+
+        // Validate duplicate guardian phone numbers within the uploaded file
+        var seenPhones = new java.util.HashSet<String>();
+        for (StudentForm student : students) {
+            String phone = student.guardianPhone();
+            if (phone != null && !phone.isBlank()) {
+                if (!seenPhones.add(phone)) {
+                    return ResponseEntity.badRequest().body(
+                            Map.of("message", "رقم الجوال " + phone + " مكرر في ملف Excel. يرجى إزالة التكرارات وإعادة المحاولة."));
+                }
+            }
         }
 
         return addStudents(schemaName, classroomId, students);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, Trash2, Plus, UserPlus } from 'lucide-react'
+import { X, Trash2, Plus, UserPlus, Upload } from 'lucide-react'
 import api from '../../api/axios'
 import { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
@@ -26,9 +26,11 @@ interface StudentForm {
 export default function StudentsView({ classroomId, classroomName, schemaName, onClose, readOnly = false }: Props) {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false) // Modal for manual student entry
+  const [showExcelUploadModal, setShowExcelUploadModal] = useState(false) // New state for Excel upload modal
   const [confirmDelete, setConfirmDelete] = useState<Student | null>(null)
   const [forms, setForms] = useState<StudentForm[]>([{ fullName: '', guardianPhone: '' }])
+  const [excelFile, setExcelFile] = useState<File | null>(null) // State for the selected Excel file
   const [saving, setSaving] = useState(false)
 
   const fetchStudents = useCallback(async () => {
@@ -64,6 +66,13 @@ export default function StudentsView({ classroomId, classroomName, schemaName, o
 const handleSave = async () => {
     const valid = forms.filter(f => f.fullName.trim())
     if (!valid.length) { toast.error('أدخل اسم طالب على الأقل'); return }
+
+    const invalidPhone = valid.find(f => f.guardianPhone && !f.guardianPhone.startsWith('05'))
+    if (invalidPhone) {
+      toast.error(`رقم الجوال للطالب ${invalidPhone.fullName} يجب أن يبدأ بـ 05`)
+      return
+    }
+
     setSaving(true)
     try {
       await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch`, valid)
@@ -75,6 +84,39 @@ const handleSave = async () => {
       const error = err as AxiosError<{ message?: string }>
       const msg = error.response?.data?.message
       toast.error(msg || 'تعذر إضافة الطلاب')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleExcelFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setExcelFile(file)
+    }
+  }
+
+  const handleProcessExcel = async () => {
+    if (!excelFile) {
+      toast.error('الرجاء اختيار ملف Excel.')
+      return
+    }
+
+    setSaving(true) // Re-using saving state for Excel upload
+    try {
+      const formData = new FormData()
+      formData.append('file', excelFile)
+
+      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch-excel`, formData)
+      toast.success('تم إضافة الطلاب بنجاح من ملف Excel.')
+      setShowExcelUploadModal(false)
+      setExcelFile(null) // Clear the file input
+      fetchStudents()
+    } catch (err) {
+      const error = err as AxiosError<{ message?: string }>;
+      const message = error.response?.data?.message || error.message || 'تعذر إضافة الطلاب من ملف Excel.';
+      toast.error(message);
+      console.error('Excel upload error:', err);
     } finally {
       setSaving(false)
     }
@@ -124,17 +166,31 @@ const handleSave = async () => {
         {/* Add Button */}
         {!readOnly && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            {/* Manual Add Button */}
             <button
               onClick={() => setShowAddModal(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '10px 20px', backgroundColor: '#9EC5C7',
                 color: '#fff', border: 'none', borderRadius: '10px',
-                cursor: 'pointer', fontWeight: 600, fontSize: '14px',
+                cursor: 'pointer', fontWeight: 600, fontSize: '14px', marginRight: '10px'
               }}
             >
               <UserPlus size={16} />
-              إضافة طلاب
+              إضافة طلاب يدوياً
+            </button>
+            {/* Excel Upload Button */}
+            <button
+              onClick={() => setShowExcelUploadModal(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 20px', backgroundColor: '#6B7280', // Different color for Excel upload
+                color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: 'pointer', fontWeight: 600, fontSize: '14px',
+              }}
+            >
+              <Upload size={16} />
+              إضافة طلاب بملف Excel
             </button>
           </div>
         )}
@@ -314,6 +370,62 @@ const handleSave = async () => {
               >
                 إلغاء
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal إضافة طلاب بملف Excel */}
+      {showExcelUploadModal && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: '16px', padding: '32px',
+            width: '95%', maxWidth: '600px', direction: 'rtl',
+            maxHeight: '85vh', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: '#374151', fontSize: '16px', fontWeight: 700 }}>إضافة طلاب بملف Excel</h3>
+              <button onClick={() => { setShowExcelUploadModal(false); setExcelFile(null) }} style={{
+                border: 'none', background: '#F3F4F6', borderRadius: '50%',
+                width: '32px', height: '32px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <X size={16} color="#6B7280" />
+              </button>
+            </div>
+
+            <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '20px' }}>
+              الرجاء رفع ملف Excel (بصيغة .xlsx أو .xls) يحتوي على عمودين: "اسم الطالب" و "رقم جوال ولي الأمر".
+              يجب أن يكون اسم الطالب في العمود الأول ورقم جوال ولي الأمر في العمود الثاني.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label htmlFor="excel-file-input" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                padding: '15px 20px', border: '2px dashed #9EC5C7', borderRadius: '10px',
+                backgroundColor: '#F0F9FA', color: '#2D7D82', cursor: 'pointer',
+                fontWeight: 600, fontSize: '14px',
+              }}>
+                <Upload size={18} />
+                {excelFile ? excelFile.name : 'اختر ملف Excel'}
+              </label>
+              <input
+                id="excel-file-input"
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleExcelFileUpload}
+                style={{ display: 'none' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={handleProcessExcel} disabled={!excelFile || saving} style={{ flex: 2, padding: '12px', backgroundColor: '#9EC5C7', color: '#fff', border: 'none', borderRadius: '10px', cursor: (!excelFile || saving) ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px', opacity: (!excelFile || saving) ? 0.7 : 1 }}>
+                {saving ? 'جارٍ المعالجة...' : 'رفع وإضافة الطلاب'}
+              </button>
+              <button onClick={() => { setShowExcelUploadModal(false); setExcelFile(null) }} style={{ flex: 1, padding: '12px', backgroundColor: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>إلغاء</button>
             </div>
           </div>
         </div>
