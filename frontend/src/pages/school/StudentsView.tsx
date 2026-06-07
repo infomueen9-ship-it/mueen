@@ -403,8 +403,8 @@ const handleSave = async () => {
             </p>
 
             <div style={{ marginBottom: '12px' }}>
-              <a href="/students-template.csv" download style={{ color: '#065f5b', fontWeight: 600 }}>
-                تحميل قالب Excel جاهز (CSV) لملئه — بالنقر سيتم تنزيل ملف قابل للفتح في Excel
+              <a href="/students-template.xlsx" download style={{ color: '#065f5b', fontWeight: 600 }}>
+                تحميل قالب Excel جاهز لملئه (.xlsx)
               </a>
             </div>
 

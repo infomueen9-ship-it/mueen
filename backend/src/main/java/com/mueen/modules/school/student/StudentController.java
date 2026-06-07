@@ -78,11 +78,14 @@ public class StudentController {
             return ResponseEntity.badRequest().body(Map.of("message", "Invalid schema name"));
         }
 
+        ensureStudentSchema(schemaName);
+
         for (var student : students) {
-            String phone = student.guardianPhone();
+            String phone = (student.guardianPhone() == null || student.guardianPhone().isBlank()) 
+                ? null : student.guardianPhone().trim();
             
             // 1. التحقق من تكرار رقم الجوال في جدول الطلاب العام
-            if (phone != null && !phone.isBlank()) {
+            if (phone != null) {
                 var existing = jdbcTemplate.queryForList(
                     "SELECT id FROM " + schemaName + ".students WHERE guardian_phone = ?",
                     phone
@@ -99,10 +102,10 @@ public class StudentController {
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(
                     "INSERT INTO " + schemaName + ".students (full_name, guardian_phone) VALUES (?, ?)",
-                    Statement.RETURN_GENERATED_KEYS
+                    new String[]{"id"}
                 );
                 ps.setString(1, student.fullName());
-                ps.setString(2, student.guardianPhone());
+                ps.setString(2, phone);
                 return ps;
             }, keyHolder);
 
@@ -127,6 +130,8 @@ public class StudentController {
         if (!schemaName.matches("^[a-zA-Z0-9_]+$")) {
             return ResponseEntity.badRequest().body(Map.of("message", "Invalid schema name"));
         }
+
+        ensureStudentSchema(schemaName);
 
         if (file.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "الملف فارغ"));
 
