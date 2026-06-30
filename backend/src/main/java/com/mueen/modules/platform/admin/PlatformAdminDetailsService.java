@@ -26,7 +26,7 @@ public class PlatformAdminDetailsService implements UserDetailsService {
 
         return new User(
                 admin.getEmail(),
-                admin.getPasswordHash(),
+                admin.getPassword(),
                 List.of(new SimpleGrantedAuthority(admin.getRole().name()))
         );
     }

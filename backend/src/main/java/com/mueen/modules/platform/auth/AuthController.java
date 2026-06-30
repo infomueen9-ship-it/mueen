@@ -147,7 +147,7 @@ if (!teachers.isEmpty()) {
         PlatformAdmin admin = PlatformAdmin.builder()
             .fullName("Super Admin")
             .email(request.email())
-            .passwordHash(passwordEncoder.encode(request.password()))
+            .password(passwordEncoder.encode(request.password()))
             .role(PlatformAdmin.AdminRole.SUPER_ADMIN)
             .isActive(true)
             .build();

@@ -30,7 +30,7 @@ public class AdminBootstrapConfig {
             PlatformAdmin admin = PlatformAdmin.builder()
                     .fullName(fullName)
                     .email(email)
-                    .passwordHash(passwordEncoder.encode(password))
+                    .password(passwordEncoder.encode(password))
                     .role(PlatformAdmin.AdminRole.SUPER_ADMIN)
                     .isActive(true)
                     .build();
