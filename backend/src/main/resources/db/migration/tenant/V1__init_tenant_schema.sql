@@ -96,27 +96,8 @@ ALTER TABLE classrooms
 
 CREATE TABLE IF NOT EXISTS students (
     id                BIGSERIAL PRIMARY KEY,
-    student_number    VARCHAR(30)  NOT NULL UNIQUE,
-    national_id       VARCHAR(20)  UNIQUE,
     full_name         VARCHAR(255) NOT NULL,
-    full_name_en      VARCHAR(255),
-    gender            VARCHAR(6)   NOT NULL CHECK (gender IN ('MALE','FEMALE')),
-    birth_date        DATE         NOT NULL,
-    birth_date_hijri  VARCHAR(20),
-    nationality       VARCHAR(50)  NOT NULL DEFAULT 'سعودي',
-    religion          VARCHAR(20)  DEFAULT 'مسلم',
-    blood_type        VARCHAR(5),
-    photo_url         TEXT,
-    enrollment_date   DATE         NOT NULL DEFAULT CURRENT_DATE,
-    enrollment_status VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE'
-                          CHECK (enrollment_status IN ('ACTIVE','INACTIVE','GRADUATED','TRANSFERRED','SUSPENDED')),
-    medical_notes     TEXT,
-    address           TEXT,
-    city              VARCHAR(100),
-    noor_id           VARCHAR(50)  UNIQUE,
-    expected_score    INT          NOT NULL DEFAULT 80,
-    created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    guardian_phone    VARCHAR(30)  NOT NULL UNIQUE,
 );
 
 CREATE TABLE IF NOT EXISTS student_enrollments (

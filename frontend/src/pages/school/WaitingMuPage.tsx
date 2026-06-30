@@ -82,6 +82,21 @@ interface WaitingMuFormData {
   location: string;
 }
 
+// دالة مساعدة لتحويل التاريخ إلى هجري (أم القرى)
+const convertToHijri = (dateString: string): string => {
+  if (!dateString) return '—';
+  try {
+    const dateObj = new Date(dateString + 'T00:00:00');
+    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(dateObj);
+  } catch  {
+    return dateString;
+  }
+};
+
 export default function WaitingMuPage({
   schemaName
 }: {
@@ -120,7 +135,6 @@ export default function WaitingMuPage({
     setModalMode('add');
     setEditingItem(null);
     const today = new Date().toISOString().split('T')[0];
-    // استخدام handleDateChange لضمان تطابق اليوم مع التاريخ المختار
     handleDateChange(today); 
     setShowModal(true);
   };
@@ -138,7 +152,7 @@ export default function WaitingMuPage({
       setTeachers(teachersRes.data);
       setClassrooms(classroomsRes.data);
       
-      // معالجة البيانات القادمة من SQL (تنسيق snake_case إلى ما يتوقعه الجدول)
+      // معالجة البيانات القادمة من SQL
       setSubstituteSchedules(subsRes.data.map((s: ApiSubstituteResponse) => ({
         id: String(s.id),
         date: s.scheduled_date,
@@ -173,6 +187,7 @@ export default function WaitingMuPage({
     // eslint-disable-next-line
     fetchAllData();
   }, [schemaName, fetchAllData]);
+
   const handleDateChange = (val: string) => {
     const dayName = new Date(val + 'T00:00:00').toLocaleDateString('ar-SA', { weekday: 'long' });
     setFormData({ ...formData, date: val, day: dayName });
@@ -184,7 +199,6 @@ export default function WaitingMuPage({
       return;
     }
 
-    // تحديد رقم الهاتف: إذا كان إدارياً نستخدم رقمه المسجل، وإذا كان معلماً نبحث عنه في القائمة
     let phone = '0500000000';
     if (item.executorType === 'admin' && item.adminPhone) {
       phone = item.adminPhone;
@@ -193,21 +207,19 @@ export default function WaitingMuPage({
       if (teacher) phone = teacher.phone;
     }
 
-    // تحديد الاسم واللقب المناسب
     const name = item.teacherName || (item.executorType === 'admin' ? 'الزميل الإداري' : 'الزميل المعلم');
-    
     let message = `السلام عليكم أ. ${name}،\n\n`;
 
     if (isDuty) {
       message += `*إشعار بمناوبة مدرسية:*\n`;
       message += `• اليوم: ${item.day}\n`;
-      message += `• التاريخ: ${item.date}\n`;
+      message += `• التاريخ: ${convertToHijri(item.date)}\n`;
       message += `• الموقع: ${(item as DutySchedule).location}`;
       if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
     } else {
       message += `*إشعار بحصة انتظار:*\n`;
       message += `• اليوم: ${item.day}\n`;
-      message += `• التاريخ: ${item.date}\n`;
+      message += `• التاريخ: ${convertToHijri(item.date)}\n`;
       message += `• الحصة: ${(item as SubstituteSchedule).period}\n`;
       message += `• الصف: ${(item as SubstituteSchedule).class}`;
       if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
@@ -233,7 +245,6 @@ export default function WaitingMuPage({
   const handleSave = async () => {
     const isSub = activeTab === 'substitute';
     
-    // التحقق من الحقول المطلوبة قبل الإرسال
     if (!formData.teacherName) return toast.error('يرجى تحديد اسم المكلف');
     if (isSub && !formData.class) return toast.error('يرجى اختيار الفصل');
     if (isSub && !formData.period) return toast.error('يرجى تحديد الحصة');
@@ -278,7 +289,7 @@ export default function WaitingMuPage({
 
       {/* نظام التبويبات */}
       <div style={{ ...tabContainerStyle, justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '10px' }}> {/* Group tab buttons */}
+        <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => setActiveTab('substitute')} style={tabButtonStyle(activeTab === 'substitute')}>
             <UserX size={16} /> حصص الانتظار
           </button>
@@ -297,7 +308,7 @@ export default function WaitingMuPage({
         <p style={{ textAlign: 'center', color: '#9CA3AF', padding: '32px' }}>جارٍ التحميل...</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* كروت الإحصائيات (تظهر في جميع التبويبات) */}
+          {/* كروت الإحصائيات */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
              <StatCard icon={<UserX color="#EA580C" />} label="حصص الانتظار" value={substituteSchedules.length} bg="#FFF7ED" />
              <StatCard icon={<Shield color="#2563EB" />} label="المناوبات" value={dutySchedules.length} bg="#EFF6FF" />
@@ -325,7 +336,10 @@ export default function WaitingMuPage({
                     <tr key={sub.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
                       <td style={{ ...tdStyle, fontWeight: 700 }}>{sub.teacherName}</td>
                       <td style={tdStyle}>{sub.class}</td>
-                      <td style={tdStyle}>{sub.date}</td>
+                      <td style={tdStyle}>
+                        <div>{convertToHijri(sub.date)}</div>
+                        <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>{sub.date}</div>
+                      </td>
                       <td style={tdStyle}>{sub.day || '—'}</td>
                       <td style={tdStyle}>{sub.period}</td>
                       <td style={tdStyle}>
@@ -351,7 +365,7 @@ export default function WaitingMuPage({
                                 period: sub.period || '',
                                 class: sub.class || '',
                                 notes: sub.notes || '',
-                                location: '', // حصص الانتظار لا تحتوي على موقع
+                                location: '',
                               });
                               setShowModal(true); 
                             }} 
@@ -380,7 +394,7 @@ export default function WaitingMuPage({
                   <tr style={{ backgroundColor: '#F9FAFB' }}>
                     <th style={thStyle}>الاسم</th>
                     <th style={thStyle}>المكان</th>
-                    <th style={thStyle}>التاريخ</th>
+                    <th style={thStyle}>التاريخ </th>
                     <th style={thStyle}>اليوم</th>
                     <th style={thStyle}>معلم-إداري</th>
                     <th style={thStyle}>ملاحظات</th>
@@ -392,7 +406,10 @@ export default function WaitingMuPage({
                     <tr key={duty.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
                       <td style={{ ...tdStyle, fontWeight: 700 }}>{duty.teacherName}</td>
                       <td style={tdStyle}>{duty.location}</td>
-                      <td style={tdStyle}>{duty.date || '—'}</td>
+                      <td style={tdStyle}>
+                        <div>{convertToHijri(duty.date)}</div>
+                        <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>{duty.date}</div>
+                      </td>
                       <td style={tdStyle}>{duty.day || '—'}</td>
                       <td style={tdStyle}>
                         <span style={badgeStyle(duty.executorType === 'admin' ? 'إداري' : 'معلم')}>
@@ -416,8 +433,8 @@ export default function WaitingMuPage({
                                 date: duty.date || '',
                                 notes: duty.notes || '',
                                 location: duty.location || '',
-                                period: '', // المناوبات لا تحتوي على حصة
-                                class: '',  // المناوبات لا تحتوي على فصل
+                                period: '',
+                                class: '',
                               });
                               setShowModal(true); 
                             }} 

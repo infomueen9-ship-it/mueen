@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X, Trash2, Plus, UserPlus, Upload } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import api from '../../api/axios'
 import { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
@@ -27,11 +28,10 @@ export default function StudentsView({ classroomId, classroomName, schemaName, o
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false) // Modal for manual student entry
-  const [showExcelUploadModal, setShowExcelUploadModal] = useState(false) // New state for Excel upload modal
   const [confirmDelete, setConfirmDelete] = useState<Student | null>(null)
   const [forms, setForms] = useState<StudentForm[]>([{ fullName: '', guardianPhone: '' }])
-  const [excelFile, setExcelFile] = useState<File | null>(null) // State for the selected Excel file
   const [saving, setSaving] = useState(false)
+  const [importingExcel, setImportingExcel] = useState(false)
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -89,36 +89,105 @@ const handleSave = async () => {
     }
   }
 
-  const handleExcelFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      setExcelFile(file)
-    }
+  const normalizePhone = (value: string) => {
+    const digits = value.replace(/\D/g, '')
+    if (digits.length === 9 && digits.startsWith('5')) return `0${digits}`
+    return digits.slice(0, 10)
   }
 
-  const handleProcessExcel = async () => {
-    if (!excelFile) {
-      toast.error('الرجاء اختيار ملف Excel.')
+  const normalizeHeader = (value: unknown) =>
+    String(value ?? '')
+      .replace(/\s/g, '')
+      .replace(/[ـ_:\-.]/g, '')
+      .toLowerCase()
+
+  const findColumnIndex = (headers: unknown[], aliases: string[]) => {
+    const normalizedAliases = aliases.map(normalizeHeader)
+    return headers.findIndex(header => normalizedAliases.includes(normalizeHeader(header)))
+  }
+
+  const getCellValue = (row: unknown[], index: number) => {
+    if (index < 0) return ''
+    const value = row[index]
+    return value === undefined || value === null ? '' : String(value).trim()
+  }
+
+  const handleExcelImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      toast.error('الملف يجب أن يكون Excel بصيغة xlsx أو xls')
       return
     }
 
-    setSaving(true) // Re-using saving state for Excel upload
+    setImportingExcel(true)
     try {
-      const formData = new FormData()
-      formData.append('file', excelFile)
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
 
-      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch-excel`, formData)
-      toast.success('تم إضافة الطلاب بنجاح من ملف Excel.')
-      setShowExcelUploadModal(false)
-      setExcelFile(null) // Clear the file input
+      if (!sheetName) {
+        toast.error('ملف Excel لا يحتوي على أوراق')
+        return
+      }
+
+      const worksheet = workbook.Sheets[sheetName]
+      const rawRows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+        header: 1,
+        defval: '',
+        blankrows: false,
+      })
+
+      const rows = rawRows.filter(row => row.some(cell => String(cell ?? '').trim()))
+      const headers = rows[0] ?? []
+      const nameColumn = findColumnIndex(headers, ['fullName', 'Full Name', 'name', 'studentName', 'اسم الطالب', 'اسم الطالبة', 'الاسم', 'الطالب'])
+      const phoneColumn = findColumnIndex(headers, ['guardianPhone', 'Guardian Phone', 'phone', 'mobile', 'رقم ولي الأمر', 'رقم جوال ولي الأمر', 'الجوال', 'رقم الجوال'])
+      const hasHeader = nameColumn !== -1 || phoneColumn !== -1
+      const dataRows = hasHeader ? rows.slice(1) : rows
+      const resolvedNameColumn = nameColumn !== -1 ? nameColumn : 0
+      const resolvedPhoneColumn = phoneColumn !== -1 ? phoneColumn : 1
+
+      const imported = dataRows
+        .map(row => ({
+          fullName: getCellValue(row, resolvedNameColumn),
+          guardianPhone: normalizePhone(getCellValue(row, resolvedPhoneColumn)),
+        }))
+        .filter(student => student.fullName)
+
+      if (!imported.length) {
+        toast.error('لم يتم العثور على أسماء طلاب في الملف')
+        return
+      }
+
+      const invalidPhone = imported.find(student => student.guardianPhone && !student.guardianPhone.startsWith('05'))
+      if (invalidPhone) {
+        toast.error(`رقم الجوال للطالب ${invalidPhone.fullName} يجب أن يبدأ بـ 05`)
+        return
+      }
+
+      const invalidPhoneLength = imported.find(student => student.guardianPhone && student.guardianPhone.length !== 10)
+      if (invalidPhoneLength) {
+        toast.error(`رقم الجوال للطالب ${invalidPhoneLength.fullName} يجب أن يكون 10 أرقام`)
+        return
+      }
+
+      const phones = imported.map(student => student.guardianPhone).filter(Boolean)
+      const duplicatePhone = phones.find((phone, index) => phones.indexOf(phone) !== index)
+      if (duplicatePhone) {
+        toast.error(`يوجد رقم جوال مكرر في الملف: ${duplicatePhone}`)
+        return
+      }
+
+      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch`, imported)
+      toast.success(`تم استيراد ${imported.length} طالب من Excel`)
       fetchStudents()
     } catch (err) {
-      const error = err as AxiosError<{ message?: string }>;
-      const message = error.response?.data?.message || error.message || 'تعذر إضافة الطلاب من ملف Excel.';
-      toast.error(message);
-      console.error('Excel upload error:', err);
+      const error = err as AxiosError<{ message?: string }>
+      toast.error(error.response?.data?.message || 'تعذر استيراد ملف Excel')
     } finally {
-      setSaving(false)
+      setImportingExcel(false)
     }
   }
 
@@ -166,6 +235,27 @@ const handleSave = async () => {
         {/* Add Button */}
         {!readOnly && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <label
+              htmlFor="students-excel-input"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 20px', backgroundColor: '#374151',
+                color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: importingExcel ? 'not-allowed' : 'pointer',
+                fontWeight: 600, fontSize: '14px', opacity: importingExcel ? 0.7 : 1,
+              }}
+            >
+              <Upload size={16} />
+              {importingExcel ? 'جاري الاستيراد...' : 'استيراد من Excel'}
+            </label>
+            <input
+              id="students-excel-input"
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleExcelImport}
+              disabled={importingExcel}
+              style={{ display: 'none' }}
+            />
             {/* Manual Add Button */}
             <button
               onClick={() => setShowAddModal(true)}
@@ -178,19 +268,6 @@ const handleSave = async () => {
             >
               <UserPlus size={16} />
               إضافة طلاب يدوياً
-            </button>
-            {/* Excel Upload Button */}
-            <button
-              onClick={() => setShowExcelUploadModal(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 20px', backgroundColor: '#6B7280', // Different color for Excel upload
-                color: '#fff', border: 'none', borderRadius: '10px',
-                cursor: 'pointer', fontWeight: 600, fontSize: '14px',
-              }}
-            >
-              <Upload size={16} />
-              إضافة طلاب بملف Excel
             </button>
           </div>
         )}
@@ -370,68 +447,6 @@ const handleSave = async () => {
               >
                 إلغاء
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal إضافة طلاب بملف Excel */}
-      {showExcelUploadModal && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
-        }}>
-          <div style={{
-            backgroundColor: '#fff', borderRadius: '16px', padding: '32px',
-            width: '95%', maxWidth: '600px', direction: 'rtl',
-            maxHeight: '85vh', overflowY: 'auto',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, color: '#374151', fontSize: '16px', fontWeight: 700 }}>إضافة طلاب بملف Excel</h3>
-              <button onClick={() => { setShowExcelUploadModal(false); setExcelFile(null) }} style={{
-                border: 'none', background: '#F3F4F6', borderRadius: '50%',
-                width: '32px', height: '32px', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <X size={16} color="#6B7280" />
-              </button>
-            </div>
-
-            <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '20px' }}>
-              الرجاء رفع ملف Excel (بصيغة .xlsx أو .xls) يحتوي على عمودين: "اسم الطالب" و "رقم جوال ولي الأمر".
-              يجب أن يكون اسم الطالب في العمود الأول ورقم جوال ولي الأمر في العمود الثاني.
-            </p>
-
-            <div style={{ marginBottom: '12px' }}>
-              <a href="/students-template.xlsx" download style={{ color: '#065f5b', fontWeight: 600 }}>
-                تحميل قالب Excel جاهز لملئه (.xlsx)
-              </a>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label htmlFor="excel-file-input" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                padding: '15px 20px', border: '2px dashed #9EC5C7', borderRadius: '10px',
-                backgroundColor: '#F0F9FA', color: '#2D7D82', cursor: 'pointer',
-                fontWeight: 600, fontSize: '14px',
-              }}>
-                <Upload size={18} />
-                {excelFile ? excelFile.name : 'اختر ملف Excel'}
-              </label>
-              <input
-                id="excel-file-input"
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleExcelFileUpload}
-                style={{ display: 'none' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={handleProcessExcel} disabled={!excelFile || saving} style={{ flex: 2, padding: '12px', backgroundColor: '#9EC5C7', color: '#fff', border: 'none', borderRadius: '10px', cursor: (!excelFile || saving) ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '14px', opacity: (!excelFile || saving) ? 0.7 : 1 }}>
-                {saving ? 'جارٍ المعالجة...' : 'رفع وإضافة الطلاب'}
-              </button>
-              <button onClick={() => { setShowExcelUploadModal(false); setExcelFile(null) }} style={{ flex: 1, padding: '12px', backgroundColor: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>إلغاء</button>
             </div>
           </div>
         </div>

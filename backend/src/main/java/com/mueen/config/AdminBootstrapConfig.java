@@ -1,5 +1,4 @@
 package com.mueen.config;
-
 import com.mueen.modules.platform.admin.PlatformAdmin;
 import com.mueen.modules.platform.admin.PlatformAdminRepository;
 import lombok.RequiredArgsConstructor;

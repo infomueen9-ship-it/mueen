@@ -16,15 +16,61 @@ interface Tenant {
   schemaName: string
 }
 
+type SchoolCredential = {
+  username: string
+  password: string
+}
+
+const normalizeWhatsAppPhone = (phone: string) => {
+  let digits = phone.replace(/\D/g, '')
+
+  if (digits.startsWith('00')) {
+    digits = digits.slice(2)
+  }
+
+  if (digits.startsWith('0')) {
+    digits = `966${digits.slice(1)}`
+  }
+
+  if (digits.length === 9 && digits.startsWith('5')) {
+    digits = `966${digits}`
+  }
+
+  return digits
+}
+
+const openWhatsAppMessage = (phone: string, message: string) => {
+  const whatsAppPhone = normalizeWhatsAppPhone(phone)
+
+  if (!whatsAppPhone) {
+    toast.error('رقم الهاتف غير مسجل للمدرسة')
+    return
+  }
+
+  window.open(`https://wa.me/${whatsAppPhone}?text=${encodeURIComponent(message)}`, '_blank')
+}
+
+const getSchoolCredentialKeys = (schemaName: string, schoolCode?: string) =>
+  [schemaName, schoolCode, schemaName?.replace('school_', '')].filter(Boolean) as string[]
+
+const loadSchoolCredentials = () => {
+  try {
+    const savedCredentials = localStorage.getItem('mueen-school-credentials')
+    return savedCredentials ? JSON.parse(savedCredentials) as Record<string, SchoolCredential> : {}
+  } catch {
+    return {}
+  }
+}
+
 export default function SchoolsPage() {
-  const [createdSchool, setCreatedSchool] = useState<{schemaName: string, schoolCode: string} | null>(null)
+  const [createdSchool, setCreatedSchool] = useState<{schemaName: string, schoolCode: string, phone: string} | null>(null)
 const [principalForm, setPrincipalForm] = useState({ fullName: '', username: '', password: '' })
 const [showPrincipalModal, setShowPrincipalModal] = useState(false)
 const [savingPrincipal, setSavingPrincipal] = useState(false)
   const [schools, setSchools] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   
-const [schoolCredentials, setSchoolCredentials] = useState<Record<string, {username: string, password: string}>>({}) 
+const [schoolCredentials, setSchoolCredentials] = useState<Record<string, SchoolCredential>>(loadSchoolCredentials) 
  const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({
     schoolName: '', schoolNameAr: '', schoolCode: '',
@@ -52,7 +98,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     toast.success('تم إنشاء المدرسة بنجاح')
     setShowModal(false)
     const schoolCode = form.schoolCode.toLowerCase().replace(/[^a-z0-9]/g, '_')
-    const newSchool = { schemaName: `school_${schoolCode}`, schoolCode }
+    const newSchool = { schemaName: `school_${schoolCode}`, schoolCode, phone: form.phone }
     setCreatedSchool(newSchool)
     setShowPrincipalModal(true)
     const res = await api.get('/api/platform/tenants')
@@ -147,7 +193,8 @@ const handleSubmit = async (e: React.FormEvent) => {
             <td className="px-4 py-3">
              <button
   onClick={() => {
-   const creds = schoolCredentials[school.schemaName]
+   const credentialKeys = getSchoolCredentialKeys(school.schemaName, school.schoolCode)
+   const creds = credentialKeys.map(key => schoolCredentials[key]).find(Boolean)
     const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   }}
@@ -366,21 +413,18 @@ const handleSubmit = async (e: React.FormEvent) => {
               })
        toast.success('تم إنشاء حساب المدير بنجاح')
 
-// احفظ البيانات أولاً قبل تصفير أي شيء
-if (createdSchool) {
-  setSchoolCredentials(prev => ({
-    ...prev,
-    [createdSchool.schemaName]: {
-      username: principalForm.username,
-      password: principalForm.password,
-    }
-  }))
-}
+              const principalLoginUrl = `${window.location.origin}/school/${createdSchool.schoolCode}/login`
+              const whatsAppMessage = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${principalLoginUrl}\n\n👤 اسم المستخدم: ${principalForm.username}\n🔑 كلمة المرور: ${principalForm.password}\n\nللاستفسار تواصلوا معنا.`
 
-// ثم أغلق وصفّر
-setShowPrincipalModal(false)
-setPrincipalForm({ fullName: '', username: '', password: '' })
-setCreatedSchool(null)
+              setSchoolCredentials(prev => ({
+                ...prev,
+                [createdSchool.schemaName]: {
+                  username: principalForm.username,
+                  password: principalForm.password,
+                }
+              }))
+
+              openWhatsAppMessage(createdSchool.phone, whatsAppMessage)
               setShowPrincipalModal(false)
               setPrincipalForm({ fullName: '', username: '', password: '' })
               setCreatedSchool(null)

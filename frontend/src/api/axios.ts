@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 
 const api = axios.create({
-  baseURL: 'https://mueen-production-fcb0.up.railway.app',
+  baseURL: 'http://54.83.121.129:8082',
 })
 
 api.interceptors.request.use((config) => {

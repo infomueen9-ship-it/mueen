@@ -1,20 +1,13 @@
 package com.mueen.modules.school.student;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.BufferedInputStream;
-import java.io.InputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -42,7 +35,7 @@ public class StudentController {
             return ResponseEntity.badRequest().body(Map.of("message", "Invalid schema name"));
         }
 
-        ensureStudentSchema(schemaName); // تم تفعيل استدعاء الدالة لضمان إنشاء الجداول. في بيئة الإنتاج، يجب استدعاؤها مرة واحدة عند بدء تشغيل التطبيق أو إنشاء مستأجر جديد.
+        // ensureStudentSchema(schemaName); 
 
         // Query students from 'students' table and join with 'student_enrollments'
         // Also fetch the latest behavior score
@@ -120,89 +113,6 @@ public class StudentController {
             );
         }
         return ResponseEntity.ok(Map.of("message", "تم إضافة الطلاب بنجاح"));
-    }
-
-    @PostMapping(value = "/batch-excel", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Transactional
-    public ResponseEntity<?> batchAddStudentsFromExcel(
-            @PathVariable String schemaName,
-            @PathVariable Long classroomId,
-            @RequestParam("file") MultipartFile file) {
-
-        if (!schemaName.matches("^[a-zA-Z0-9_]+$")) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid schema name"));
-        }
-
-        ensureStudentSchema(schemaName);
-
-        if (file.isEmpty()) return ResponseEntity.badRequest().body(Map.of("message", "الملف فارغ"));
-
-        // التحقق من امتداد الملف قبل البدء بالمعالجة
-        String originalFileName = file.getOriginalFilename();
-        if (originalFileName == null || (!originalFileName.toLowerCase().endsWith(".xlsx") && !originalFileName.toLowerCase().endsWith(".xls"))) {
-            return ResponseEntity.badRequest().body(Map.of("message", "يرجى رفع ملف Excel صالح بصيغة (xlsx أو xls)"));
-        }
-
-        List<StudentForm> students = new ArrayList<>();
-        try (InputStream is = new BufferedInputStream(file.getInputStream());
-             Workbook workbook = WorkbookFactory.create(is)) {
-            
-            DataFormatter dataFormatter = new DataFormatter();
-            // إضافة Evaluator لمعالجة الخلايا التي تحتوي على معادلات
-            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-            Sheet sheet = workbook.getSheetAt(0);
-            
-            if (sheet == null || sheet.getPhysicalNumberOfRows() <= 1) {
-                return ResponseEntity.badRequest().body(Map.of("message", "الملف لا يحتوي على بيانات طلاب (تأكد من وجود البيانات بدءاً من الصف الثاني)"));
-            }
-
-            // البدء من الصف الثاني (تجاهل صف العناوين)
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null || row.getPhysicalNumberOfCells() == 0) continue;
-
-                String name = getCellValue(row.getCell(0), dataFormatter, evaluator);
-                String rawPhone = getCellValue(row.getCell(1), dataFormatter, evaluator);
-                
-                String formattedPhone = null;
-                if (rawPhone != null && !rawPhone.isBlank()) {
-                    formattedPhone = rawPhone.trim().replace(" ", "");
-                    // معالجة حالة قيام Excel بحذف الصفر في البداية (مثلاً 505... بدلاً من 0505...)
-                    if (formattedPhone.length() == 9 && formattedPhone.startsWith("5")) {
-                        formattedPhone = "0" + formattedPhone;
-                    }
-                }
-
-                if (name != null && !name.isBlank()) {
-                    students.add(new StudentForm(name.trim(), formattedPhone));
-                }
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("message", "خطأ أثناء معالجة ملف Excel: " + e.getMessage()));
-        }
-
-        if (students.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "لم يتم العثور على أي بيانات طلاب صالحة في الملف"));
-        }
-
-        // Validate duplicate guardian phone numbers within the uploaded file
-        var seenPhones = new java.util.HashSet<String>();
-        for (StudentForm student : students) {
-            String phone = student.guardianPhone();
-            if (phone != null && !phone.isBlank()) {
-                if (!seenPhones.add(phone)) {
-                    return ResponseEntity.badRequest().body(
-                            Map.of("message", "رقم الجوال " + phone + " مكرر في ملف Excel. يرجى إزالة التكرارات وإعادة المحاولة."));
-                }
-            }
-        }
-
-        return addStudents(schemaName, classroomId, students);
-    }
-
-    private String getCellValue(Cell cell, DataFormatter dataFormatter, FormulaEvaluator evaluator) {
-        if (cell == null) return null;
-        return dataFormatter.formatCellValue(cell, evaluator);
     }
 
     @DeleteMapping("/{studentId}")
