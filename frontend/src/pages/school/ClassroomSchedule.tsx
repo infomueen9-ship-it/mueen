@@ -31,32 +31,32 @@ export default function ClassroomSchedule({ classroomId, classroomName, schemaNa
 
   // تحميل المواد
   useEffect(() => {
-    const load = async () => {
-      const [subjectsResult, scheduleResult] = await Promise.allSettled([
-        api.get(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`),
-        api.get(`/api/school/${schemaName}/classrooms/${classroomId}/schedule`),
-      ])
+  const load = async () => {
+  const [subjectsResult, scheduleResult] = await Promise.allSettled([
+    api.get(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`),
+    api.get(`/api/school/${schemaName}/classrooms/${classroomId}/schedule`),
+  ])
 
-      if (subjectsResult.status === 'fulfilled') {
-        setSubjects(subjectsResult.value.data)
-      } else {
-        console.error('فشل تحميل المواد:', subjectsResult.reason)
+  if (subjectsResult.status === 'fulfilled') {
+    setSubjects(subjectsResult.value.data)
+  } else {
+    toast.error('تعذر تحميل المواد المضافة')
+  }
+
+  if (scheduleResult.status === 'fulfilled') {
+    const scheduleMap: Schedule = {}
+
+    scheduleResult.value.data.forEach(
+      (row: { period: string; day: string; subject_name: string }) => {
+        scheduleMap[getKey(row.period, row.day)] = row.subject_name || ''
       }
+    )
 
-      if (scheduleResult.status === 'fulfilled') {
-        const scheduleMap: Schedule = {}
-        const rows = Array.isArray(scheduleResult.value.data) ? scheduleResult.value.data : []
-
-        rows.forEach((row: { period: string; day: string; subject_name: string }) => {
-          scheduleMap[getKey(row.period, row.day)] = row.subject_name || ''
-        })
-        setSchedule(scheduleMap)
-      } else {
-        console.error('فشل تحميل الجدول:', scheduleResult.reason)
-        toast.error('تعذر تحميل جدول الحصص')
-      }
-    }
-
+    setSchedule(scheduleMap)
+  } else {
+    toast.error('تعذر تحميل جدول الحصص')
+  }
+}
     load()
   }, [schemaName, classroomId])
 
