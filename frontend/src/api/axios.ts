@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 
 const api = axios.create({
-baseURL: 'https://hqolksa.com/api',
+baseURL: 'https://hqolksa.com',
 })
 
 api.interceptors.request.use((config) => {
