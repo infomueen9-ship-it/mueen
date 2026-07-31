@@ -37,6 +37,13 @@ public class TenantUserController {
             request.role(),
             request.gender()
         );
+        // حفظ بيانات المدير في جدول tenants
+jdbcTemplate.update(
+    "UPDATE public.tenants SET principal_username = ?, principal_password = ? WHERE schema_name = ?",
+    body.get("username"),
+    body.get("password"),
+    schemaName
+);
 
         return ResponseEntity.ok(Map.of("message", "User created successfully"));
     }
