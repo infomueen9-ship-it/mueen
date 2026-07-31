@@ -155,57 +155,28 @@ export default function SchoolsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {schools.map((school) => {
-                const schoolCode = school.schemaName?.replace('school_', '') || ''
-                const loginUrl = `${window.location.origin}/school/${schoolCode}/login`
-                const credentialKeys = getSchoolCredentialKeys(school.schemaName, school.schoolCode)
-const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${credentialKeys.map(key => schoolCredentials[key]).find(Boolean)?.username || '—'}\n🔑 كلمة المرور: ${credentialKeys.map(key => schoolCredentials[key]).find(Boolean)?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
-                return (
-                  <tr key={school.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-400">{school.id}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800">{school.schoolNameAr}</p>
-                      <p className="text-gray-400 text-xs">{school.schoolName}</p>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{school.email}</td>
-                    <td className="px-4 py-3 text-gray-600">{school.city}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor(school.status)}`}>
-                        {statusLabel(school.status)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '11px', color: '#6B7280', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {loginUrl}
-                        </span>
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(loginUrl); toast.success('تم نسخ الرابط') }}
-                          style={{ padding: '4px 8px', backgroundColor: '#E8F4F5', color: '#2D7D82', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', whiteSpace: 'nowrap' }}
-                        >
-                          نسخ
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                       onClick={() => {
-  const creds = schoolCredentials[school.schemaName]
-  const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
-  
-  // رقم هاتف المدرسة مع إزالة الصفر الأول واستبداله بـ 966
-  const phone = school.phone?.replace(/^0/, '966') || ''
-  
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
-}}
-                        style={{ padding: '6px 12px', backgroundColor: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
-                      >
-                        📱 واتساب
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
+             {schools.map((school) => {
+  const schoolCode = school.schemaName?.replace('school_', '') || ''
+  const loginUrl = `${window.location.origin}/school/${schoolCode}/login`
+  return (
+    <tr key={school.id} className="hover:bg-gray-50">
+      ...
+      <td className="px-4 py-3">
+        <button
+          onClick={() => {
+            const creds = schoolCredentials[school.schemaName]
+            const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
+            const phone = school.phone?.replace(/^0/, '966') || ''
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+          }}
+          style={{ padding: '6px 12px', backgroundColor: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+        >
+          📱 واتساب
+        </button>
+      </td>
+    </tr>
+  )
+})})
             </tbody>
           </table>
           {schools.length === 0 && (
