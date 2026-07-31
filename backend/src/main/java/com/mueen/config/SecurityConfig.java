@@ -81,4 +81,11 @@ public CorsConfigurationSource corsConfigurationSource() {
     source.registerCorsConfiguration("/**", config);
     return source;
 }
+config.setAllowedOrigins(List.of(
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://mueen-snowy.vercel.app",
+    "https://hqolksa.com",
+    "https://www.hqolksa.com"
+));
 }
