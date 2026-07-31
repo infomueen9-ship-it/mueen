@@ -9,21 +9,16 @@ import logo from '../../assets/logo.png'
 import api from '../../api/axios'
 import { useAuthStore } from '../../store/authStore'
 
-function Field({
-  label,
-  type,
-  placeholder,
-  value,
-  onChange,
-  disabled,
-}: {
+interface FieldProps {
   label: string
   type: string
   placeholder: string
   value: string
   onChange: (value: string) => void
   disabled?: boolean
-}) {
+}
+
+function Field({ label, type, placeholder, value, onChange, disabled }: FieldProps) {
   return (
     <div style={{ width: '100%' }}>
       <label
@@ -82,14 +77,14 @@ export default function LoginPage() {
         password,
       })
 
-      const data = response.data;
-      const { token, name, role, schoolCode } = data;
-      
-      const finalId = data.id || data.userId || data.user?.id || data.user?.userId;
+      const data = response.data
+      const { token, name, role, schoolCode } = data
+
+      const finalId = data.id || data.userId || data.user?.id || data.user?.userId
 
       // حفظ بيانات الجلسة
-      setAuth(token, name, role, 'PLATFORM', finalId);
-      console.log("LoginPage: finalId sent to AuthStore:", finalId);
+      setAuth(token, name, role, 'PLATFORM', finalId)
+      console.log('LoginPage: finalId sent to AuthStore:', finalId)
 
       // التوجيه بناءً على الصلاحية
       if (role === 'SCHOOL_ADMIN' && schoolCode) {
@@ -139,7 +134,7 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 40px 24px;
+          padding: 16px 24px 40px; /* تم تقليل الـ padding العلوي من 40px إلى 16px */
           border-top-left-radius: 30px;
           border-top-right-radius: 30px;
         }
@@ -213,6 +208,7 @@ export default function LoginPage() {
             border-top-right-radius: 0;
             border-bottom-left-radius: 30px;
             border-top-left-radius: 30px;
+            padding-top: 20px; /* مسافة علوية قصيرة للشاشات الكبيرة */
           }
 
           .login-copy {
@@ -264,14 +260,14 @@ export default function LoginPage() {
           }
 
           .login-right {
-            padding: 28px 16px;
+            padding: 12px 16px 28px; /* تقليل المسافة العلوية للجوال أيضاً */
           }
         }
       `}</style>
 
       <div className="login-layout" style={{ direction: 'ltr' }}>
         <section className="login-left">
-          {/* الشعار الصغير الجانبي (تم تصغيره إلى 65px) */}
+          {/* الشعار الصغير الجانبي */}
           <img
             src={smallLogo}
             alt="معين"
@@ -310,7 +306,7 @@ export default function LoginPage() {
               maxWidth: '620px',
             }}
           >
-            {/* الشعار الرئيسي في جهة النموذج (تم تصغيره إلى 180px وتقليل المسافة المتبقية أسفله) */}
+            {/* الشعار الرئيسي في جهة النموذج (تم إزاحة المسافة العلوية عنه) */}
             <img
               src={logo}
               alt="معين"
@@ -318,7 +314,7 @@ export default function LoginPage() {
                 width: 'min(100%, 180px)',
                 height: 'auto',
                 objectFit: 'contain',
-                margin: '0 auto 20px',
+                margin: '0 auto 16px', /* تم تقليل الهامش السفلي أيضاً لتوفير مساحة */
                 display: 'block',
               }}
             />
