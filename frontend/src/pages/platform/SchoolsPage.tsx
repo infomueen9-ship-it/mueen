@@ -131,6 +131,8 @@ export default function SchoolsPage() {
                 <th className="text-right px-4 py-3">البريد</th>
                 <th className="text-right px-4 py-3">المدينة</th>
                 <th className="text-right px-4 py-3">الحالة</th>
+                <th className="text-right px-4 py-3">اسم المستخدم</th>
+<th className="text-right px-4 py-3">كلمة المرور</th>
                 <th className="text-right px-4 py-3">رابط الدخول</th>
                 <th className="text-right px-4 py-3">واتساب</th>
               </tr>
@@ -142,11 +144,17 @@ export default function SchoolsPage() {
   return (
     <tr key={school.id} className="hover:bg-gray-50">
       ...
+      <td className="px-4 py-3 text-gray-600">
+  {schoolCredentials[school.schemaName]?.username || '—'}
+</td>
+<td className="px-4 py-3 text-gray-600">
+  {schoolCredentials[school.schemaName]?.password || '—'}
+</td>
       <td className="px-4 py-3">
         <button
           onClick={() => {
             const creds = schoolCredentials[school.schemaName]
-            const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
+            const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة حقول.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
             const phone = school.phone?.replace(/^0/, '966') || ''
             window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
           }}
