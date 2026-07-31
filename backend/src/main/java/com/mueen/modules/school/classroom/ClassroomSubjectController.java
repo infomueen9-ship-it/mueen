@@ -35,7 +35,7 @@ public class ClassroomSubjectController {
             java.util.Map<String, Object> resultMap = new java.util.HashMap<>();
             resultMap.put("id", lowerRow.get("id"));
             resultMap.put("name", lowerRow.get("name"));
-            resultMap.put("teacherId", lowerRow.get("teacher_id"));
+            //resultMap.put("teacherId", lowerRow.get("teacher_id"));
             return resultMap;
         }).toList();
         return ResponseEntity.ok(result);

@@ -31,32 +31,23 @@ export default function ClassroomSchedule({ classroomId, classroomName, schemaNa
 
   // تحميل المواد
   useEffect(() => {
-  const load = async () => {
-  const [subjectsResult, scheduleResult] = await Promise.allSettled([
-    api.get(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`),
-    api.get(`/api/school/${schemaName}/classrooms/${classroomId}/schedule`),
-  ])
-
-  if (subjectsResult.status === 'fulfilled') {
-    setSubjects(subjectsResult.value.data)
-  } else {
-    toast.error('تعذر تحميل المواد المضافة')
-  }
-
-  if (scheduleResult.status === 'fulfilled') {
-    const scheduleMap: Schedule = {}
-
-    scheduleResult.value.data.forEach(
-      (row: { period: string; day: string; subject_name: string }) => {
-        scheduleMap[getKey(row.period, row.day)] = row.subject_name || ''
+    const load = async () => {
+      try {
+        const [subjectsRes, scheduleRes] = await Promise.all([
+          api.get(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`),
+          api.get(`/api/school/${schemaName}/classrooms/${classroomId}/schedule`),
+        ])
+        setSubjects(subjectsRes.data)
+        const scheduleMap: Schedule = {}
+        
+        scheduleRes.data.forEach((row: { period: string; day: string; subject_name: string }) => {
+          scheduleMap[getKey(row.period, row.day)] = row.subject_name || ''
+        })
+        setSchedule(scheduleMap)
+      } catch {
+        toast.error('تعذر تحميل البيانات')
       }
-    )
-
-    setSchedule(scheduleMap)
-  } else {
-    toast.error('تعذر تحميل جدول الحصص')
-  }
-}
+    }
     load()
   }, [schemaName, classroomId])
 
@@ -148,39 +139,37 @@ export default function ClassroomSchedule({ classroomId, classroomName, schemaNa
         </div>
 
         {/* إضافة مادة */}
-        <div style={{
-          background: '#F9FAFB', border: '1px solid #E5E7EB',
-          borderRadius: '12px', padding: '16px', marginBottom: '20px',
-        }}>
-          <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>
-            المواد الدراسية للفصل
-          </p>
+        {!readOnly && (
+          <div style={{
+            background: '#F9FAFB', border: '1px solid #E5E7EB',
+            borderRadius: '12px', padding: '16px', marginBottom: '20px',
+          }}>
+            <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+              المواد الدراسية للفصل
+            </p>
 
-          {/* Chips */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-            {subjects.map((subj) => (
-              <span key={subj.id} style={{
-                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                backgroundColor: '#E8F4F5', color: '#2D7D82',
-                borderRadius: '20px', padding: '4px 12px',
-                fontSize: '12px', fontWeight: 600,
-              }}>
-                {subj.name}
-                {!readOnly && (
+            {/* Chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+              {subjects.map((subj) => (
+                <span key={subj.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  backgroundColor: '#E8F4F5', color: '#2D7D82',
+                  borderRadius: '20px', padding: '4px 12px',
+                  fontSize: '12px', fontWeight: 600,
+                }}>
+                  {subj.name}
                   <button onClick={() => setConfirmSubject(subj)} style={{
                     border: 'none', background: 'none', cursor: 'pointer',
                     color: '#9CA3AF', fontSize: '14px', padding: 0, lineHeight: 1,
                   }}>×</button>
-                )}
-              </span>
-            ))}
-            {subjects.length === 0 && (
-              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>لا توجد مواد بعد</span>
-            )}
-          </div>
+                </span>
+              ))}
+              {subjects.length === 0 && (
+                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>لا توجد مواد بعد</span>
+              )}
+            </div>
 
-          {/* إضافة مادة جديدة */}
-          {!readOnly && (
+            {/* إضافة مادة جديدة */}
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 value={newSubject}
@@ -201,8 +190,8 @@ export default function ClassroomSchedule({ classroomId, classroomName, schemaNa
                 إضافة
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* جدول الحصص */}
         <div style={{ overflowX: 'auto' }}>
