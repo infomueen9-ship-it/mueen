@@ -23,12 +23,20 @@ public class ClassroomSubjectController {
             @PathVariable String schemaName,
             @PathVariable Long classroomId) {
 
-        var subjects = jdbcTemplate.queryForList(
-            "SELECT id, name, teacher_id FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? ORDER BY id",
-            classroomId
-        );
+        List<Map<String, Object>> subjects;
+        try {
+            subjects = jdbcTemplate.queryForList(
+                "SELECT id, name, teacher_id FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? ORDER BY id",
+                classroomId
+            );
+        } catch (Exception ex) {
+            subjects = jdbcTemplate.queryForList(
+                "SELECT id, name FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? ORDER BY id",
+                classroomId
+            );
+        }
+
         var result = subjects.stream().map(row -> {
-            // توحيد حالة أحرف المفاتيح (Normalization) لتجنب أخطاء التسمية بين DB و Java
             java.util.Map<String, Object> lowerRow = new java.util.HashMap<>();
             row.forEach((k, v) -> lowerRow.put(k.toLowerCase(), v));
 
