@@ -148,37 +148,39 @@ export default function ClassroomSchedule({ classroomId, classroomName, schemaNa
         </div>
 
         {/* إضافة مادة */}
-        {!readOnly && (
-          <div style={{
-            background: '#F9FAFB', border: '1px solid #E5E7EB',
-            borderRadius: '12px', padding: '16px', marginBottom: '20px',
-          }}>
-            <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>
-              المواد الدراسية للفصل
-            </p>
+        <div style={{
+          background: '#F9FAFB', border: '1px solid #E5E7EB',
+          borderRadius: '12px', padding: '16px', marginBottom: '20px',
+        }}>
+          <p style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: '#374151' }}>
+            المواد الدراسية للفصل
+          </p>
 
-            {/* Chips */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-              {subjects.map((subj) => (
-                <span key={subj.id} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  backgroundColor: '#E8F4F5', color: '#2D7D82',
-                  borderRadius: '20px', padding: '4px 12px',
-                  fontSize: '12px', fontWeight: 600,
-                }}>
-                  {subj.name}
+          {/* Chips */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+            {subjects.map((subj) => (
+              <span key={subj.id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                backgroundColor: '#E8F4F5', color: '#2D7D82',
+                borderRadius: '20px', padding: '4px 12px',
+                fontSize: '12px', fontWeight: 600,
+              }}>
+                {subj.name}
+                {!readOnly && (
                   <button onClick={() => setConfirmSubject(subj)} style={{
                     border: 'none', background: 'none', cursor: 'pointer',
                     color: '#9CA3AF', fontSize: '14px', padding: 0, lineHeight: 1,
                   }}>×</button>
-                </span>
-              ))}
-              {subjects.length === 0 && (
-                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>لا توجد مواد بعد</span>
-              )}
-            </div>
+                )}
+              </span>
+            ))}
+            {subjects.length === 0 && (
+              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>لا توجد مواد بعد</span>
+            )}
+          </div>
 
-            {/* إضافة مادة جديدة */}
+          {/* إضافة مادة جديدة */}
+          {!readOnly && (
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 value={newSubject}
@@ -199,8 +201,8 @@ export default function ClassroomSchedule({ classroomId, classroomName, schemaNa
                 إضافة
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* جدول الحصص */}
         <div style={{ overflowX: 'auto' }}>

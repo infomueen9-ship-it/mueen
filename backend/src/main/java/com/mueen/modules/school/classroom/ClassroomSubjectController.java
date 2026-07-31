@@ -24,7 +24,7 @@ public class ClassroomSubjectController {
             @PathVariable Long classroomId) {
 
         var subjects = jdbcTemplate.queryForList(
-            "SELECT id, name, teacher_id FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? ORDER BY id",
+            "SELECT id, name FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? ORDER BY id",
             classroomId
         );
         var result = subjects.stream().map(row -> {
