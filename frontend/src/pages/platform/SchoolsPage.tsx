@@ -38,8 +38,6 @@ const openWhatsAppMessage = (phone: string, message: string) => {
   window.open(`https://wa.me/${whatsAppPhone}?text=${encodeURIComponent(message)}`, '_blank')
 }
 
-const getSchoolCredentialKeys = (schemaName: string, schoolCode?: string) =>
-  [schemaName, schoolCode, schemaName?.replace('school_', '')].filter(Boolean) as string[]
 
 const loadSchoolCredentials = () => {
   try {
@@ -104,24 +102,7 @@ export default function SchoolsPage() {
     }
   }
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-700'
-      case 'TRIAL': return 'bg-orange-100 text-orange-700'
-      case 'SUSPENDED': return 'bg-red-100 text-red-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  const statusLabel = (status: string) => {
-    switch (status) {
-      case 'ACTIVE': return 'نشط'
-      case 'TRIAL': return 'تجربة'
-      case 'SUSPENDED': return 'موقوف'
-      case 'CANCELLED': return 'ملغي'
-      default: return status
-    }
-  }
+ 
 
   return (
     <div style={{ direction: 'rtl' }}>
