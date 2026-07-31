@@ -187,16 +187,16 @@ export default function LoginPage() {
           object-fit: contain;
         }
 
-       .login-tree {
-  position: absolute;
-  right: -12px;
-  top: 60%;
-  transform: translateY(-30%);
-  width: clamp(50px, 10vw, 100px); 
-  height: auto;
-  object-fit: contain;
-  z-index: 3;
-}
+        .login-tree {
+          position: absolute;
+          right: -12px;
+          top: 60%;
+          transform: translateY(-30%);
+          width: clamp(50px, 10vw, 100px); 
+          height: auto;
+          object-fit: contain;
+          z-index: 3;
+        }
 
         @media (min-width: 1024px) {
           .login-layout {
@@ -224,10 +224,10 @@ export default function LoginPage() {
           }
 
           .login-tree {
-    right: -92px;
-    top: 45%;
-    width: clamp(80px, 8vw, 140px);
-  }
+            right: -92px;
+            top: 45%;
+            width: clamp(80px, 8vw, 140px);
+          }
         }
 
         @media (max-width: 640px) {
@@ -258,10 +258,10 @@ export default function LoginPage() {
           }
 
           .login-tree {
-    right: 0;
-    top: 55%;
-    width: clamp(40px, 12vw, 80px);
-  }
+            right: 0;
+            top: 55%;
+            width: clamp(40px, 12vw, 80px);
+          }
 
           .login-right {
             padding: 28px 16px;
@@ -271,12 +271,13 @@ export default function LoginPage() {
 
       <div className="login-layout" style={{ direction: 'ltr' }}>
         <section className="login-left">
+          {/* الشعار الصغير الجانبي (تم تصغيره إلى 65px) */}
           <img
             src={smallLogo}
             alt="معين"
             style={{
-              width: '95px',
-              maxWidth: '24vw',
+              width: '65px',
+              maxWidth: '18vw',
               height: 'auto',
               objectFit: 'contain',
             }}
@@ -309,14 +310,15 @@ export default function LoginPage() {
               maxWidth: '620px',
             }}
           >
+            {/* الشعار الرئيسي في جهة النموذج (تم تصغيره إلى 180px وتقليل المسافة المتبقية أسفله) */}
             <img
               src={logo}
               alt="معين"
               style={{
-                width: 'min(100%, 310px)',
+                width: 'min(100%, 180px)',
                 height: 'auto',
                 objectFit: 'contain',
-                margin: '0 auto 40px',
+                margin: '0 auto 20px',
                 display: 'block',
               }}
             />
