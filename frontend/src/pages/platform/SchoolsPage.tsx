@@ -189,10 +189,15 @@ export default function SchoolsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => {
-                          const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
-                          openWhatsAppMessage(school.phone, msg)
-                        }}
+                       onClick={() => {
+  const creds = schoolCredentials[school.schemaName]
+  const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
+  
+  // رقم هاتف المدرسة مع إزالة الصفر الأول واستبداله بـ 966
+  const phone = school.phone?.replace(/^0/, '966') || ''
+  
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+}}
                         style={{ padding: '6px 12px', backgroundColor: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
                       >
                         📱 واتساب
