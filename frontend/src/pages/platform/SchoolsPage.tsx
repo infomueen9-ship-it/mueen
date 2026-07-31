@@ -159,7 +159,7 @@ export default function SchoolsPage() {
                 const schoolCode = school.schemaName?.replace('school_', '') || ''
                 const loginUrl = `${window.location.origin}/school/${schoolCode}/login`
                 const credentialKeys = getSchoolCredentialKeys(school.schemaName, school.schoolCode)
-                const creds = credentialKeys.map(key => schoolCredentials[key]).find(Boolean)
+const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة معين.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${credentialKeys.map(key => schoolCredentials[key]).find(Boolean)?.username || '—'}\n🔑 كلمة المرور: ${credentialKeys.map(key => schoolCredentials[key]).find(Boolean)?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
                 return (
                   <tr key={school.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-400">{school.id}</td>
