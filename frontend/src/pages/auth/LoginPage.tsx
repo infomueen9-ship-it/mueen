@@ -285,7 +285,7 @@ export default function LoginPage() {
 
           <div className="login-copy">
             <p className="login-copy-eyebrow">
-              معين... لأن التنظيم يصنع الفرق...
+              حقول... لأن التنظيم يصنع الفرق...
             </p>
 
             <p className="login-copy-title">
@@ -340,7 +340,7 @@ export default function LoginPage() {
                 <Field
                   label="البريد الإلكتروني"
                   type="email"
-                  placeholder="admin@mueen.com"
+                  placeholder="admin@hqol.com"
                   value={email}
                   onChange={setEmail}
                   disabled={isSubmitting}
