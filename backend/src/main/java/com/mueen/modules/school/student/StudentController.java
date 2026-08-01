@@ -82,7 +82,7 @@ public class StudentController {
             // 1. التحقق من تكرار رقم الجوال في جدول الطلاب العام
             if (phone != null) {
                 var existing = jdbcTemplate.queryForList(
-                    "SELECT id FROM " + schemaName + ".students WHERE guardian_phone = ?",
+                    "SELECT id FROM " + schemaName + ".classroom_students WHERE guardian_phone = ?",
                     phone
                 );
                 if (!existing.isEmpty()) {
@@ -96,7 +96,7 @@ public class StudentController {
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO " + schemaName + ".classroom_students (full_name, guardian_phone) VALUES (?, ?)",
+                    "INSERT INTO " + schemaName + ".students (full_name, guardian_phone) VALUES (?, ?)",
                     new String[]{"id"}
                 );
                 ps.setString(1, student.fullName());
