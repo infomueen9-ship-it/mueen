@@ -164,7 +164,7 @@ export default function WaitingMuPage({
       ]);
       setTeachers(teachersRes.data);
       setClassrooms(classroomsRes.data);
-      
+      console.log(subsRes.data);
       // معالجة البيانات القادمة من SQL
       setSubstituteSchedules(subsRes.data.map((s: ApiSubstituteResponse) => ({
         id: String(s.id),
@@ -191,8 +191,10 @@ teacherPhone: d.teacher_phone,
         executorType: d.executor_type.toLowerCase() as 'teacher' | 'admin',
         notes: d.notes,
         adminPhone: d.admin_phone
-      })));
-
+      }
+    
+    )));
+console.log(dutyRes.data);
     } catch {
       toast.error('خطأ في جلب البيانات');
     } finally {
