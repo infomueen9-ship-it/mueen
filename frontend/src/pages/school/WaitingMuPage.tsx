@@ -193,60 +193,44 @@ export default function WaitingMuPage({
     setFormData({ ...formData, date: val, day: dayName });
   };
 
- const sendWhatsApp = (item: SubstituteSchedule | DutySchedule, isDuty: boolean = false) => {
-  if (!item.teacherName) {
-    toast.error('لا يمكن الإرسال: اسم المكلف غير متوفر');
-    return;
-  }
-
-  let phone = '';
-  if (item.executorType === 'admin' && item.adminPhone) {
-    phone = item.adminPhone;
-  } else {
-    const teacher = teachers.find(t => t.fullName === item.teacherName);
-    if (teacher && teacher.phone) {
-      phone = teacher.phone;
+  const sendWhatsApp = (item: SubstituteSchedule | DutySchedule, isDuty: boolean = false) => {
+    if (!item.teacherName) {
+      toast.error('لا يمكن الإرسال: اسم المكلف غير متوفر');
+      return;
     }
-  }
 
-  // تنظيف رقم الهاتف من المساحات والرموز والزائد (+)
-  let cleanedPhone = phone.replace(/\D/g, '');
+    let phone = '0500000000';
+    if (item.executorType === 'admin' && item.adminPhone) {
+      phone = item.adminPhone;
+    } else {
+      const teacher = teachers.find(t => t.fullName === item.teacherName);
+      if (teacher) phone = teacher.phone;
+    }
+    
 
-  if (!cleanedPhone) {
-    toast.error('لا يمكن الإرسال: رقم الهاتف غير متوفر للمعلم/الإداري');
-    return;
-  }
+    const name = item.teacherName || (item.executorType === 'admin' ? 'الزميل الإداري' : 'الزميل المعلم');
+    let message = `السلام عليكم أ. ${name}،\n\n`;
 
-  // تحويل الرقم إلى الصيغة الدولية السعودية (966)
-  if (cleanedPhone.startsWith('05')) {
-    cleanedPhone = '966' + cleanedPhone.substring(1);
-  } else if (cleanedPhone.startsWith('5') && cleanedPhone.length === 9) {
-    cleanedPhone = '966' + cleanedPhone;
-  }
+    if (isDuty) {
+      message += `*إشعار بمناوبة مدرسية:*\n`;
+      message += `• اليوم: ${item.day}\n`;
+      message += `• التاريخ: ${convertToHijri(item.date)}\n`;
+      message += `• الموقع: ${(item as DutySchedule).location}`;
+      if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
+    } else {
+      message += `*إشعار بحصة انتظار:*\n`;
+      message += `• اليوم: ${item.day}\n`;
+      message += `• التاريخ: ${convertToHijri(item.date)}\n`;
+      message += `• الحصة: ${(item as SubstituteSchedule).period}\n`;
+      message += `• الصف: ${(item as SubstituteSchedule).class}`;
+      if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
+    }
 
-  const name = item.teacherName || (item.executorType === 'admin' ? 'الزميل الإداري' : 'الزميل المعلم');
-  let message = `السلام عليكم أ. ${name}،\n\n`;
+    const formattedPhone = phone.replace(/^0/, '966') || ''
+    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
+    toast.success('تم فتح الواتساب للإرسال');
+  };
 
-  if (isDuty) {
-    message += `*إشعار بمناوبة مدرسية:*\n`;
-    message += `• اليوم: ${item.day}\n`;
-    message += `• التاريخ: ${convertToHijri(item.date)}\n`;
-    message += `• الموقع: ${(item as DutySchedule).location}`;
-    if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
-  } else {
-    message += `*إشعار بحصة انتظار:*\n`;
-    message += `• اليوم: ${item.day}\n`;
-    message += `• التاريخ: ${convertToHijri(item.date)}\n`;
-    message += `• الحصة: ${(item as SubstituteSchedule).period}\n`;
-    message += `• الصف: ${(item as SubstituteSchedule).class}`;
-    if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
-  }
-
-  // فتح المحادثة المباشرة مع المعلم مع نص الرسالة جاهز للإرسال
-  const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodeURIComponent(message)}`;
-  window.open(whatsappUrl, '_blank');
-  toast.success('تم فتح محادثة الواتساب بنجاح');
-};
   const handleDelete = async (id: string, type: 'sub' | 'duty') => {
     if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
     try {
