@@ -193,43 +193,78 @@ export default function WaitingMuPage({
     setFormData({ ...formData, date: val, day: dayName });
   };
 
-  const sendWhatsApp = (item: SubstituteSchedule | DutySchedule, isDuty: boolean = false) => {
-    if (!item.teacherName) {
-      toast.error('لا يمكن الإرسال: اسم المكلف غير متوفر');
-      return;
+const sendWhatsApp = (
+  item: SubstituteSchedule | DutySchedule,
+  isDuty: boolean = false
+) => {
+  if (!item.teacherName) {
+    toast.error("اسم المكلف غير موجود");
+    return;
+  }
+
+  let phone = "";
+
+  // إذا كان المكلف إداري
+  if (item.executorType === "admin") {
+    phone = item.adminPhone ?? "";
+  } else {
+    // البحث عن المعلم بالاسم
+    const teacher = teachers.find(
+      t =>
+        t.fullName.trim().toLowerCase() ===
+        item.teacherName!.trim().toLowerCase()
+    );
+
+    if (teacher) {
+      phone = teacher.phone;
     }
+  }
 
-    let phone = '0500000000';
-    if (item.executorType === 'admin' && item.adminPhone) {
-      phone = item.adminPhone;
-    } else {
-      const teacher = teachers.find(t => t.fullName === item.teacherName);
-      if (teacher) phone = teacher.phone;
-    }
-    
+  if (!phone) {
+    toast.error(`رقم الجوال غير موجود للمعلم ${item.teacherName}`);
+    return;
+  }
 
-    const name = item.teacherName || (item.executorType === 'admin' ? 'الزميل الإداري' : 'الزميل المعلم');
-    let message = `السلام عليكم أ. ${name}،\n\n`;
+  // تنظيف الرقم
+  phone = phone.replace(/\D/g, "");
 
-    if (isDuty) {
-      message += `*إشعار بمناوبة مدرسية:*\n`;
-      message += `• اليوم: ${item.day}\n`;
-      message += `• التاريخ: ${convertToHijri(item.date)}\n`;
-      message += `• الموقع: ${(item as DutySchedule).location}`;
-      if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
-    } else {
-      message += `*إشعار بحصة انتظار:*\n`;
-      message += `• اليوم: ${item.day}\n`;
-      message += `• التاريخ: ${convertToHijri(item.date)}\n`;
-      message += `• الحصة: ${(item as SubstituteSchedule).period}\n`;
-      message += `• الصف: ${(item as SubstituteSchedule).class}`;
-      if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
-    }
+  // تحويل الرقم للصيغة الدولية
+  if (phone.startsWith("05")) {
+    phone = "966" + phone.substring(1);
+  } else if (phone.startsWith("5")) {
+    phone = "966" + phone;
+  } else if (phone.startsWith("00966")) {
+    phone = phone.substring(2);
+  } else if (phone.startsWith("+966")) {
+    phone = phone.replace("+", "");
+  }
 
-    const formattedPhone = phone.replace(/\D/g, '');
-    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
-    toast.success('تم فتح الواتساب للإرسال');
-  };
+  const message = isDuty
+    ? `السلام عليكم أ. ${item.teacherName}
+
+تم تكليفكم بمناوبة.
+
+📅 التاريخ: ${convertToHijri(item.date)}
+📆 اليوم: ${item.day}
+📍 الموقع: ${(item as DutySchedule).location}
+
+${item.notes ? `📝 ملاحظات: ${item.notes}` : ""}`
+    : `السلام عليكم أ. ${item.teacherName}
+
+تم تكليفكم بحصة انتظار.
+
+📅 التاريخ: ${convertToHijri(item.date)}
+📆 اليوم: ${item.day}
+🕐 الحصة: ${(item as SubstituteSchedule).period}
+🏫 الفصل: ${(item as SubstituteSchedule).class}
+
+${item.notes ? `📝 ملاحظات: ${item.notes}` : ""}`;
+
+  window.open(
+    `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+    "_blank"
+  );
+};
 
   const handleDelete = async (id: string, type: 'sub' | 'duty') => {
     if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
