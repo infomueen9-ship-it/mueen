@@ -29,10 +29,16 @@ public class WaitingMuController {
         // إذا كان المستخدم "معلم"، نجبره على رؤية بياناته فقط بغض النظر عما أرسله الفرونت إند
         Long finalId = "TEACHER".equals(role) ? authenticatedUserId : teacherId;
 
-        String sql = "SELECT s.*, t.full_name as teacher_full_name, c.name as classroom_name " +
-                     "FROM " + schemaName + ".substitute_schedules s " +
-                     "LEFT JOIN " + schemaName + ".teachers t ON s.teacher_id = t.id " +
-                     "LEFT JOIN " + schemaName + ".classrooms c ON s.classroom_id = c.id ";
+      String sql =
+    "SELECT " +
+    "s.*, " +
+    "t.id AS teacher_id, " +
+    "t.full_name AS teacher_full_name, " +
+    "t.phone AS teacher_phone, " +
+    "c.name AS classroom_name " +
+    "FROM " + schemaName + ".substitute_schedules s " +
+    "LEFT JOIN " + schemaName + ".teachers t ON s.teacher_id = t.id " +
+    "LEFT JOIN " + schemaName + ".classrooms c ON s.classroom_id = c.id ";
         
         if (finalId != null) {
             sql += "WHERE s.teacher_id = ? ";
@@ -103,9 +109,14 @@ public class WaitingMuController {
     ) {
         Long finalId = "TEACHER".equals(role) ? authenticatedUserId : teacherId;
 
-        String sql = "SELECT d.*, t.full_name as teacher_full_name " +
-                     "FROM " + schemaName + ".duty_schedules d " +
-                     "LEFT JOIN " + schemaName + ".teachers t ON d.teacher_id = t.id ";
+   String sql =
+    "SELECT " +
+    "d.*, " +
+    "t.id AS teacher_id, " +
+    "t.full_name AS teacher_full_name, " +
+    "t.phone AS teacher_phone " +
+    "FROM " + schemaName + ".duty_schedules d " +
+    "LEFT JOIN " + schemaName + ".teachers t ON d.teacher_id = t.id ";
 
         if (finalId != null) {
             sql += "WHERE d.teacher_id = ? ";

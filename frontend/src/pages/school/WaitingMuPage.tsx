@@ -18,15 +18,24 @@ interface SubstituteSchedule {
   day: string;
   class: string;
   period: string;
+
+  teacherId?: number;
+  teacherPhone?: string;
+
   teacherName?: string;
+
   notes?: string;
-  executorType?: 'teacher' | 'admin';
+
+  executorType?: "teacher" | "admin";
+
   adminPhone?: string;
 }
 
 interface DutySchedule {
   id: string;
   day: string;
+  teacherId?: number;
+teacherPhone?: string;
   teacherName?: string;
   location: string;
   date: string;
@@ -49,6 +58,8 @@ interface Classroom {
 
 interface ApiSubstituteResponse {
   id: number;
+  teacher_id?: number;
+  teacher_phone?: string;
   scheduled_date: string;
   period: string;
   classroom_name: string;
@@ -61,6 +72,8 @@ interface ApiSubstituteResponse {
 
 interface ApiDutyResponse {
   id: number;
+  teacher_id?: number;
+  teacher_phone?: string;
   scheduled_date: string;
   location: string;
   executor_type: 'TEACHER' | 'ADMIN';
@@ -155,6 +168,8 @@ export default function WaitingMuPage({
       // معالجة البيانات القادمة من SQL
       setSubstituteSchedules(subsRes.data.map((s: ApiSubstituteResponse) => ({
         id: String(s.id),
+        teacherId: s.teacher_id,
+teacherPhone: s.teacher_phone,
         date: s.scheduled_date,
         day: new Date(s.scheduled_date + 'T00:00:00').toLocaleDateString('ar-SA', { weekday: 'long' }),
         period: s.period,
@@ -167,6 +182,8 @@ export default function WaitingMuPage({
 
       setDutySchedules(dutyRes.data.map((d: ApiDutyResponse) => ({
         id: String(d.id),
+        teacherId: d.teacher_id,
+teacherPhone: d.teacher_phone,
         date: d.scheduled_date,
         day: new Date(d.scheduled_date + 'T00:00:00').toLocaleDateString('ar-SA', { weekday: 'long' }),
         location: d.location,
@@ -194,76 +211,80 @@ export default function WaitingMuPage({
   };
 
 const sendWhatsApp = (
-  item: SubstituteSchedule | DutySchedule,
-  isDuty: boolean = false
+    item: SubstituteSchedule | DutySchedule,
+    isDuty = false
 ) => {
-  if (!item.teacherName) {
-    toast.error("اسم المكلف غير موجود");
-    return;
-  }
 
-  let phone = "";
+    let phone = "";
 
-  // إذا كان المكلف إداري
-  if (item.executorType === "admin") {
-    phone = item.adminPhone ?? "";
-  } else {
-    // البحث عن المعلم بالاسم
-    const teacher = teachers.find(
-      t =>
-        t.fullName.trim().toLowerCase() ===
-        item.teacherName!.trim().toLowerCase()
-    );
+    if (item.executorType === "admin") {
 
-    if (teacher) {
-      phone = teacher.phone;
+        phone = item.adminPhone ?? "";
+
+    } else {
+
+        phone = item.teacherPhone ?? "";
+
     }
-  }
 
-  if (!phone) {
-    toast.error(`رقم الجوال غير موجود للمعلم ${item.teacherName}`);
-    return;
-  }
+    if (!phone) {
 
-  // تنظيف الرقم
-  phone = phone.replace(/\D/g, "");
+        toast.error("رقم الجوال غير موجود");
 
-  // تحويل الرقم للصيغة الدولية
-  if (phone.startsWith("05")) {
-    phone = "966" + phone.substring(1);
-  } else if (phone.startsWith("5")) {
-    phone = "966" + phone;
-  } else if (phone.startsWith("00966")) {
-    phone = phone.substring(2);
-  } else if (phone.startsWith("+966")) {
-    phone = phone.replace("+", "");
-  }
+        return;
 
-  const message = isDuty
-    ? `السلام عليكم أ. ${item.teacherName}
+    }
+
+    phone = phone.replace(/\D/g, "");
+
+    if (phone.startsWith("05")) {
+
+        phone = "966" + phone.substring(1);
+
+    } else if (phone.startsWith("5")) {
+
+        phone = "966" + phone;
+
+    } else if (phone.startsWith("+966")) {
+
+        phone = phone.replace("+", "");
+
+    } else if (phone.startsWith("00966")) {
+
+        phone = phone.substring(2);
+
+    }
+
+    const message = isDuty
+        ? `السلام عليكم أ. ${item.teacherName}
 
 تم تكليفكم بمناوبة.
 
-📅 التاريخ: ${convertToHijri(item.date)}
-📆 اليوم: ${item.day}
-📍 الموقع: ${(item as DutySchedule).location}
+📅 التاريخ : ${convertToHijri(item.date)}
 
-${item.notes ? `📝 ملاحظات: ${item.notes}` : ""}`
-    : `السلام عليكم أ. ${item.teacherName}
+📆 اليوم : ${item.day}
+
+📍 الموقع : ${(item as DutySchedule).location}
+
+${item.notes ?? ""}`
+        : `السلام عليكم أ. ${item.teacherName}
 
 تم تكليفكم بحصة انتظار.
 
-📅 التاريخ: ${convertToHijri(item.date)}
-📆 اليوم: ${item.day}
-🕐 الحصة: ${(item as SubstituteSchedule).period}
-🏫 الفصل: ${(item as SubstituteSchedule).class}
+📅 التاريخ : ${convertToHijri(item.date)}
 
-${item.notes ? `📝 ملاحظات: ${item.notes}` : ""}`;
+📆 اليوم : ${item.day}
 
-  window.open(
-    `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
-    "_blank"
-  );
+🕐 الحصة : ${(item as SubstituteSchedule).period}
+
+🏫 الفصل : ${(item as SubstituteSchedule).class}
+
+${item.notes ?? ""}`;
+
+    window.open(
+        `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+        "_blank"
+    );
 };
 
   const handleDelete = async (id: string, type: 'sub' | 'duty') => {
