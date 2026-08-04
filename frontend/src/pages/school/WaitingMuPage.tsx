@@ -226,7 +226,7 @@ export default function WaitingMuPage({
       if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
     }
 
-    const formattedPhone = phone.replace(/^0/, '966') || ''
+    const formattedPhone = phone.replace(/\D/g, '');
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
     toast.success('تم فتح الواتساب للإرسال');
   };
