@@ -206,6 +206,7 @@ export default function WaitingMuPage({
       const teacher = teachers.find(t => t.fullName === item.teacherName);
       if (teacher) phone = teacher.phone;
     }
+    
 
     const name = item.teacherName || (item.executorType === 'admin' ? 'الزميل الإداري' : 'الزميل المعلم');
     let message = `السلام عليكم أ. ${name}،\n\n`;
@@ -225,7 +226,7 @@ export default function WaitingMuPage({
       if (item.notes) message += `\n• ملاحظات: ${item.notes}`;
     }
 
-    const formattedPhone = phone.replace(/\D/g, '');
+    const formattedPhone = phone.replace(/^0/, '966') || ''
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
     toast.success('تم فتح الواتساب للإرسال');
   };
