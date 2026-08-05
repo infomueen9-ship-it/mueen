@@ -178,14 +178,15 @@ export default function WaitingMuPage({
         api.get<ApiSubstituteResponse[]>(`/api/school/${schemaName}/waiting/substitute`),
         api.get<ApiDutyResponse[]>(`/api/school/${schemaName}/waiting/duty`)
       ]);
+      const teacherPhoneMap = new Map(teachersRes.data.map((teacher: Teacher) => [teacher.id, teacher.phone]));
+
       setTeachers(teachersRes.data);
       setClassrooms(classroomsRes.data);
-      console.log(subsRes.data);
       // معالجة البيانات القادمة من SQL
       setSubstituteSchedules(subsRes.data.map((s: ApiSubstituteResponse) => ({
         id: String(s.id),
         teacherId: s.teacher_id,
-teacherPhone: s.teacher_phone,
+        teacherPhone: s.teacher_phone ?? teacherPhoneMap.get(s.teacher_id ?? -1),
         date: s.scheduled_date,
         day: new Date(s.scheduled_date + 'T00:00:00').toLocaleDateString('ar-SA', { weekday: 'long' }),
         period: s.period,
@@ -199,7 +200,7 @@ teacherPhone: s.teacher_phone,
       setDutySchedules(dutyRes.data.map((d: ApiDutyResponse) => ({
         id: String(d.id),
         teacherId: d.teacher_id,
-teacherPhone: d.teacher_phone,
+        teacherPhone: d.teacher_phone ?? teacherPhoneMap.get(d.teacher_id ?? -1),
         date: d.scheduled_date,
         day: new Date(d.scheduled_date + 'T00:00:00').toLocaleDateString('ar-SA', { weekday: 'long' }),
         location: d.location,
@@ -207,10 +208,7 @@ teacherPhone: d.teacher_phone,
         executorType: d.executor_type.toLowerCase() as 'teacher' | 'admin',
         notes: d.notes,
         adminPhone: d.admin_phone
-      }
-    
-    )));
-console.log(dutyRes.data);
+      })));
     } catch {
       toast.error('خطأ في جلب البيانات');
     } finally {
@@ -232,8 +230,15 @@ const sendWhatsApp = (
     item: SubstituteSchedule | DutySchedule,
     isDuty = false
 ) => {
+    const fallbackTeacherPhone = teachers.find((teacher) => {
+        if (item.teacherId && teacher.id === item.teacherId) return true;
+        return teacher.fullName === item.teacherName;
+    })?.phone;
+
     const phone = normalizeWhatsAppPhone(
-        item.executorType === 'admin' ? item.adminPhone : item.teacherPhone
+        item.executorType === 'admin'
+            ? item.adminPhone
+            : (item.teacherPhone ?? fallbackTeacherPhone)
     );
 
     if (!phone) {
