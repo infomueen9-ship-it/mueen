@@ -110,6 +110,22 @@ const convertToHijri = (dateString: string): string => {
   }
 };
 
+const normalizeWhatsAppPhone = (phone?: string): string => {
+  if (!phone) return '';
+
+  let normalized = phone.replace(/\D/g, '');
+
+  if (!normalized) return '';
+  if (normalized.startsWith('00')) normalized = normalized.slice(2);
+  if (normalized.startsWith('966')) return normalized;
+  if (normalized.startsWith('05')) normalized = `966${normalized.slice(1)}`;
+  else if (normalized.startsWith('5')) normalized = `966${normalized}`;
+  else if (normalized.startsWith('+966')) normalized = normalized.replace('+', '');
+  else if (normalized.startsWith('00966')) normalized = normalized.slice(2);
+
+  return normalized;
+};
+
 export default function WaitingMuPage({
   schemaName
 }: {
@@ -216,45 +232,13 @@ const sendWhatsApp = (
     item: SubstituteSchedule | DutySchedule,
     isDuty = false
 ) => {
-
-    let phone = "";
-
-    if (item.executorType === "admin") {
-
-        phone = item.adminPhone ?? "";
-
-    } else {
-
-        phone = item.teacherPhone ?? "";
-
-    }
+    const phone = normalizeWhatsAppPhone(
+        item.executorType === 'admin' ? item.adminPhone : item.teacherPhone
+    );
 
     if (!phone) {
-
-        toast.error("رقم الجوال غير موجود");
-
+        toast.error('رقم الجوال غير موجود');
         return;
-
-    }
-
-    phone = phone.replace(/\D/g, "");
-
-    if (phone.startsWith("05")) {
-
-        phone = "966" + phone.substring(1);
-
-    } else if (phone.startsWith("5")) {
-
-        phone = "966" + phone;
-
-    } else if (phone.startsWith("+966")) {
-
-        phone = phone.replace("+", "");
-
-    } else if (phone.startsWith("00966")) {
-
-        phone = phone.substring(2);
-
     }
 
     const message = isDuty
@@ -268,7 +252,7 @@ const sendWhatsApp = (
 
 📍 الموقع : ${(item as DutySchedule).location}
 
-${item.notes ?? ""}`
+${item.notes ?? ''}`
         : `السلام عليكم أ. ${item.teacherName}
 
 تم تكليفكم بحصة انتظار.
@@ -281,11 +265,11 @@ ${item.notes ?? ""}`
 
 🏫 الفصل : ${(item as SubstituteSchedule).class}
 
-${item.notes ?? ""}`;
+${item.notes ?? ''}`;
 
     window.open(
         `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
-        "_blank"
+        '_blank'
     );
 };
 
@@ -303,8 +287,9 @@ ${item.notes ?? ""}`;
 
   const handleSave = async () => {
     const isSub = activeTab === 'substitute';
-    
+
     if (!formData.teacherName) return toast.error('يرجى تحديد اسم المكلف');
+    if (formData.executorType === 'admin' && !formData.adminPhone) return toast.error('يرجى إدخال رقم جوال الإداري');
     if (isSub && !formData.class) return toast.error('يرجى اختيار الفصل');
     if (isSub && !formData.period) return toast.error('يرجى تحديد الحصة');
     if (!isSub && !formData.location) return toast.error('يرجى تحديد الموقع');
@@ -563,7 +548,7 @@ ${item.notes ?? ""}`;
                 </div>
               )}
 
-              {activeTab === 'substitute' && formData.executorType === 'admin' && (
+              {(activeTab === 'duty' || activeTab === 'substitute') && formData.executorType === 'admin' && (
                 <div style={formGroup}>
                   <label style={labelStyle}>رقم الجوال</label>
                   <input value={formData.adminPhone} onChange={e => setFormData({...formData, adminPhone: e.target.value})} style={inputStyle} placeholder="05xxxxxxxx" />
