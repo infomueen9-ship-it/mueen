@@ -290,12 +290,7 @@ useEffect(() => {
           {activePage === 'classrooms' && showClassroomPage && selectedClassroom && classroomAction && (
             <div>
               {classroomAction !== 'students' && (
-                <button
-                  onClick={() => setClassroomAction(null)}
-                  style={{ border: 'none', background: '#F3F4F6', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#6B7280', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  ← رجوع
-                </button>
+              
               )}
 
               {classroomAction === 'students' && (
