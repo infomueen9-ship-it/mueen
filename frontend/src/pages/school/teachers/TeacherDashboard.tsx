@@ -289,9 +289,7 @@ useEffect(() => {
           {/* إجراءات الفصل */}
           {activePage === 'classrooms' && showClassroomPage && selectedClassroom && classroomAction && (
             <div>
-              {classroomAction !== 'students' && (
-              
-              )}
+            
 
               {classroomAction === 'students' && (
                 <TeacherStudent
