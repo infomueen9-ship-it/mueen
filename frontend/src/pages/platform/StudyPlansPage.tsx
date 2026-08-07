@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
+import api from '../../api/axios'
 
 type LessonRow = {
   lessonTopic: string
@@ -22,9 +23,35 @@ const subjectOptions: Record<string, string[]> = {
 
 const normalizeHeader = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
 
-const findHeader = (headers: string[], candidates: string[]) => {
+const getCellValue = (headers: string[], row: string[], candidates: string[], fallbackIndex: number) => {
   const normalizedCandidates = candidates.map(normalizeHeader)
-  return headers.find((header) => normalizedCandidates.includes(normalizeHeader(header)))
+  const index = headers.findIndex((header) => normalizedCandidates.includes(normalizeHeader(header)))
+  if (index >= 0 && row[index]) return row[index]
+  return row[fallbackIndex] || ''
+}
+
+const parseLessonRows = (sheet: XLSX.WorkSheet): LessonRow[] => {
+  const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as Array<Array<unknown>>
+  const rows = rawRows.map((row) => row.map((value) => String(value ?? '').trim()))
+
+  if (!rows.length) return []
+
+  const firstRow = rows[0]
+  const hasHeaderRow = firstRow.some((cell) => {
+    const normalized = normalizeHeader(cell)
+    return ['موضوعالدرس', 'موضوعالدرس', 'lessontopic', 'topic', 'الواجبات', 'homework', 'assignment', 'الملاحظات', 'notes', 'note'].includes(normalized)
+  })
+
+  const headerRow = hasHeaderRow ? firstRow : ['موضوع الدرس', 'الواجبات', 'الملاحظات']
+  const dataRows = hasHeaderRow ? rows.slice(1) : rows
+
+  return dataRows
+    .filter((row) => row.some((cell) => cell !== ''))
+    .map((row) => ({
+      lessonTopic: getCellValue(headerRow, row, ['موضوع الدرس', 'موضوعالدرس', 'lessontopic', 'topic'], 0),
+      homework: getCellValue(headerRow, row, ['الواجبات', 'homework', 'assignment'], 1),
+      notes: getCellValue(headerRow, row, ['الملاحظات', 'notes', 'note'], 2)
+    }))
 }
 
 export default function StudyPlansPage() {
@@ -35,6 +62,40 @@ export default function StudyPlansPage() {
   const [parsedRows, setParsedRows] = useState<LessonRow[]>([])
   const [fileName, setFileName] = useState('')
   const [loadingFile, setLoadingFile] = useState(false)
+  const [terms, setTerms] = useState<string[]>([])
+  const [levels, setLevels] = useState<string[]>([])
+  const [grades, setGrades] = useState<string[]>([])
+
+  useEffect(() => {
+    const loadMetadata = async () => {
+      try {
+        const [termsRes, levelsRes, gradesRes] = await Promise.all([
+          api.get('/api/platform/admin/study-plans/terms'),
+          api.get('/api/platform/admin/study-plans/levels'),
+          api.get('/api/platform/admin/study-plans/grades')
+        ])
+
+        const fetchedTerms = Array.isArray(termsRes.data) ? termsRes.data.map((item: any) => item.name) : []
+        const fetchedLevels = Array.isArray(levelsRes.data) ? levelsRes.data.map((item: any) => item.name) : []
+        const fetchedGrades = Array.isArray(gradesRes.data) ? gradesRes.data.map((item: any) => item.name) : []
+
+        setTerms(fetchedTerms)
+        setLevels(fetchedLevels)
+        setGrades(fetchedGrades)
+
+        if (fetchedTerms.length > 0) {
+          setSelectedTerm(fetchedTerms[0])
+        }
+        if (fetchedLevels.length > 0) {
+          setSelectedStage(fetchedLevels[0])
+        }
+      } catch {
+        toast.error('تعذر تحميل بيانات الترم والمرحلة')
+      }
+    }
+
+    loadMetadata()
+  }, [])
 
   const gradeList = useMemo(() => gradeOptions[selectedStage] || [], [selectedStage])
   const subjectList = useMemo(() => subjectOptions[selectedStage] || [], [selectedStage])
@@ -48,32 +109,14 @@ export default function StudyPlansPage() {
       const arrayBuffer = await file.arrayBuffer()
       const workbook = XLSX.read(arrayBuffer, { type: 'array' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
+      const normalizedRows = parseLessonRows(sheet)
 
-      if (!rows.length) {
-        toast.error('الملف فارغ')
+      if (!normalizedRows.length) {
+        toast.error('الملف فارغ أو لا يحتوي على بيانات صحيحة')
         setParsedRows([])
         setFileName(file.name)
         return
       }
-
-      const headers = Object.keys(rows[0])
-      const lessonTopicHeader = findHeader(headers, ['موضوع الدرس', 'موضوعالدرس', 'lesson topic', 'topic'])
-      const homeworkHeader = findHeader(headers, ['الواجبات', 'homework', 'assignment'])
-      const notesHeader = findHeader(headers, ['الملاحظات', 'notes', 'note'])
-
-      if (!lessonTopicHeader || !homeworkHeader || !notesHeader) {
-        toast.error('الملف يجب أن يحتوي على الأعمدة: موضوع الدرس، الواجبات، الملاحظات')
-        setParsedRows([])
-        setFileName(file.name)
-        return
-      }
-
-      const normalizedRows: LessonRow[] = rows.map((row) => ({
-        lessonTopic: String(row[lessonTopicHeader] ?? ''),
-        homework: String(row[homeworkHeader] ?? ''),
-        notes: String(row[notesHeader] ?? '')
-      }))
 
       setParsedRows(normalizedRows)
       setFileName(file.name)
@@ -96,11 +139,11 @@ export default function StudyPlansPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-2">الترم</label>
+            <label className="block text-sm text-gray-600 mb-2">الفصل الدراسي</label>
             <select value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a73e8]">
-              <option>الفصل الدراسي الأول</option>
-              <option>الفصل الدراسي الثاني</option>
-              <option>الفصل الدراسي الثالث</option>
+              {terms.length > 0 ? terms.map((term) => (
+                <option key={term} value={term}>{term}</option>
+              )) : <option value="">لا توجد بيانات</option>}
             </select>
           </div>
 
@@ -112,7 +155,9 @@ export default function StudyPlansPage() {
               setSelectedGrade(gradeOptions[nextStage]?.[0] || '')
               setSelectedSubject(subjectOptions[nextStage]?.[0] || '')
             }} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a73e8]">
-              {Object.keys(gradeOptions).map((stage) => (
+              {levels.length > 0 ? levels.map((level) => (
+                <option key={level} value={level}>{level}</option>
+              )) : Object.keys(gradeOptions).map((stage) => (
                 <option key={stage} value={stage}>{stage}</option>
               ))}
             </select>
@@ -121,7 +166,9 @@ export default function StudyPlansPage() {
           <div>
             <label className="block text-sm text-gray-600 mb-2">الصف</label>
             <select value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1a73e8]">
-              {gradeList.map((grade) => (
+              {grades.length > 0 ? grades.map((grade) => (
+                <option key={grade} value={grade}>{grade}</option>
+              )) : gradeList.map((grade) => (
                 <option key={grade} value={grade}>{grade}</option>
               ))}
             </select>
