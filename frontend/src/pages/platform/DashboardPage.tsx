@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useNavigate } from 'react-router-dom'
 import SchoolsPage from './SchoolsPage'
+import StudyPlansPage from './StudyPlansPage'
 
 export default function DashboardPage() {
   const { name, role, logout } = useAuthStore()
@@ -35,6 +36,16 @@ export default function DashboardPage() {
             🏫 المدارس
           </button>
           <button
+            onClick={() => setActivePage('studyPlans')}
+            className={`w-full text-right px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+              activePage === 'studyPlans'
+                ? 'bg-blue-50 text-[#1a73e8]'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            📘 الخطط الدراسية
+          </button>
+          <button
             onClick={() => setActivePage('plans')}
             className={`w-full text-right px-4 py-2.5 rounded-lg text-sm font-medium transition ${
               activePage === 'plans'
@@ -62,6 +73,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="flex-1 p-8">
         {activePage === 'schools' && <SchoolsPage />}
+        {activePage === 'studyPlans' && <StudyPlansPage />}
         {activePage === 'plans' && (
           <div className="text-gray-400 text-center py-20">
             قريباً — إدارة الباقات
