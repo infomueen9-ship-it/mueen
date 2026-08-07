@@ -2,12 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import api from '../../api/axios'
-
-type LessonRow = {
-  lessonTopic: string
-  homework: string
-  notes: string
-}
+import { parseLessonRows, type LessonRow } from './studyPlanParser'
 
 const gradeOptions: Record<string, string[]> = {
   ابتدائي: ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'],
@@ -19,39 +14,6 @@ const subjectOptions: Record<string, string[]> = {
   ابتدائي: ['اللغة العربية', 'الرياضيات', 'العلوم', 'الإنجليزية', 'العلوم الاجتماعية'],
   متوسط: ['اللغة العربية', 'الرياضيات', 'العلوم', 'الإنجليزية', 'الحاسب'],
   ثانوي: ['اللغة العربية', 'الرياضيات', 'الفيزياء', 'الكيمياء', 'الأحياء']
-}
-
-const normalizeHeader = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]/g, '')
-
-const getCellValue = (headers: string[], row: string[], candidates: string[], fallbackIndex: number) => {
-  const normalizedCandidates = candidates.map(normalizeHeader)
-  const index = headers.findIndex((header) => normalizedCandidates.includes(normalizeHeader(header)))
-  if (index >= 0 && row[index]) return row[index]
-  return row[fallbackIndex] || ''
-}
-
-const parseLessonRows = (sheet: XLSX.WorkSheet): LessonRow[] => {
-  const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as Array<Array<unknown>>
-  const rows = rawRows.map((row) => row.map((value) => String(value ?? '').trim()))
-
-  if (!rows.length) return []
-
-  const firstRow = rows[0]
-  const hasHeaderRow = firstRow.some((cell) => {
-    const normalized = normalizeHeader(cell)
-    return ['موضوعالدرس', 'lessontopic', 'topic', 'الواجبات', 'homework', 'assignment', 'الملاحظات', 'notes', 'note'].includes(normalized)
-  })
-
-  const headerRow = hasHeaderRow ? firstRow : ['موضوع الدرس', 'الواجبات', 'الملاحظات']
-  const dataRows = hasHeaderRow ? rows.slice(1) : rows
-
-  return dataRows
-    .filter((row) => row.some((cell) => cell !== ''))
-    .map((row) => ({
-      lessonTopic: getCellValue(headerRow, row, ['موضوع الدرس', 'lessontopic', 'topic'], 0),
-      homework: getCellValue(headerRow, row, ['الواجبات', 'homework', 'assignment'], 1),
-      notes: getCellValue(headerRow, row, ['الملاحظات', 'notes', 'note'], 2)
-    }))
 }
 
 export default function StudyPlansPage() {
