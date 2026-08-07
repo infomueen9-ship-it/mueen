@@ -39,7 +39,7 @@ const parseLessonRows = (sheet: XLSX.WorkSheet): LessonRow[] => {
   const firstRow = rows[0]
   const hasHeaderRow = firstRow.some((cell) => {
     const normalized = normalizeHeader(cell)
-    return ['موضوعالدرس', 'موضوعالدرس', 'lessontopic', 'topic', 'الواجبات', 'homework', 'assignment', 'الملاحظات', 'notes', 'note'].includes(normalized)
+    return ['موضوعالدرس', 'lessontopic', 'topic', 'الواجبات', 'homework', 'assignment', 'الملاحظات', 'notes', 'note'].includes(normalized)
   })
 
   const headerRow = hasHeaderRow ? firstRow : ['موضوع الدرس', 'الواجبات', 'الملاحظات']
@@ -48,7 +48,7 @@ const parseLessonRows = (sheet: XLSX.WorkSheet): LessonRow[] => {
   return dataRows
     .filter((row) => row.some((cell) => cell !== ''))
     .map((row) => ({
-      lessonTopic: getCellValue(headerRow, row, ['موضوع الدرس', 'موضوعالدرس', 'lessontopic', 'topic'], 0),
+      lessonTopic: getCellValue(headerRow, row, ['موضوع الدرس', 'lessontopic', 'topic'], 0),
       homework: getCellValue(headerRow, row, ['الواجبات', 'homework', 'assignment'], 1),
       notes: getCellValue(headerRow, row, ['الملاحظات', 'notes', 'note'], 2)
     }))
