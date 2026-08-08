@@ -98,10 +98,7 @@ export default function StudyPlansPage() {
           api.get('/api/platform/admin/study-plans/grades')
         ])
 
-        const defaultTerms = ['الفصل الدراسي الأول', 'الفصل الدراسي الثاني', 'الفصل الدراسي الثالث']
-        const fetchedTerms = Array.isArray(termsRes.data) && termsRes.data.length > 0
-          ? termsRes.data.map((item: any) => item.name)
-          : defaultTerms
+        const fetchedTerms = Array.isArray(termsRes.data) ? termsRes.data.map((item: any) => item.name) : []
         const fetchedLevels = Array.isArray(levelsRes.data) ? levelsRes.data.map((item: any) => item.name) : []
         const fetchedGrades = Array.isArray(gradesRes.data) ? gradesRes.data.map((item: any) => item.name) : []
 
@@ -116,9 +113,6 @@ export default function StudyPlansPage() {
           setSelectedStage(fetchedLevels[0])
         }
       } catch {
-        const defaultTerms = ['الفصل الدراسي الأول', 'الفصل الدراسي الثاني', 'الفصل الدراسي الثالث']
-        setTerms(defaultTerms)
-        setSelectedTerm(defaultTerms[0])
         toast.error('تعذر تحميل بيانات الترم والمرحلة')
       }
     }
