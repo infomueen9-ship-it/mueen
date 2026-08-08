@@ -51,18 +51,15 @@ public class StudyPlansController {
 
     private void ensureTermsTable() {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS public.terms (id BIGSERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE)");
-        jdbcTemplate.execute("INSERT INTO public.terms (name) VALUES ('الفصل الدراسي الاول') ON CONFLICT (name) DO NOTHING");
+        jdbcTemplate.execute("INSERT INTO public.terms (name) VALUES ('الفصل الدراسي الأول') ON CONFLICT (name) DO NOTHING");
         jdbcTemplate.execute("INSERT INTO public.terms (name) VALUES ('الفصل الدراسي الثاني') ON CONFLICT (name) DO NOTHING");
     }
 
     private void ensureLevelsTable() {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS public.level (id BIGSERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE)");
-        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('مرحلة الروضة') ON CONFLICT (name) DO NOTHING");
-        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('المرحلة الابتدائية') ON CONFLICT (name) DO NOTHING");
-        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('المرحلة المتوسطة') ON CONFLICT (name) DO NOTHING");
-        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('الثانوية العامة') ON CONFLICT (name) DO NOTHING");
-        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('التعليم المستمر') ON CONFLICT (name) DO NOTHING");
-        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('التربيه الخاصة') ON CONFLICT (name) DO NOTHING");
+        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('ابتدائي') ON CONFLICT (name) DO NOTHING");
+        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('متوسط') ON CONFLICT (name) DO NOTHING");
+        jdbcTemplate.execute("INSERT INTO public.level (name) VALUES ('ثانوي') ON CONFLICT (name) DO NOTHING");
     }
 
     private void ensureGradesTable() {

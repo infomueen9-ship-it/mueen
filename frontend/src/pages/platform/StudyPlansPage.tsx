@@ -78,10 +78,10 @@ const subjectOptions: Record<string, string[]> = {
 }
 
 export default function StudyPlansPage() {
-  const [selectedTerm, setSelectedTerm] = useState('الفصل الدراسي الأول')
-  const [selectedStage, setSelectedStage] = useState('ابتدائي')
-  const [selectedGrade, setSelectedGrade] = useState('الأول')
-  const [selectedSubject, setSelectedSubject] = useState('اللغة العربية')
+  const [selectedTerm, setSelectedTerm] = useState('')
+  const [selectedStage, setSelectedStage] = useState('')
+  const [selectedGrade, setSelectedGrade] = useState('')
+  const [selectedSubject, setSelectedSubject] = useState('')
   const [parsedRows, setParsedRows] = useState<LessonRow[]>([])
   const [fileName, setFileName] = useState('')
   const [loadingFile, setLoadingFile] = useState(false)
