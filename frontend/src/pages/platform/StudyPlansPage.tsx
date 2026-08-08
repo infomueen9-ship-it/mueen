@@ -91,28 +91,38 @@ export default function StudyPlansPage() {
 
   useEffect(() => {
     const loadMetadata = async () => {
-      try {
-        const [termsRes, levelsRes, gradesRes] = await Promise.all([
-          api.get('/api/platform/admin/study-plans/terms'),
-          api.get('/api/platform/admin/study-plans/levels'),
-          api.get('/api/platform/admin/study-plans/grades')
-        ])
+      const results = await Promise.allSettled([
+        api.get('/api/platform/admin/study-plans/terms'),
+        api.get('/api/platform/admin/study-plans/levels'),
+        api.get('/api/platform/admin/study-plans/grades')
+      ])
 
-        const fetchedTerms = Array.isArray(termsRes.data) ? termsRes.data.map((item: any) => item.name) : []
-        const fetchedLevels = Array.isArray(levelsRes.data) ? levelsRes.data.map((item: any) => item.name) : []
-        const fetchedGrades = Array.isArray(gradesRes.data) ? gradesRes.data.map((item: any) => item.name) : []
+      const termsRes = results[0].status === 'fulfilled' ? results[0].value : null
+      const levelsRes = results[1].status === 'fulfilled' ? results[1].value : null
+      const gradesRes = results[2].status === 'fulfilled' ? results[2].value : null
 
+      if (termsRes && Array.isArray(termsRes.data)) {
+        const fetchedTerms = termsRes.data.map((item: any) => item.name)
         setTerms(fetchedTerms)
-        setLevels(fetchedLevels)
-        setGrades(fetchedGrades)
-
         if (fetchedTerms.length > 0) {
           setSelectedTerm(fetchedTerms[0])
         }
+      }
+
+      if (levelsRes && Array.isArray(levelsRes.data)) {
+        const fetchedLevels = levelsRes.data.map((item: any) => item.name)
+        setLevels(fetchedLevels)
         if (fetchedLevels.length > 0) {
           setSelectedStage(fetchedLevels[0])
         }
-      } catch {
+      }
+
+      if (gradesRes && Array.isArray(gradesRes.data)) {
+        const fetchedGrades = gradesRes.data.map((item: any) => item.name)
+        setGrades(fetchedGrades)
+      }
+
+      if (results.every((r) => r.status === 'rejected')) {
         toast.error('تعذر تحميل بيانات الترم والمرحلة')
       }
     }

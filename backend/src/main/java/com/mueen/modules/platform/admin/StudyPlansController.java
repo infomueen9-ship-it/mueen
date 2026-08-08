@@ -53,7 +53,7 @@ public class StudyPlansController {
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS public.terms (id BIGSERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE)");
         jdbcTemplate.execute("INSERT INTO public.terms (name) VALUES ('الفصل الدراسي الأول') ON CONFLICT (name) DO NOTHING");
         jdbcTemplate.execute("INSERT INTO public.terms (name) VALUES ('الفصل الدراسي الثاني') ON CONFLICT (name) DO NOTHING");
-        jdbcTemplate.execute("INSERT INTO public.terms (name) VALUES ('الفصل الدراسي الثالث') ON CONFLICT (name) DO NOTHING");
+        
     }
 
     private void ensureLevelsTable() {
@@ -64,6 +64,7 @@ public class StudyPlansController {
     }
 
     private void ensureGradesTable() {
+        ensureLevelsTable();
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS public.grade (id BIGSERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, level_id BIGINT NOT NULL REFERENCES public.level(id) ON DELETE CASCADE)");
 
         jdbcTemplate.queryForList("SELECT id FROM public.level WHERE name = 'مرحلة الروضة' LIMIT 1").stream().findFirst().ifPresent(level -> {
