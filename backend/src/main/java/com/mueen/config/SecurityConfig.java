@@ -29,16 +29,15 @@ public class SecurityConfig {
     private final PlatformAdminDetailsService userDetailsService;
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-       
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .httpBasic(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/platform/admin/study-plans/**").permitAll()
                 .requestMatchers("/api/platform/**").authenticated()
                 .anyRequest().permitAll()
             )
@@ -61,31 +60,30 @@ public class SecurityConfig {
             throws Exception {
         return config.getAuthenticationManager();
     }
-   
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-@Bean
-public CorsConfigurationSource corsConfigurationSource() {
-    var config = new CorsConfiguration();
-    config.setAllowedOriginPatterns(List.of("*"));
-    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-    config.setAllowedHeaders(List.of("*"));
-    config.setAllowCredentials(true);
-    config.setExposedHeaders(List.of("Authorization"));
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        var config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://mueen-snowy.vercel.app",
+            "https://hqolksa.com",
+            "https://www.hqolksa.com"
+        ));
+        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        config.setExposedHeaders(List.of("Authorization"));
 
-    var source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", config);
-    return source;
-}
-config.setAllowedOrigins(List.of(
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "https://mueen-snowy.vercel.app",
-    "https://hqolksa.com",
-    "https://www.hqolksa.com"
-));
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 }
