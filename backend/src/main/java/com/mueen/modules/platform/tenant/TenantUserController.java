@@ -26,36 +26,43 @@ public class TenantUserController {
                 .orElseThrow(() -> new RuntimeException("School not found"));
 
         jdbcTemplate.update(
-            "INSERT INTO " + schemaName + ".users " +
-            "(full_name, username, email, phone, password_hash, role, gender, is_active) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)",
-            request.fullName(),
-            request.username(),
-            request.email(),
-            request.phone(),
-            passwordEncoder.encode(request.password()),
-            request.role(),
-            request.gender()
+                "INSERT INTO " + schemaName + ".users " +
+                "(full_name, username, email, phone, password_hash, role, gender, is_active) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)",
+                request.fullName(),
+                request.username(),
+                request.email(),
+                request.phone(),
+                passwordEncoder.encode(request.password()),
+                request.role(),
+                request.gender()
         );
-        // حفظ بيانات المدير في جدول tenants
-jdbcTemplate.update(
-    "UPDATE public.tenants SET principal_username = ?, principal_password = ? WHERE schema_name = ?",
-    body.get("username"),
-    body.get("password"),
-    schemaName
-);
 
-        return ResponseEntity.ok(Map.of("message", "User created successfully"));
+        // حفظ بيانات المدير في جدول tenants
+        jdbcTemplate.update(
+                "UPDATE public.tenants " +
+                "SET principal_username = ?, principal_password = ? " +
+                "WHERE schema_name = ?",
+                request.username(),
+                request.password(),
+                schemaName
+        );
+
+        return ResponseEntity.ok(
+                Map.of("message", "User created successfully")
+        );
     }
 
     @GetMapping
-    public ResponseEntity<?> getUsers(@PathVariable String schemaName) {
+    public ResponseEntity<?> getUsers(
+            @PathVariable String schemaName) {
+
         tenantRepository.findBySchemaName(schemaName)
                 .orElseThrow(() -> new RuntimeException("School not found"));
 
         var users = jdbcTemplate.queryForList(
-            "SELECT id, full_name, username, email, phone, role, gender, is_active, created_at " +
-            "FROM " + schemaName + ".users"
+                "SELECT id, full_name, username, email, phone, role, gender, is_active, created_at " +
+                "FROM " + schemaName + ".users"
         );
 
         return ResponseEntity.ok(users);
@@ -69,5 +76,6 @@ jdbcTemplate.update(
             String password,
             String role,
             String gender
-    ) {}
+    ) {
+    }
 }
