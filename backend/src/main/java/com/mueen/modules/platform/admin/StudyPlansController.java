@@ -878,17 +878,7 @@ public class StudyPlansController {
                 "name VARCHAR(100) NOT NULL UNIQUE)"
         );
 
-        jdbcTemplate.execute(
-                "INSERT INTO public.terms (name) " +
-                "VALUES ('الفصل الدراسي الأول') " +
-                "ON CONFLICT (name) DO NOTHING"
-        );
-
-        jdbcTemplate.execute(
-                "INSERT INTO public.terms (name) " +
-                "VALUES ('الفصل الدراسي الثاني') " +
-                "ON CONFLICT (name) DO NOTHING"
-        );
+    
     }
 
     private void ensureLevelsTable() {
@@ -899,23 +889,7 @@ public class StudyPlansController {
                 "name VARCHAR(100) NOT NULL UNIQUE)"
         );
 
-        jdbcTemplate.execute(
-                "INSERT INTO public.level (name) " +
-                "VALUES ('ابتدائي') " +
-                "ON CONFLICT (name) DO NOTHING"
-        );
-
-        jdbcTemplate.execute(
-                "INSERT INTO public.level (name) " +
-                "VALUES ('متوسط') " +
-                "ON CONFLICT (name) DO NOTHING"
-        );
-
-        jdbcTemplate.execute(
-                "INSERT INTO public.level (name) " +
-                "VALUES ('ثانوي') " +
-                "ON CONFLICT (name) DO NOTHING"
-        );
+      
     }
 
     private void ensureGradesTable() {
