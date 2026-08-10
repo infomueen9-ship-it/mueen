@@ -89,17 +89,17 @@ export default function StudyPlansPage() {
   const planGrades = useMemo(() => planForm.levelId ? grades.filter(g => String(g.level_id) === planForm.levelId) : [], [grades, planForm.levelId]);
   const planSubjects = useMemo(() => subjects.filter(s => (!planForm.levelId || String(s.level_id) === planForm.levelId) && (!planForm.gradeId || String(s.grade_id) === planForm.gradeId)), [subjects, planForm.levelId, planForm.gradeId]);
   const displayPlans = useMemo(() => plans.map(plan => {
-    const subject = subjects.find(item => item.id === plan.subject_id);
+    const subject = subjects.find(item => String(item.id) === String(plan.subject_id));
     const levelId = plan.level_id || subject?.level_id;
     const gradeId = plan.grade_id || subject?.grade_id;
     return {
       ...plan,
-      term_name: plan.term_name || terms.find(item => item.id === plan.term_id)?.name || "—",
+      term_name: plan.term_name || terms.find(item => String(item.id) === String(plan.term_id))?.name || "—",
       subject_name: plan.subject_name || subject?.name || "—",
       level_id: levelId ?? 0,
-      level_name: plan.level_name || levels.find(item => item.id === levelId)?.name || "—",
+      level_name: plan.level_name || levels.find(item => String(item.id) === String(levelId))?.name || "—",
       grade_id: gradeId ?? 0,
-      grade_name: plan.grade_name || grades.find(item => item.id === gradeId)?.name || "—",
+      grade_name: plan.grade_name || grades.find(item => String(item.id) === String(gradeId))?.name || "—",
       lesson_topic: plan.lesson_topic || plan.lessonTopic || "—",
     };
   }), [plans, terms, subjects, levels, grades]);
