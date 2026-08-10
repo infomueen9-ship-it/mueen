@@ -24,6 +24,10 @@ interface StudyPlan {
   lessonTopic?: string;
   homework: string | null;
   notes: string | null;
+  termId?: number | null;
+  subjectId?: number;
+  levelId?: number;
+  gradeId?: number;
 }
 interface EntityForm { name: string; levelId: string; gradeId: string; }
 interface PlanForm { termId: string; levelId: string; gradeId: string; subjectId: string; lessonTopic: string; homework: string; notes: string; }
@@ -64,7 +68,14 @@ export default function StudyPlansPage() {
         api.get<Subject[]>("/api/platform/admin/study-plans/subjects"),
         api.get<StudyPlan[]>("/api/platform/admin/study-plans/plans"),
       ]);
-      setTerms(t.data); setLevels(l.data); setGrades(g.data); setSubjects(s.data); setPlans(p.data);
+      setTerms(t.data); setLevels(l.data); setGrades(g.data); setSubjects(s.data);
+      setPlans(p.data.map(plan => ({
+        ...plan,
+        term_id: plan.term_id ?? plan.termId ?? null,
+        subject_id: plan.subject_id ?? plan.subjectId,
+        level_id: plan.level_id ?? plan.levelId,
+        grade_id: plan.grade_id ?? plan.gradeId,
+      })));
     } catch (error) {
       console.error(error);
       toast.error("تعذر تحميل بيانات الخطط الدراسية");
@@ -79,15 +90,15 @@ export default function StudyPlansPage() {
   const planSubjects = useMemo(() => subjects.filter(s => (!planForm.levelId || String(s.level_id) === planForm.levelId) && (!planForm.gradeId || String(s.grade_id) === planForm.gradeId)), [subjects, planForm.levelId, planForm.gradeId]);
   const displayPlans = useMemo(() => plans.map(plan => {
     const subject = subjects.find(item => item.id === plan.subject_id);
-    const levelId = plan.level_id ?? subject?.level_id;
-    const gradeId = plan.grade_id ?? subject?.grade_id;
+    const levelId = plan.level_id || subject?.level_id;
+    const gradeId = plan.grade_id || subject?.grade_id;
     return {
       ...plan,
       term_name: plan.term_name || terms.find(item => item.id === plan.term_id)?.name || "—",
       subject_name: plan.subject_name || subject?.name || "—",
-      level_id: levelId,
+      level_id: levelId ?? 0,
       level_name: plan.level_name || levels.find(item => item.id === levelId)?.name || "—",
-      grade_id: gradeId,
+      grade_id: gradeId ?? 0,
       grade_name: plan.grade_name || grades.find(item => item.id === gradeId)?.name || "—",
       lesson_topic: plan.lesson_topic || plan.lessonTopic || "—",
     };
