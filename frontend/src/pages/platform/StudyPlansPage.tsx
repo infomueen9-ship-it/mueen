@@ -1,2311 +1,258 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  BookOpen,
-  GraduationCap,
-  Layers,
-  FileText,
-  Plus,
-  Edit,
-  Trash2,
-  Download,
-  Upload,
-  X,
-  RefreshCw,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BookOpen, GraduationCap, Layers, FileText, Plus, Edit, Trash2, X, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../../api/axios";
 
-type EntityType =
-  | "term"
-  | "level"
-  | "grade"
-  | "subject";
+type EntityType = "term" | "level" | "grade" | "subject";
+type Tab = "plans" | "terms" | "levels" | "grades" | "subjects";
 
-interface Term {
-  id: number;
-  name: string;
-}
-
-interface Level {
-  id: number;
-  name: string;
-}
-
-interface Grade {
-  id: number;
-  name: string;
-  level_id: number;
-  level_name?: string;
-}
-
-interface Subject {
-  id: number;
-  name: string;
-  level_id: number;
-  level_name?: string;
-  grade_id: number;
-  grade_name?: string;
-}
-
+interface Term { id: number; name: string; }
+interface Level { id: number; name: string; }
+interface Grade { id: number; name: string; level_id: number; level_name?: string; }
+interface Subject { id: number; name: string; level_id: number; level_name?: string; grade_id: number; grade_name?: string; }
 interface StudyPlan {
   id: number;
-  term_id: number;
-  term_name: string;
-
+  term_id: number | null;
+  term_name: string | null;
   subject_id: number;
   subject_name: string;
-
   level_id: number;
   level_name: string;
-
   grade_id: number;
   grade_name: string;
-
-  file_name: string;
-  file_size: number;
-  created_by: string;
-  created_at: string;
+  lesson_topic: string;
+  homework: string | null;
+  notes: string | null;
 }
+interface EntityForm { name: string; levelId: string; gradeId: string; }
+interface PlanForm { termId: string; levelId: string; gradeId: string; subjectId: string; lessonTopic: string; homework: string; notes: string; }
 
-interface FormData {
-  name: string;
-  levelId: string;
-  gradeId: string;
-}
+const emptyEntity: EntityForm = { name: "", levelId: "", gradeId: "" };
+const emptyPlan: PlanForm = { termId: "", levelId: "", gradeId: "", subjectId: "", lessonTopic: "", homework: "", notes: "" };
 
 export default function StudyPlansPage() {
-
-  const [activeTab, setActiveTab] =
-    useState<"plans" | "terms" | "levels" | "grades" | "subjects">(
-      "plans"
-    );
-
+  const [activeTab, setActiveTab] = useState<Tab>("plans");
   const [loading, setLoading] = useState(false);
-
   const [terms, setTerms] = useState<Term[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [plans, setPlans] = useState<StudyPlan[]>([]);
 
-  const [selectedLevel, setSelectedLevel] =
-    useState<string>("");
+  const [selectedTerm, setSelectedTerm] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState("");
+  const [selectedGrade, setSelectedGrade] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
 
-  const [selectedGrade, setSelectedGrade] =
-    useState<string>("");
+  const [showEntityModal, setShowEntityModal] = useState(false);
+  const [entityType, setEntityType] = useState<EntityType>("term");
+  const [editingEntityId, setEditingEntityId] = useState<number | null>(null);
+  const [entityForm, setEntityForm] = useState<EntityForm>(emptyEntity);
 
-  const [selectedSubject, setSelectedSubject] =
-    useState<string>("");
-
-  const [selectedTerm, setSelectedTerm] =
-    useState<string>("");
-
-  const [showModal, setShowModal] =
-    useState(false);
-
-  const [modalType, setModalType] =
-    useState<EntityType>("term");
-
-  const [editingId, setEditingId] =
-    useState<number | null>(null);
-
-  const [formData, setFormData] =
-    useState<FormData>({
-      name: "",
-      levelId: "",
-      gradeId: "",
-    });
-
-  const [showUploadModal, setShowUploadModal] =
-    useState(false);
-
-  const [uploadFile, setUploadFile] =
-    useState<File | null>(null);
-
-  const [uploadTerm, setUploadTerm] =
-    useState("");
-
-  const [uploadSubject, setUploadSubject] =
-    useState("");
-
-  // =========================================================
-  // Load data
-  // =========================================================
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [planForm, setPlanForm] = useState<PlanForm>(emptyPlan);
 
   const loadData = useCallback(async () => {
-
     setLoading(true);
-
     try {
-
-      const [
-        termsRes,
-        levelsRes,
-        gradesRes,
-        subjectsRes,
-        plansRes,
-      ] = await Promise.all([
-        api.get("/api/platform/admin/study-plans/terms"),
-        api.get("/api/platform/admin/study-plans/levels"),
-        api.get("/api/platform/admin/study-plans/grades"),
-        api.get("/api/platform/admin/study-plans/subjects"),
-        api.get("/api/platform/admin/study-plans/plans"),
+      const [t, l, g, s, p] = await Promise.all([
+        api.get<Term[]>("/api/platform/admin/study-plans/terms"),
+        api.get<Level[]>("/api/platform/admin/study-plans/levels"),
+        api.get<Grade[]>("/api/platform/admin/study-plans/grades"),
+        api.get<Subject[]>("/api/platform/admin/study-plans/subjects"),
+        api.get<StudyPlan[]>("/api/platform/admin/study-plans/plans"),
       ]);
-
-      setTerms(termsRes.data);
-      setLevels(levelsRes.data);
-      setGrades(gradesRes.data);
-      setSubjects(subjectsRes.data);
-      setPlans(plansRes.data);
-
+      setTerms(t.data); setLevels(l.data); setGrades(g.data); setSubjects(s.data); setPlans(p.data);
     } catch (error) {
-
       console.error(error);
-
-      toast.error(
-        "تعذر تحميل بيانات الخطط الدراسية"
-      );
-
-    } finally {
-
-      setLoading(false);
-    }
-
+      toast.error("تعذر تحميل بيانات الخطط الدراسية");
+    } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // =========================================================
-  // Modal
-  // =========================================================
+  const filteredGrades = useMemo(() => selectedLevel ? grades.filter(g => String(g.level_id) === selectedLevel) : grades, [grades, selectedLevel]);
+  const filteredSubjects = useMemo(() => subjects.filter(s => (!selectedLevel || String(s.level_id) === selectedLevel) && (!selectedGrade || String(s.grade_id) === selectedGrade)), [subjects, selectedLevel, selectedGrade]);
+  const planGrades = useMemo(() => planForm.levelId ? grades.filter(g => String(g.level_id) === planForm.levelId) : [], [grades, planForm.levelId]);
+  const planSubjects = useMemo(() => subjects.filter(s => (!planForm.levelId || String(s.level_id) === planForm.levelId) && (!planForm.gradeId || String(s.grade_id) === planForm.gradeId)), [subjects, planForm.levelId, planForm.gradeId]);
+  const filteredPlans = useMemo(() => plans.filter(p => (!selectedTerm || String(p.term_id) === selectedTerm) && (!selectedLevel || String(p.level_id) === selectedLevel) && (!selectedGrade || String(p.grade_id) === selectedGrade) && (!selectedSubject || String(p.subject_id) === selectedSubject)), [plans, selectedTerm, selectedLevel, selectedGrade, selectedSubject]);
 
-  const openAddModal = (
-    type: EntityType
-  ) => {
+  const errorMessage = (e: any, fallback: string) => e?.response?.data?.message || fallback;
 
-    setModalType(type);
-    setEditingId(null);
-
-    setFormData({
-      name: "",
-      levelId: "",
-      gradeId: "",
-    });
-
-    setShowModal(true);
+  const openEntity = (type: EntityType, item?: any) => {
+    setEntityType(type); setEditingEntityId(item?.id ?? null);
+    setEntityForm({ name: item?.name ?? "", levelId: item?.level_id ? String(item.level_id) : "", gradeId: item?.grade_id ? String(item.grade_id) : "" });
+    setShowEntityModal(true);
   };
-
-  const openEditModal = (
-    type: EntityType,
-    item: any
-  ) => {
-
-    setModalType(type);
-    setEditingId(item.id);
-
-    setFormData({
-      name: item.name,
-      levelId:
-        item.level_id
-          ? String(item.level_id)
-          : "",
-      gradeId:
-        item.grade_id
-          ? String(item.grade_id)
-          : "",
-    });
-
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-
-    setShowModal(false);
-    setEditingId(null);
-
-    setFormData({
-      name: "",
-      levelId: "",
-      gradeId: "",
-    });
-  };
-
-  // =========================================================
-  // Save entity
-  // =========================================================
+  const closeEntity = () => { setShowEntityModal(false); setEditingEntityId(null); setEntityForm(emptyEntity); };
 
   const saveEntity = async () => {
-
-    if (!formData.name.trim()) {
-      toast.error("يرجى إدخال الاسم");
-      return;
+    if (!entityForm.name.trim()) return toast.error("يرجى إدخال الاسم");
+    const endpoints: Record<EntityType, string> = {
+      term: "/api/platform/admin/study-plans/terms", level: "/api/platform/admin/study-plans/levels",
+      grade: "/api/platform/admin/study-plans/grades", subject: "/api/platform/admin/study-plans/subjects",
+    };
+    const payload: any = { name: entityForm.name.trim() };
+    if (entityType === "grade" || entityType === "subject") {
+      if (!entityForm.levelId) return toast.error("يرجى اختيار المرحلة");
+      payload.levelId = Number(entityForm.levelId);
     }
-
+    if (entityType === "subject") {
+      if (!entityForm.gradeId) return toast.error("يرجى اختيار الصف");
+      payload.gradeId = Number(entityForm.gradeId);
+    }
     try {
-
-      let endpoint = "";
-
-      let payload: any = {
-        name: formData.name.trim(),
-      };
-
-      if (modalType === "term") {
-
-        endpoint =
-          "/api/platform/admin/study-plans/terms";
-      }
-
-      if (modalType === "level") {
-
-        endpoint =
-          "/api/platform/admin/study-plans/levels";
-      }
-
-      if (modalType === "grade") {
-
-        if (!formData.levelId) {
-          toast.error("يرجى اختيار المرحلة");
-          return;
-        }
-
-        endpoint =
-          "/api/platform/admin/study-plans/grades";
-
-        payload.levelId =
-          Number(formData.levelId);
-      }
-
-      if (modalType === "subject") {
-
-        if (!formData.levelId) {
-          toast.error("يرجى اختيار المرحلة");
-          return;
-        }
-
-        if (!formData.gradeId) {
-          toast.error("يرجى اختيار الصف");
-          return;
-        }
-
-        endpoint =
-          "/api/platform/admin/study-plans/subjects";
-
-        payload.levelId =
-          Number(formData.levelId);
-
-        payload.gradeId =
-          Number(formData.gradeId);
-      }
-
-      if (editingId) {
-
-        await api.put(
-          `${endpoint}/${editingId}`,
-          payload
-        );
-
-        toast.success("تم التعديل بنجاح");
-
-      } else {
-
-        await api.post(
-          endpoint,
-          payload
-        );
-
-        toast.success("تمت الإضافة بنجاح");
-      }
-
-      closeModal();
-
-      await loadData();
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast.error(
-        "حدث خطأ أثناء حفظ البيانات"
-      );
-    }
+      const endpoint = endpoints[entityType];
+      if (editingEntityId) { await api.put(`${endpoint}/${editingEntityId}`, payload); toast.success("تم التعديل بنجاح"); }
+      else { await api.post(endpoint, payload); toast.success("تمت الإضافة بنجاح"); }
+      closeEntity(); await loadData();
+    } catch (e) { console.error(e); toast.error(errorMessage(e, "حدث خطأ أثناء الحفظ")); }
   };
 
-  // =========================================================
-  // Delete
-  // =========================================================
+  const deleteEntity = async (type: EntityType, id: number) => {
+    if (!window.confirm("هل أنت متأكد من الحذف؟")) return;
+    const endpoints: Record<EntityType, string> = {
+      term: "/api/platform/admin/study-plans/terms", level: "/api/platform/admin/study-plans/levels",
+      grade: "/api/platform/admin/study-plans/grades", subject: "/api/platform/admin/study-plans/subjects",
+    };
+    try { await api.delete(`${endpoints[type]}/${id}`); toast.success("تم الحذف بنجاح"); await loadData(); }
+    catch (e) { console.error(e); toast.error(errorMessage(e, "لا يمكن حذف العنصر لأنه مرتبط ببيانات أخرى")); }
+  };
 
-  const deleteEntity = async (
-    type: EntityType,
-    id: number
-  ) => {
+  const openAddPlan = () => {
+    setEditingPlanId(null);
+    setPlanForm({ ...emptyPlan, termId: selectedTerm, levelId: selectedLevel, gradeId: selectedGrade, subjectId: selectedSubject });
+    setShowPlanModal(true);
+  };
+  const openEditPlan = (p: StudyPlan) => {
+    setEditingPlanId(p.id);
+    setPlanForm({ termId: p.term_id ? String(p.term_id) : "", levelId: String(p.level_id), gradeId: String(p.grade_id), subjectId: String(p.subject_id), lessonTopic: p.lesson_topic || "", homework: p.homework || "", notes: p.notes || "" });
+    setShowPlanModal(true);
+  };
+  const closePlan = () => { setShowPlanModal(false); setEditingPlanId(null); setPlanForm(emptyPlan); };
 
-    if (
-      !window.confirm(
-        "هل أنت متأكد من الحذف؟"
-      )
-    ) {
-      return;
-    }
-
-    let endpoint = "";
-
-    if (type === "term") {
-      endpoint =
-        "/api/platform/admin/study-plans/terms";
-    }
-
-    if (type === "level") {
-      endpoint =
-        "/api/platform/admin/study-plans/levels";
-    }
-
-    if (type === "grade") {
-      endpoint =
-        "/api/platform/admin/study-plans/grades";
-    }
-
-    if (type === "subject") {
-      endpoint =
-        "/api/platform/admin/study-plans/subjects";
-    }
-
+  const savePlan = async () => {
+    if (!planForm.termId) return toast.error("يرجى اختيار الفصل الدراسي");
+    if (!planForm.levelId) return toast.error("يرجى اختيار المرحلة");
+    if (!planForm.gradeId) return toast.error("يرجى اختيار الصف");
+    if (!planForm.subjectId) return toast.error("يرجى اختيار المادة");
+    if (!planForm.lessonTopic.trim()) return toast.error("يرجى إدخال موضوع الدرس");
+    const payload = {
+      termId: Number(planForm.termId), subjectId: Number(planForm.subjectId),
+      lessonTopic: planForm.lessonTopic.trim(), homework: planForm.homework.trim() || null, notes: planForm.notes.trim() || null,
+    };
     try {
-
-      await api.delete(
-        `${endpoint}/${id}`
-      );
-
-      toast.success("تم الحذف بنجاح");
-
-      await loadData();
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast.error(
-        "لا يمكن حذف العنصر لأنه مرتبط ببيانات أخرى"
-      );
-    }
+      if (editingPlanId) { await api.put(`/api/platform/admin/study-plans/plans/${editingPlanId}`, payload); toast.success("تم تعديل موضوع الدرس بنجاح"); }
+      else { await api.post("/api/platform/admin/study-plans/plans", payload); toast.success("تمت إضافة موضوع الدرس بنجاح"); }
+      closePlan(); await loadData();
+    } catch (e) { console.error(e); toast.error(errorMessage(e, "حدث خطأ أثناء حفظ الخطة")); }
+  };
+  const deletePlan = async (id: number) => {
+    if (!window.confirm("هل أنت متأكد من حذف موضوع الدرس؟")) return;
+    try { await api.delete(`/api/platform/admin/study-plans/plans/${id}`); toast.success("تم حذف موضوع الدرس"); await loadData(); }
+    catch (e) { console.error(e); toast.error(errorMessage(e, "تعذر حذف موضوع الدرس")); }
   };
 
-  // =========================================================
-  // Upload
-  // =========================================================
-
-  const uploadPlan = async () => {
-
-    if (!uploadFile) {
-      toast.error("يرجى اختيار الملف");
-      return;
-    }
-
-    if (!uploadTerm) {
-      toast.error("يرجى اختيار الفصل الدراسي");
-      return;
-    }
-
-    if (!uploadSubject) {
-      toast.error("يرجى اختيار المادة");
-      return;
-    }
-
-    try {
-
-      const data = new FormData();
-
-      data.append(
-        "termId",
-        uploadTerm
-      );
-
-      data.append(
-        "subjectId",
-        uploadSubject
-      );
-
-      data.append(
-        "createdBy",
-        "Platform Admin"
-      );
-
-      data.append(
-        "file",
-        uploadFile
-      );
-
-      await api.post(
-        "/api/platform/admin/study-plans/plans/upload",
-        data,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
-
-      toast.success(
-        "تم رفع الخطة بنجاح"
-      );
-
-      setShowUploadModal(false);
-      setUploadFile(null);
-      setUploadTerm("");
-      setUploadSubject("");
-
-      await loadData();
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast.error(
-        "حدث خطأ أثناء رفع الخطة"
-      );
-    }
-  };
-
-  // =========================================================
-  // Delete plan
-  // =========================================================
-
-  const deletePlan = async (
-    id: number
-  ) => {
-
-    if (
-      !window.confirm(
-        "هل أنت متأكد من حذف الخطة؟"
-      )
-    ) {
-      return;
-    }
-
-    try {
-
-      await api.delete(
-        `/api/platform/admin/study-plans/plans/${id}`
-      );
-
-      toast.success(
-        "تم حذف الخطة"
-      );
-
-      await loadData();
-
-    } catch {
-
-      toast.error(
-        "تعذر حذف الخطة"
-      );
-    }
-  };
-
-  // =========================================================
-  // Download
-  // =========================================================
-
-  const downloadPlan = (
-    id: number,
-    fileName: string
-  ) => {
-
-    const baseURL =
-      api.defaults.baseURL || "";
-
-    const url =
-      `${baseURL}/api/platform/admin/study-plans/plans/${id}/download`;
-
-    const link =
-      document.createElement("a");
-
-    link.href = url;
-    link.download = fileName;
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    document.body.removeChild(link);
-  };
-
-  // =========================================================
-  // Filtering
-  // =========================================================
-
-  const filteredGrades =
-    selectedLevel
-      ? grades.filter(
-          g =>
-            String(g.level_id) ===
-            selectedLevel
-        )
-      : grades;
-
-  const filteredSubjects =
-    subjects.filter(subject => {
-
-      if (
-        selectedLevel &&
-        String(subject.level_id) !==
-          selectedLevel
-      ) {
-        return false;
-      }
-
-      if (
-        selectedGrade &&
-        String(subject.grade_id) !==
-          selectedGrade
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-
-  const filteredPlans =
-    plans.filter(plan => {
-
-      if (
-        selectedTerm &&
-        String(plan.term_id) !==
-          selectedTerm
-      ) {
-        return false;
-      }
-
-      if (
-        selectedLevel &&
-        String(plan.level_id) !==
-          selectedLevel
-      ) {
-        return false;
-      }
-
-      if (
-        selectedGrade &&
-        String(plan.grade_id) !==
-          selectedGrade
-      ) {
-        return false;
-      }
-
-      if (
-        selectedSubject &&
-        String(plan.subject_id) !==
-          selectedSubject
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-
-  // =========================================================
-  // Render
-  // =========================================================
-
-  return (
-    <div
-      style={{
-        direction: "rtl",
-        padding: "30px",
-      }}
-    >
-
-      {/* Header */}
-
-      <div style={headerStyle}>
-
-        <div>
-
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "20px",
-            }}
-          >
-            إدارة الخطط الدراسية
-          </h2>
-
-          <p
-            style={{
-              margin:
-                "6px 0 0",
-              opacity: 0.9,
-              fontSize: "13px",
-            }}
-          >
-            إدارة بيانات المناهج على مستوى المنصة
-          </p>
-
-        </div>
-
-        <button
-          onClick={loadData}
-          style={refreshButton}
-        >
-          <RefreshCw size={16} />
-          تحديث
-        </button>
-
-      </div>
-
-      {/* Tabs */}
-
-      <div style={tabsStyle}>
-
-        <TabButton
-          active={activeTab === "plans"}
-          icon={<FileText size={17} />}
-          label="الخطط الدراسية"
-          onClick={() =>
-            setActiveTab("plans")
-          }
-        />
-
-        <TabButton
-          active={activeTab === "terms"}
-          icon={<BookOpen size={17} />}
-          label="الفصول الدراسية"
-          onClick={() =>
-            setActiveTab("terms")
-          }
-        />
-
-        <TabButton
-          active={activeTab === "levels"}
-          icon={<Layers size={17} />}
-          label="المراحل"
-          onClick={() =>
-            setActiveTab("levels")
-          }
-        />
-
-        <TabButton
-          active={activeTab === "grades"}
-          icon={<GraduationCap size={17} />}
-          label="الصفوف"
-          onClick={() =>
-            setActiveTab("grades")
-          }
-        />
-
-        <TabButton
-          active={activeTab === "subjects"}
-          icon={<BookOpen size={17} />}
-          label="المواد"
-          onClick={() =>
-            setActiveTab("subjects")
-          }
-        />
-
-      </div>
-
-      {/* Loading */}
-
-      {loading ? (
-
-        <div style={loadingStyle}>
-          جارٍ تحميل البيانات...
-        </div>
-
-      ) : (
-
-        <>
-          {/* ================================================= */}
-          {/* PLANS */}
-          {/* ================================================= */}
-
-          {activeTab === "plans" && (
-
-            <>
-
-              <div style={filterCard}>
-
-                <div style={filterGroup}>
-
-                  <label>
-                    الفصل الدراسي
-                  </label>
-
-                  <select
-                    value={selectedTerm}
-                    onChange={e =>
-                      setSelectedTerm(
-                        e.target.value
-                      )
-                    }
-                    style={inputStyle}
-                  >
-
-                    <option value="">
-                      جميع الفصول
-                    </option>
-
-                    {terms.map(term => (
-
-                      <option
-                        key={term.id}
-                        value={term.id}
-                      >
-                        {term.name}
-                      </option>
-
-                    ))}
-
-                  </select>
-
-                </div>
-
-                <div style={filterGroup}>
-
-                  <label>
-                    المرحلة
-                  </label>
-
-                  <select
-                    value={selectedLevel}
-                    onChange={e => {
-
-                      setSelectedLevel(
-                        e.target.value
-                      );
-
-                      setSelectedGrade("");
-                      setSelectedSubject("");
-
-                    }}
-                    style={inputStyle}
-                  >
-
-                    <option value="">
-                      جميع المراحل
-                    </option>
-
-                    {levels.map(level => (
-
-                      <option
-                        key={level.id}
-                        value={level.id}
-                      >
-                        {level.name}
-                      </option>
-
-                    ))}
-
-                  </select>
-
-                </div>
-
-                <div style={filterGroup}>
-
-                  <label>
-                    الصف
-                  </label>
-
-                  <select
-                    value={selectedGrade}
-                    onChange={e => {
-
-                      setSelectedGrade(
-                        e.target.value
-                      );
-
-                      setSelectedSubject("");
-
-                    }}
-                    style={inputStyle}
-                  >
-
-                    <option value="">
-                      جميع الصفوف
-                    </option>
-
-                    {filteredGrades.map(
-                      grade => (
-
-                        <option
-                          key={grade.id}
-                          value={grade.id}
-                        >
-                          {grade.name}
-                        </option>
-
-                      )
-                    )}
-
-                  </select>
-
-                </div>
-
-                <div style={filterGroup}>
-
-                  <label>
-                    المادة
-                  </label>
-
-                  <select
-                    value={selectedSubject}
-                    onChange={e =>
-                      setSelectedSubject(
-                        e.target.value
-                      )
-                    }
-                    style={inputStyle}
-                  >
-
-                    <option value="">
-                      جميع المواد
-                    </option>
-
-                    {filteredSubjects.map(
-                      subject => (
-
-                        <option
-                          key={subject.id}
-                          value={subject.id}
-                        >
-                          {subject.name}
-                        </option>
-
-                      )
-                    )}
-
-                  </select>
-
-                </div>
-
-                <button
-                  onClick={() =>
-                    setShowUploadModal(true)
-                  }
-                  style={primaryButton}
-                >
-                  <Upload size={17} />
-                  رفع خطة
-                </button>
-
-              </div>
-
-              <div style={tableContainer}>
-
-                <table style={tableStyle}>
-
-                  <thead>
-
-                    <tr>
-
-                      <th style={thStyle}>
-                        الفصل
-                      </th>
-
-                      <th style={thStyle}>
-                        المرحلة
-                      </th>
-
-                      <th style={thStyle}>
-                        الصف
-                      </th>
-
-                      <th style={thStyle}>
-                        المادة
-                      </th>
-
-                      <th style={thStyle}>
-                        الملف
-                      </th>
-
-                      <th style={thStyle}>
-                        أضيفت بواسطة
-                      </th>
-
-                      <th style={thStyle}>
-                        التاريخ
-                      </th>
-
-                      <th style={thStyle}>
-                        الإجراءات
-                      </th>
-
-                    </tr>
-
-                  </thead>
-
-                  <tbody>
-
-                    {filteredPlans.map(
-                      plan => (
-
-                        <tr key={plan.id}>
-
-                          <td style={tdStyle}>
-                            {plan.term_name}
-                          </td>
-
-                          <td style={tdStyle}>
-                            {plan.level_name}
-                          </td>
-
-                          <td style={tdStyle}>
-                            {plan.grade_name}
-                          </td>
-
-                          <td
-                            style={{
-                              ...tdStyle,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {plan.subject_name}
-                          </td>
-
-                          <td style={tdStyle}>
-                            {plan.file_name}
-                          </td>
-
-                          <td style={tdStyle}>
-                            {plan.created_by}
-                          </td>
-
-                          <td style={tdStyle}>
-                            {formatDate(
-                              plan.created_at
-                            )}
-                          </td>
-
-                          <td style={tdStyle}>
-
-                            <div
-                              style={{
-                                display:
-                                  "flex",
-                                gap: "5px",
-                                justifyContent:
-                                  "center",
-                              }}
-                            >
-
-                              <IconButton
-                                icon={
-                                  <Download
-                                    size={15}
-                                  />
-                                }
-                                color="#2563EB"
-                                onClick={() =>
-                                  downloadPlan(
-                                    plan.id,
-                                    plan.file_name
-                                  )
-                                }
-                              />
-
-                              <IconButton
-                                icon={
-                                  <Trash2
-                                    size={15}
-                                  />
-                                }
-                                color="#EF4444"
-                                onClick={() =>
-                                  deletePlan(
-                                    plan.id
-                                  )
-                                }
-                              />
-
-                            </div>
-
-                          </td>
-
-                        </tr>
-
-                      )
-                    )}
-
-                  </tbody>
-
-                </table>
-
-                {filteredPlans.length ===
-                  0 && (
-
-                  <EmptyState
-                    text="لا توجد خطط دراسية"
-                  />
-
-                )}
-
-              </div>
-
-            </>
-
-          )}
-
-          {/* ================================================= */}
-          {/* TERMS */}
-          {/* ================================================= */}
-
-          {activeTab === "terms" && (
-
-            <EntitySection
-              title="الفصول الدراسية"
-              addLabel="إضافة فصل"
-              onAdd={() =>
-                openAddModal("term")
-              }
-            >
-
-              <table style={tableStyle}>
-
-                <thead>
-
-                  <tr>
-                    <th style={thStyle}>
-                      #
-                    </th>
-
-                    <th style={thStyle}>
-                      الفصل الدراسي
-                    </th>
-
-                    <th style={thStyle}>
-                      الإجراءات
-                    </th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {terms.map(
-                    (term, index) => (
-
-                      <tr key={term.id}>
-
-                        <td style={tdStyle}>
-                          {index + 1}
-                        </td>
-
-                        <td
-                          style={{
-                            ...tdStyle,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {term.name}
-                        </td>
-
-                        <td style={tdStyle}>
-
-                          <ActionButtons
-                            onEdit={() =>
-                              openEditModal(
-                                "term",
-                                term
-                              )
-                            }
-                            onDelete={() =>
-                              deleteEntity(
-                                "term",
-                                term.id
-                              )
-                            }
-                          />
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </EntitySection>
-
-          )}
-
-          {/* ================================================= */}
-          {/* LEVELS */}
-          {/* ================================================= */}
-
-          {activeTab === "levels" && (
-
-            <EntitySection
-              title="المراحل الدراسية"
-              addLabel="إضافة مرحلة"
-              onAdd={() =>
-                openAddModal("level")
-              }
-            >
-
-              <table style={tableStyle}>
-
-                <thead>
-
-                  <tr>
-
-                    <th style={thStyle}>
-                      #
-                    </th>
-
-                    <th style={thStyle}>
-                      المرحلة
-                    </th>
-
-                    <th style={thStyle}>
-                      الإجراءات
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {levels.map(
-                    (level, index) => (
-
-                      <tr key={level.id}>
-
-                        <td style={tdStyle}>
-                          {index + 1}
-                        </td>
-
-                        <td
-                          style={{
-                            ...tdStyle,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {level.name}
-                        </td>
-
-                        <td style={tdStyle}>
-
-                          <ActionButtons
-                            onEdit={() =>
-                              openEditModal(
-                                "level",
-                                level
-                              )
-                            }
-                            onDelete={() =>
-                              deleteEntity(
-                                "level",
-                                level.id
-                              )
-                            }
-                          />
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </EntitySection>
-
-          )}
-
-          {/* ================================================= */}
-          {/* GRADES */}
-          {/* ================================================= */}
-
-          {activeTab === "grades" && (
-
-            <EntitySection
-              title="الصفوف الدراسية"
-              addLabel="إضافة صف"
-              onAdd={() =>
-                openAddModal("grade")
-              }
-            >
-
-              <table style={tableStyle}>
-
-                <thead>
-
-                  <tr>
-
-                    <th style={thStyle}>
-                      #
-                    </th>
-
-                    <th style={thStyle}>
-                      المرحلة
-                    </th>
-
-                    <th style={thStyle}>
-                      الصف
-                    </th>
-
-                    <th style={thStyle}>
-                      الإجراءات
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {grades.map(
-                    (grade, index) => (
-
-                      <tr key={grade.id}>
-
-                        <td style={tdStyle}>
-                          {index + 1}
-                        </td>
-
-                        <td style={tdStyle}>
-                          {grade.level_name}
-                        </td>
-
-                        <td
-                          style={{
-                            ...tdStyle,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {grade.name}
-                        </td>
-
-                        <td style={tdStyle}>
-
-                          <ActionButtons
-                            onEdit={() =>
-                              openEditModal(
-                                "grade",
-                                grade
-                              )
-                            }
-                            onDelete={() =>
-                              deleteEntity(
-                                "grade",
-                                grade.id
-                              )
-                            }
-                          />
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </EntitySection>
-
-          )}
-
-          {/* ================================================= */}
-          {/* SUBJECTS */}
-          {/* ================================================= */}
-
-          {activeTab === "subjects" && (
-
-            <EntitySection
-              title="المواد الدراسية"
-              addLabel="إضافة مادة"
-              onAdd={() =>
-                openAddModal("subject")
-              }
-            >
-
-              <table style={tableStyle}>
-
-                <thead>
-
-                  <tr>
-
-                    <th style={thStyle}>
-                      #
-                    </th>
-
-                    <th style={thStyle}>
-                      المرحلة
-                    </th>
-
-                    <th style={thStyle}>
-                      الصف
-                    </th>
-
-                    <th style={thStyle}>
-                      المادة
-                    </th>
-
-                    <th style={thStyle}>
-                      الإجراءات
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  {subjects.map(
-                    (subject, index) => (
-
-                      <tr key={subject.id}>
-
-                        <td style={tdStyle}>
-                          {index + 1}
-                        </td>
-
-                        <td style={tdStyle}>
-                          {subject.level_name}
-                        </td>
-
-                        <td style={tdStyle}>
-                          {subject.grade_name}
-                        </td>
-
-                        <td
-                          style={{
-                            ...tdStyle,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {subject.name}
-                        </td>
-
-                        <td style={tdStyle}>
-
-                          <ActionButtons
-                            onEdit={() =>
-                              openEditModal(
-                                "subject",
-                                subject
-                              )
-                            }
-                            onDelete={() =>
-                              deleteEntity(
-                                "subject",
-                                subject.id
-                              )
-                            }
-                          />
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </EntitySection>
-
-          )}
-
-        </>
-
-      )}
-
-      {/* ===================================================== */}
-      {/* ENTITY MODAL */}
-      {/* ===================================================== */}
-
-      {showModal && (
-
-        <div style={overlayStyle}>
-
-          <div style={modalStyle}>
-
-            <div style={modalHeader}>
-
-              <h3 style={{ margin: 0 }}>
-                {getModalTitle(
-                  modalType,
-                  !!editingId
-                )}
-              </h3>
-
-              <button
-                onClick={closeModal}
-                style={closeButton}
-              >
-                <X size={18} />
-              </button>
-
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection:
-                  "column",
-                gap: "15px",
-              }}
-            >
-
-              <div>
-                <label style={labelStyle}>
-                  {modalType === "term"
-                    ? "اسم الفصل الدراسي"
-                    : modalType === "level"
-                    ? "اسم المرحلة"
-                    : modalType === "grade"
-                    ? "اسم الصف"
-                    : "اسم المادة"}
-                </label>
-
-                <input
-                  value={formData.name}
-                  onChange={e =>
-                    setFormData({
-                      ...formData,
-                      name: e.target.value,
-                    })
-                  }
-                  style={inputStyle}
-                />
-
-              </div>
-
-              {(modalType === "grade" ||
-                modalType === "subject") && (
-
-                <div>
-
-                  <label style={labelStyle}>
-                    المرحلة
-                  </label>
-
-                  <select
-                    value={
-                      formData.levelId
-                    }
-                    onChange={e =>
-                      setFormData({
-                        ...formData,
-                        levelId:
-                          e.target.value,
-                        gradeId: "",
-                      })
-                    }
-                    style={inputStyle}
-                  >
-
-                    <option value="">
-                      اختر المرحلة
-                    </option>
-
-                    {levels.map(
-                      level => (
-
-                        <option
-                          key={level.id}
-                          value={level.id}
-                        >
-                          {level.name}
-                        </option>
-
-                      )
-                    )}
-
-                  </select>
-
-                </div>
-
-              )}
-
-              {modalType === "subject" && (
-
-                <div>
-
-                  <label style={labelStyle}>
-                    الصف
-                  </label>
-
-                  <select
-                    value={
-                      formData.gradeId
-                    }
-                    onChange={e =>
-                      setFormData({
-                        ...formData,
-                        gradeId:
-                          e.target.value,
-                      })
-                    }
-                    style={inputStyle}
-                  >
-
-                    <option value="">
-                      اختر الصف
-                    </option>
-
-                    {grades
-                      .filter(
-                        grade =>
-                          !formData.levelId ||
-                          String(
-                            grade.level_id
-                          ) ===
-                            formData.levelId
-                      )
-                      .map(grade => (
-
-                        <option
-                          key={grade.id}
-                          value={grade.id}
-                        >
-                          {grade.name}
-                        </option>
-
-                      ))}
-
-                  </select>
-
-                </div>
-
-              )}
-
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                marginTop: "25px",
-              }}
-            >
-
-              <button
-                onClick={saveEntity}
-                style={primaryButton}
-              >
-                حفظ
-              </button>
-
-              <button
-                onClick={closeModal}
-                style={secondaryButton}
-              >
-                إلغاء
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
-
-      {/* ===================================================== */}
-      {/* UPLOAD MODAL */}
-      {/* ===================================================== */}
-
-      {showUploadModal && (
-
-        <div style={overlayStyle}>
-
-          <div style={modalStyle}>
-
-            <div style={modalHeader}>
-
-              <h3 style={{ margin: 0 }}>
-                رفع خطة دراسية
-              </h3>
-
-              <button
-                onClick={() =>
-                  setShowUploadModal(false)
-                }
-                style={closeButton}
-              >
-                <X size={18} />
-              </button>
-
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection:
-                  "column",
-                gap: "15px",
-              }}
-            >
-
-              <div>
-
-                <label style={labelStyle}>
-                  الفصل الدراسي
-                </label>
-
-                <select
-                  value={uploadTerm}
-                  onChange={e =>
-                    setUploadTerm(
-                      e.target.value
-                    )
-                  }
-                  style={inputStyle}
-                >
-
-                  <option value="">
-                    اختر الفصل الدراسي
-                  </option>
-
-                  {terms.map(term => (
-
-                    <option
-                      key={term.id}
-                      value={term.id}
-                    >
-                      {term.name}
-                    </option>
-
-                  ))}
-
-                </select>
-
-              </div>
-
-              <div>
-
-                <label style={labelStyle}>
-                  المرحلة
-                </label>
-
-                <select
-                  value={selectedLevel}
-                  onChange={e => {
-
-                    setSelectedLevel(
-                      e.target.value
-                    );
-
-                    setSelectedGrade("");
-                    setUploadSubject("");
-
-                  }}
-                  style={inputStyle}
-                >
-
-                  <option value="">
-                    اختر المرحلة
-                  </option>
-
-                  {levels.map(level => (
-
-                    <option
-                      key={level.id}
-                      value={level.id}
-                    >
-                      {level.name}
-                    </option>
-
-                  ))}
-
-                </select>
-
-              </div>
-
-              <div>
-
-                <label style={labelStyle}>
-                  الصف
-                </label>
-
-                <select
-                  value={selectedGrade}
-                  onChange={e => {
-
-                    setSelectedGrade(
-                      e.target.value
-                    );
-
-                    setUploadSubject("");
-
-                  }}
-                  style={inputStyle}
-                >
-
-                  <option value="">
-                    اختر الصف
-                  </option>
-
-                  {filteredGrades.map(
-                    grade => (
-
-                      <option
-                        key={grade.id}
-                        value={grade.id}
-                      >
-                        {grade.name}
-                      </option>
-
-                    )
-                  )}
-
-                </select>
-
-              </div>
-
-              <div>
-
-                <label style={labelStyle}>
-                  المادة
-                </label>
-
-                <select
-                  value={uploadSubject}
-                  onChange={e =>
-                    setUploadSubject(
-                      e.target.value
-                    )
-                  }
-                  style={inputStyle}
-                >
-
-                  <option value="">
-                    اختر المادة
-                  </option>
-
-                  {filteredSubjects.map(
-                    subject => (
-
-                      <option
-                        key={subject.id}
-                        value={subject.id}
-                      >
-                        {subject.name}
-                      </option>
-
-                    )
-                  )}
-
-                </select>
-
-              </div>
-
-              <div>
-
-                <label style={labelStyle}>
-                  ملف الخطة
-                </label>
-
-                <input
-                  type="file"
-                  onChange={e =>
-                    setUploadFile(
-                      e.target.files?.[0] ||
-                        null
-                    )
-                  }
-                  style={inputStyle}
-                />
-
-              </div>
-
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                marginTop: "25px",
-              }}
-            >
-
-              <button
-                onClick={uploadPlan}
-                style={primaryButton}
-              >
-                <Upload size={16} />
-                رفع الخطة
-              </button>
-
-              <button
-                onClick={() =>
-                  setShowUploadModal(false)
-                }
-                style={secondaryButton}
-              >
-                إلغاء
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
-
+  return <div style={{ direction: "rtl", padding: 30 }}>
+    <div style={headerStyle}>
+      <div><h2 style={{ margin: 0, fontSize: 20 }}>إدارة الخطط الدراسية</h2><p style={{ margin: "6px 0 0", opacity: .9, fontSize: 13 }}>بنك موضوعات الدروس والواجبات والملاحظات</p></div>
+      <button onClick={loadData} style={refreshButton}><RefreshCw size={16} /> تحديث</button>
     </div>
-  );
-}
 
-// =========================================================
-// Components
-// =========================================================
+    <div style={tabsStyle}>
+      <TabButton active={activeTab === "plans"} icon={<FileText size={17}/>} label="بنك الخطط" onClick={() => setActiveTab("plans")}/>
+      <TabButton active={activeTab === "terms"} icon={<BookOpen size={17}/>} label="الفصول الدراسية" onClick={() => setActiveTab("terms")}/>
+      <TabButton active={activeTab === "levels"} icon={<Layers size={17}/>} label="المراحل" onClick={() => setActiveTab("levels")}/>
+      <TabButton active={activeTab === "grades"} icon={<GraduationCap size={17}/>} label="الصفوف" onClick={() => setActiveTab("grades")}/>
+      <TabButton active={activeTab === "subjects"} icon={<BookOpen size={17}/>} label="المواد" onClick={() => setActiveTab("subjects")}/>
+    </div>
 
-function TabButton({
-  active,
-  icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
+    {loading ? <div style={loadingStyle}>جارٍ تحميل البيانات...</div> : <>
+      {activeTab === "plans" && <>
+        <div style={filterCard}>
+          <Filter label="الفصل الدراسي" value={selectedTerm} onChange={setSelectedTerm} options={terms} all="جميع الفصول"/>
+          <Filter label="المرحلة" value={selectedLevel} onChange={v => { setSelectedLevel(v); setSelectedGrade(""); setSelectedSubject(""); }} options={levels} all="جميع المراحل"/>
+          <Filter label="الصف" value={selectedGrade} onChange={v => { setSelectedGrade(v); setSelectedSubject(""); }} options={filteredGrades} all="جميع الصفوف"/>
+          <Filter label="المادة" value={selectedSubject} onChange={setSelectedSubject} options={filteredSubjects} all="جميع المواد"/>
+          <div style={{ display: "flex", gap: 8 }}><button style={secondarySmall} onClick={() => {setSelectedTerm("");setSelectedLevel("");setSelectedGrade("");setSelectedSubject("");}}>مسح</button><button style={primaryButton} onClick={openAddPlan}><Plus size={17}/> إضافة موضوع</button></div>
+        </div>
+        <div style={tableContainer}>
+          <table style={tableStyle}><thead><tr>
+            {['الفصل','المرحلة','الصف','المادة','موضوع الدرس','الواجبات','الملاحظات','الإجراءات'].map(h => <th key={h} style={thStyle}>{h}</th>)}
+          </tr></thead><tbody>
+            {filteredPlans.map(p => <tr key={p.id}>
+              <td style={tdStyle}>{p.term_name || "—"}</td><td style={tdStyle}>{p.level_name}</td><td style={tdStyle}>{p.grade_name}</td><td style={{...tdStyle,fontWeight:700}}>{p.subject_name}</td>
+              <td style={{...tdStyle,textAlign:"right",minWidth:220}}>{p.lesson_topic}</td><td style={{...tdStyle,textAlign:"right",minWidth:180}}>{p.homework || "—"}</td><td style={{...tdStyle,textAlign:"right",minWidth:180}}>{p.notes || "—"}</td>
+              <td style={tdStyle}><div style={actions}><IconButton icon={<Edit size={15}/>} color="#2563EB" onClick={() => openEditPlan(p)}/><IconButton icon={<Trash2 size={15}/>} color="#EF4444" onClick={() => deletePlan(p.id)}/></div></td>
+            </tr>)}
+          </tbody></table>
+          {!filteredPlans.length && <Empty text="لا توجد موضوعات دراسية"/>}
+        </div>
+      </>}
 
-  return (
+      {activeTab === "terms" && <EntitySection title="الفصول الدراسية" addLabel="إضافة فصل" onAdd={() => openEntity("term")}><SimpleTable headers={["#","الفصل الدراسي","الإجراءات"]} rows={terms.map((x,i) => [i+1,x.name,<ActionButtons key={x.id} onEdit={() => openEntity("term",x)} onDelete={() => deleteEntity("term",x.id)}/>])}/></EntitySection>}
+      {activeTab === "levels" && <EntitySection title="المراحل الدراسية" addLabel="إضافة مرحلة" onAdd={() => openEntity("level")}><SimpleTable headers={["#","المرحلة","الإجراءات"]} rows={levels.map((x,i) => [i+1,x.name,<ActionButtons key={x.id} onEdit={() => openEntity("level",x)} onDelete={() => deleteEntity("level",x.id)}/>])}/></EntitySection>}
+      {activeTab === "grades" && <EntitySection title="الصفوف الدراسية" addLabel="إضافة صف" onAdd={() => openEntity("grade")}><SimpleTable headers={["#","المرحلة","الصف","الإجراءات"]} rows={grades.map((x,i) => [i+1,x.level_name || "—",x.name,<ActionButtons key={x.id} onEdit={() => openEntity("grade",x)} onDelete={() => deleteEntity("grade",x.id)}/>])}/></EntitySection>}
+      {activeTab === "subjects" && <EntitySection title="المواد الدراسية" addLabel="إضافة مادة" onAdd={() => openEntity("subject")}><SimpleTable headers={["#","المرحلة","الصف","المادة","الإجراءات"]} rows={subjects.map((x,i) => [i+1,x.level_name || "—",x.grade_name || "—",x.name,<ActionButtons key={x.id} onEdit={() => openEntity("subject",x)} onDelete={() => deleteEntity("subject",x.id)}/>])}/></EntitySection>}
+    </>}
 
-    <button
-      onClick={onClick}
-      style={{
-        ...tabButton,
-        ...(active
-          ? activeTabButton
-          : {}),
-      }}
-    >
+    {showEntityModal && <Modal title={`${editingEntityId ? "تعديل" : "إضافة"} ${entityName(entityType)}`} onClose={closeEntity}>
+      <Field label={entityName(entityType)}><input style={inputStyle} value={entityForm.name} onChange={e => setEntityForm({...entityForm,name:e.target.value})}/></Field>
+      {(entityType === "grade" || entityType === "subject") && <Field label="المرحلة"><select style={inputStyle} value={entityForm.levelId} onChange={e => setEntityForm({...entityForm,levelId:e.target.value,gradeId:""})}><option value="">اختر المرحلة</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>}
+      {entityType === "subject" && <Field label="الصف"><select style={inputStyle} value={entityForm.gradeId} onChange={e => setEntityForm({...entityForm,gradeId:e.target.value})}><option value="">اختر الصف</option>{grades.filter(g=>!entityForm.levelId||String(g.level_id)===entityForm.levelId).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>}
+      <ModalButtons onSave={saveEntity} onCancel={closeEntity}/>
+    </Modal>}
 
-      {icon}
-
-      {label}
-
-    </button>
-  );
-}
-
-function EntitySection({
-  title,
-  addLabel,
-  onAdd,
-  children,
-}: {
-  title: string;
-  addLabel: string;
-  onAdd: () => void;
-  children: React.ReactNode;
-}) {
-
-  return (
-
-    <div>
-
-      <div style={sectionHeader}>
-
-        <h3 style={{ margin: 0 }}>
-          {title}
-        </h3>
-
-        <button
-          onClick={onAdd}
-          style={primaryButton}
-        >
-          <Plus size={17} />
-          {addLabel}
-        </button>
-
+    {showPlanModal && <Modal wide title={editingPlanId ? "تعديل موضوع الدرس" : "إضافة موضوع درس"} onClose={closePlan}>
+      <div style={twoCol}>
+        <Field label="الفصل الدراسي"><select style={inputStyle} value={planForm.termId} onChange={e=>setPlanForm({...planForm,termId:e.target.value})}><option value="">اختر الفصل الدراسي</option>{terms.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
+        <Field label="المرحلة"><select style={inputStyle} value={planForm.levelId} onChange={e=>setPlanForm({...planForm,levelId:e.target.value,gradeId:"",subjectId:""})}><option value="">اختر المرحلة</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
+        <Field label="الصف"><select style={inputStyle} value={planForm.gradeId} onChange={e=>setPlanForm({...planForm,gradeId:e.target.value,subjectId:""})}><option value="">اختر الصف</option>{planGrades.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>
+        <Field label="المادة"><select style={inputStyle} value={planForm.subjectId} onChange={e=>setPlanForm({...planForm,subjectId:e.target.value})}><option value="">اختر المادة</option>{planSubjects.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+        <Field label="موضوع الدرس"><textarea style={textareaStyle} rows={3} value={planForm.lessonTopic} onChange={e=>setPlanForm({...planForm,lessonTopic:e.target.value})}/></Field>
+        <Field label="الواجبات"><textarea style={textareaStyle} rows={3} value={planForm.homework} onChange={e=>setPlanForm({...planForm,homework:e.target.value})}/></Field>
+        <Field label="الملاحظات"><textarea style={textareaStyle} rows={3} value={planForm.notes} onChange={e=>setPlanForm({...planForm,notes:e.target.value})}/></Field>
       </div>
-
-      <div style={tableContainer}>
-        {children}
-      </div>
-
-    </div>
-  );
+      <ModalButtons onSave={savePlan} onCancel={closePlan} saveLabel={editingPlanId ? "حفظ التعديل" : "إضافة الموضوع"}/>
+    </Modal>}
+  </div>;
 }
 
-function ActionButtons({
-  onEdit,
-  onDelete,
-}: {
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
+function Filter({label,value,onChange,options,all}:{label:string;value:string;onChange:(v:string)=>void;options:{id:number;name:string}[];all:string}) { return <div style={filterGroup}><label>{label}</label><select style={inputStyle} value={value} onChange={e=>onChange(e.target.value)}><option value="">{all}</option>{options.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></div>; }
+function Field({label,children}:{label:string;children:React.ReactNode}) { return <div style={{marginBottom:14}}><label style={labelStyle}>{label}</label>{children}</div>; }
+function Modal({title,onClose,children,wide=false}:{title:string;onClose:()=>void;children:React.ReactNode;wide?:boolean}) { return <div style={overlayStyle}><div style={{...modalStyle,maxWidth:wide?720:500}}><div style={modalHeader}><h3 style={{margin:0}}>{title}</h3><button onClick={onClose} style={closeButton}><X size={18}/></button></div>{children}</div></div>; }
+function ModalButtons({onSave,onCancel,saveLabel="حفظ"}:{onSave:()=>void;onCancel:()=>void;saveLabel?:string}) { return <div style={{display:"flex",gap:10,marginTop:18}}><button onClick={onSave} style={{...primaryButton,flex:1}}>{saveLabel}</button><button onClick={onCancel} style={secondaryButton}>إلغاء</button></div>; }
+function TabButton({active,icon,label,onClick}:{active:boolean;icon:React.ReactNode;label:string;onClick:()=>void}) { return <button onClick={onClick} style={{...tabButton,...(active?activeTabButton:{})}}>{icon}{label}</button>; }
+function EntitySection({title,addLabel,onAdd,children}:{title:string;addLabel:string;onAdd:()=>void;children:React.ReactNode}) { return <div><div style={sectionHeader}><h3 style={{margin:0}}>{title}</h3><button onClick={onAdd} style={primaryButton}><Plus size={17}/>{addLabel}</button></div><div style={tableContainer}>{children}</div></div>; }
+function SimpleTable({headers,rows}:{headers:string[];rows:React.ReactNode[][]}) { return <table style={tableStyle}><thead><tr>{headers.map(h=><th key={h} style={thStyle}>{h}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={tdStyle}>{c}</td>)}</tr>)}</tbody></table>; }
+function ActionButtons({onEdit,onDelete}:{onEdit:()=>void;onDelete:()=>void}) { return <div style={actions}><IconButton icon={<Edit size={15}/>} color="#2563EB" onClick={onEdit}/><IconButton icon={<Trash2 size={15}/>} color="#EF4444" onClick={onDelete}/></div>; }
+function IconButton({icon,color,onClick}:{icon:React.ReactNode;color:string;onClick:()=>void}) { return <button onClick={onClick} style={{border:"none",background:`${color}12`,color,width:32,height:32,borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{icon}</button>; }
+function Empty({text}:{text:string}) { return <div style={{padding:40,textAlign:"center",color:"#9CA3AF"}}>{text}</div>; }
+function entityName(t:EntityType) { return ({term:"الفصل الدراسي",level:"المرحلة",grade:"الصف",subject:"المادة"})[t]; }
 
-  return (
-
-    <div
-      style={{
-        display: "flex",
-        gap: "6px",
-        justifyContent:
-          "center",
-      }}
-    >
-
-      <IconButton
-        icon={<Edit size={15} />}
-        color="#2563EB"
-        onClick={onEdit}
-      />
-
-      <IconButton
-        icon={<Trash2 size={15} />}
-        color="#EF4444"
-        onClick={onDelete}
-      />
-
-    </div>
-  );
-}
-
-function IconButton({
-  icon,
-  color,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  color: string;
-  onClick: () => void;
-}) {
-
-  return (
-
-    <button
-      onClick={onClick}
-      style={{
-        border: "none",
-        background: `${color}12`,
-        color,
-        width: "32px",
-        height: "32px",
-        borderRadius: "8px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent:
-          "center",
-      }}
-    >
-      {icon}
-    </button>
-  );
-}
-
-function EmptyState({
-  text,
-}: {
-  text: string;
-}) {
-
-  return (
-
-    <div
-      style={{
-        padding: "40px",
-        textAlign: "center",
-        color: "#9CA3AF",
-      }}
-    >
-      {text}
-    </div>
-  );
-}
-
-// =========================================================
-// Helpers
-// =========================================================
-
-function getModalTitle(
-  type: EntityType,
-  edit: boolean
-) {
-
-  const action =
-    edit ? "تعديل" : "إضافة";
-
-  const names = {
-    term: "الفصل الدراسي",
-    level: "المرحلة",
-    grade: "الصف",
-    subject: "المادة",
-  };
-
-  return `${action} ${names[type]}`;
-}
-
-function formatDate(
-  date: string
-) {
-
-  if (!date) {
-    return "—";
-  }
-
-  try {
-
-    return new Intl.DateTimeFormat(
-      "ar-SA",
-      {
-        dateStyle: "medium",
-      }
-    ).format(
-      new Date(date)
-    );
-
-  } catch {
-
-    return date;
-  }
-}
-
-// =========================================================
-// Styles
-// =========================================================
-
-const headerStyle: React.CSSProperties = {
-  background: "#9EC5C7",
-  color: "#fff",
-  padding: "20px 24px",
-  borderRadius: "14px",
-  marginBottom: "20px",
-  display: "flex",
-  justifyContent:
-    "space-between",
-  alignItems: "center",
-};
-
-const refreshButton: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  border: "none",
-  background: "#ffffff33",
-  color: "#fff",
-  padding: "9px 14px",
-  borderRadius: "9px",
-  cursor: "pointer",
-};
-
-const tabsStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "8px",
-  flexWrap: "wrap",
-  borderBottom:
-    "1px solid #E5E7EB",
-  marginBottom: "20px",
-};
-
-const tabButton: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  padding: "11px 16px",
-  border: "none",
-  background: "transparent",
-  color: "#6B7280",
-  cursor: "pointer",
-  fontSize: "13px",
-  borderBottom:
-    "2px solid transparent",
-};
-
-const activeTabButton:
-  React.CSSProperties = {
-    color: "#2D7D82",
-    fontWeight: 700,
-    borderBottom:
-      "2px solid #2D7D82",
-};
-
-const sectionHeader:
-  React.CSSProperties = {
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "center",
-    marginBottom: "15px",
-};
-
-const filterCard:
-  React.CSSProperties = {
-    background: "#fff",
-    border:
-      "1px solid #E5E7EB",
-    borderRadius: "14px",
-    padding: "18px",
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(4, 1fr) auto",
-    gap: "12px",
-    alignItems: "end",
-    marginBottom: "18px",
-  };
-
-const filterGroup:
-  React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    fontSize: "12px",
-    color: "#6B7280",
-    fontWeight: 600,
-  };
-
-const inputStyle:
-  React.CSSProperties = {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "10px 12px",
-    border:
-      "1px solid #E5E7EB",
-    borderRadius: "8px",
-    outline: "none",
-    background: "#fff",
-    fontSize: "13px",
-  };
-
-const primaryButton:
-  React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent:
-      "center",
-    gap: "7px",
-    padding: "10px 16px",
-    background: "#2D7D82",
-    color: "#fff",
-    border: "none",
-    borderRadius: "9px",
-    cursor: "pointer",
-    fontWeight: 600,
-    whiteSpace: "nowrap",
-  };
-
-const secondaryButton:
-  React.CSSProperties = {
-    flex: 1,
-    padding: "11px",
-    border: "none",
-    background: "#F3F4F6",
-    color: "#6B7280",
-    borderRadius: "9px",
-    cursor: "pointer",
-  };
-
-const tableContainer:
-  React.CSSProperties = {
-    background: "#fff",
-    border:
-      "1px solid #E5E7EB",
-    borderRadius: "14px",
-    overflowX: "auto",
-    padding: "10px",
-  };
-
-const tableStyle:
-  React.CSSProperties = {
-    width: "100%",
-    borderCollapse:
-      "collapse",
-  };
-
-const thStyle:
-  React.CSSProperties = {
-    border:
-      "1px solid #E5E7EB",
-    padding: "12px",
-    background: "#F9FAFB",
-    color: "#6B7280",
-    fontSize: "12px",
-    fontWeight: 700,
-    textAlign: "center",
-  };
-
-const tdStyle:
-  React.CSSProperties = {
-    border:
-      "1px solid #E5E7EB",
-    padding: "11px",
-    color: "#374151",
-    fontSize: "13px",
-    textAlign: "center",
-  };
-
-const overlayStyle:
-  React.CSSProperties = {
-    position: "fixed",
-    inset: 0,
-    background:
-      "rgba(0,0,0,.4)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent:
-      "center",
-    zIndex: 2000,
-  };
-
-const modalStyle:
-  React.CSSProperties = {
-    background: "#fff",
-    borderRadius: "16px",
-    width: "90%",
-    maxWidth: "500px",
-    padding: "25px",
-    boxSizing: "border-box",
-  };
-
-const modalHeader:
-  React.CSSProperties = {
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "center",
-    marginBottom: "20px",
-  };
-
-const closeButton:
-  React.CSSProperties = {
-    border: "none",
-    background: "#F3F4F6",
-    width: "32px",
-    height: "32px",
-    borderRadius: "50%",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent:
-      "center",
-  };
-
-const labelStyle:
-  React.CSSProperties = {
-    display: "block",
-    marginBottom: "6px",
-    fontSize: "12px",
-    color: "#6B7280",
-    fontWeight: 600,
-  };
-
-const loadingStyle:
-  React.CSSProperties = {
-    textAlign: "center",
-    padding: "60px",
-    color: "#6B7280",
-  };
+const headerStyle:React.CSSProperties={background:"#9EC5C7",color:"#fff",padding:"20px 24px",borderRadius:14,marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"};
+const refreshButton:React.CSSProperties={display:"flex",alignItems:"center",gap:7,border:"none",background:"#ffffff33",color:"#fff",padding:"9px 14px",borderRadius:9,cursor:"pointer"};
+const tabsStyle:React.CSSProperties={display:"flex",gap:8,flexWrap:"wrap",borderBottom:"1px solid #E5E7EB",marginBottom:20};
+const tabButton:React.CSSProperties={display:"flex",alignItems:"center",gap:7,padding:"11px 16px",border:"none",background:"transparent",color:"#6B7280",cursor:"pointer",fontSize:13,borderBottom:"2px solid transparent"};
+const activeTabButton:React.CSSProperties={color:"#2D7D82",fontWeight:700,borderBottom:"2px solid #2D7D82"};
+const sectionHeader:React.CSSProperties={display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:15};
+const filterCard:React.CSSProperties={background:"#fff",border:"1px solid #E5E7EB",borderRadius:14,padding:18,display:"grid",gridTemplateColumns:"repeat(4,1fr) auto",gap:12,alignItems:"end",marginBottom:18};
+const filterGroup:React.CSSProperties={display:"flex",flexDirection:"column",gap:6,fontSize:12,color:"#6B7280",fontWeight:600};
+const inputStyle:React.CSSProperties={width:"100%",boxSizing:"border-box",padding:"10px 12px",border:"1px solid #E5E7EB",borderRadius:8,outline:"none",background:"#fff",fontSize:13};
+const textareaStyle:React.CSSProperties={...inputStyle,resize:"vertical",fontFamily:"inherit",lineHeight:1.6};
+const primaryButton:React.CSSProperties={display:"flex",alignItems:"center",justifyContent:"center",gap:7,padding:"10px 16px",background:"#2D7D82",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"};
+const secondaryButton:React.CSSProperties={flex:1,padding:11,border:"none",background:"#F3F4F6",color:"#6B7280",borderRadius:9,cursor:"pointer"};
+const secondarySmall:React.CSSProperties={padding:"10px 14px",border:"none",background:"#F3F4F6",color:"#6B7280",borderRadius:9,cursor:"pointer",whiteSpace:"nowrap"};
+const tableContainer:React.CSSProperties={background:"#fff",border:"1px solid #E5E7EB",borderRadius:14,overflowX:"auto",padding:10};
+const tableStyle:React.CSSProperties={width:"100%",borderCollapse:"collapse"};
+const thStyle:React.CSSProperties={border:"1px solid #E5E7EB",padding:12,background:"#F9FAFB",color:"#6B7280",fontSize:12,fontWeight:700,textAlign:"center"};
+const tdStyle:React.CSSProperties={border:"1px solid #E5E7EB",padding:11,color:"#374151",fontSize:13,textAlign:"center",verticalAlign:"top"};
+const actions:React.CSSProperties={display:"flex",gap:6,justifyContent:"center"};
+const overlayStyle:React.CSSProperties={position:"fixed",inset:0,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:2000};
+const modalStyle:React.CSSProperties={background:"#fff",borderRadius:16,width:"90%",padding:25,boxSizing:"border-box",maxHeight:"90vh",overflowY:"auto"};
+const modalHeader:React.CSSProperties={display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20};
+const closeButton:React.CSSProperties={border:"none",background:"#F3F4F6",width:32,height:32,borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"};
+const labelStyle:React.CSSProperties={display:"block",marginBottom:6,fontSize:12,color:"#6B7280",fontWeight:600};
+const twoCol:React.CSSProperties={display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:"0 15px"};
+const loadingStyle:React.CSSProperties={textAlign:"center",padding:60,color:"#6B7280"};
