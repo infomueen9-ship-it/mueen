@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, GraduationCap, Layers, FileText, Plus, Edit, Trash2, X, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, GraduationCap, Layers, FileText, Plus, Edit, Trash2, X, RefreshCw, Upload } from "lucide-react";
+import * as XLSX from "xlsx";
 import toast from "react-hot-toast";
 import api from "../../api/axios";
 
@@ -57,6 +58,10 @@ export default function StudyPlansPage() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [planForm, setPlanForm] = useState<PlanForm>(emptyPlan);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importForm, setImportForm] = useState<PlanForm>(emptyPlan);
+  const [importingPlans, setImportingPlans] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -159,6 +164,42 @@ export default function StudyPlansPage() {
   };
   const closePlan = () => { setShowPlanModal(false); setEditingPlanId(null); setPlanForm(emptyPlan); };
 
+  const openImportPlans = () => {
+    setImportForm({ ...emptyPlan, termId: selectedTerm, levelId: selectedLevel, gradeId: selectedGrade, subjectId: selectedSubject });
+    setShowImportModal(true);
+  };
+
+  const importPlansFromExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!importForm.termId || !importForm.subjectId) return toast.error("يرجى اختيار الفصل والمادة قبل رفع الملف");
+    if (!/\.(xlsx|xls)$/i.test(file.name)) return toast.error("الملف يجب أن يكون بصيغة Excel: xlsx أو xls");
+
+    setImportingPlans(true);
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!worksheet) return toast.error("ملف Excel لا يحتوي على ورقة بيانات");
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: "" });
+      const plans = rows.map(row => ({
+        lessonTopic: String(row["موضوع الدرس"] ?? row["lesson_topic"] ?? row["lessonTopic"] ?? "").trim(),
+        homework: String(row["الواجبات"] ?? row["homework"] ?? "").trim(),
+        notes: String(row["الملاحظات"] ?? row["notes"] ?? "").trim(),
+      })).filter(plan => plan.lessonTopic);
+      if (!plans.length) return toast.error("لم يتم العثور على عمود «موضوع الدرس» أو بيانات صالحة");
+      await api.post("/api/platform/admin/study-plans/plans/batch", {
+        termId: Number(importForm.termId), subjectId: Number(importForm.subjectId), plans,
+      });
+      toast.success(`تم استيراد ${plans.length} موضوعًا من Excel`);
+      setShowImportModal(false);
+      await loadData();
+    } catch (error) {
+      console.error(error);
+      toast.error(errorMessage(error, "تعذر استيراد ملف Excel"));
+    } finally { setImportingPlans(false); }
+  };
+
   const savePlan = async () => {
     if (!planForm.termId) return toast.error("يرجى اختيار الفصل الدراسي");
     if (!planForm.levelId) return toast.error("يرجى اختيار المرحلة");
@@ -202,7 +243,7 @@ export default function StudyPlansPage() {
           <Filter label="المرحلة" value={selectedLevel} onChange={v => { setSelectedLevel(v); setSelectedGrade(""); setSelectedSubject(""); }} options={levels} all="جميع المراحل"/>
           <Filter label="الصف" value={selectedGrade} onChange={v => { setSelectedGrade(v); setSelectedSubject(""); }} options={filteredGrades} all="جميع الصفوف"/>
           <Filter label="المادة" value={selectedSubject} onChange={setSelectedSubject} options={filteredSubjects} all="جميع المواد"/>
-          <div style={{ display: "flex", gap: 8 }}><button style={secondarySmall} onClick={() => {setSelectedTerm("");setSelectedLevel("");setSelectedGrade("");setSelectedSubject("");}}>مسح</button><button style={primaryButton} onClick={openAddPlan}><Plus size={17}/> إضافة موضوع</button></div>
+          <div style={{ display: "flex", gap: 8 }}><button style={secondarySmall} onClick={() => {setSelectedTerm("");setSelectedLevel("");setSelectedGrade("");setSelectedSubject("");}}>مسح</button><button style={secondarySmall} onClick={openImportPlans}><Upload size={17}/> استيراد Excel</button><button style={primaryButton} onClick={openAddPlan}><Plus size={17}/> إضافة موضوع</button></div>
         </div>
         <div style={tableContainer}>
           <table style={tableStyle}><thead><tr>
@@ -242,6 +283,18 @@ export default function StudyPlansPage() {
         <Field label="الملاحظات"><textarea style={textareaStyle} rows={3} value={planForm.notes} onChange={e=>setPlanForm({...planForm,notes:e.target.value})}/></Field>
       </div>
       <ModalButtons onSave={savePlan} onCancel={closePlan} saveLabel={editingPlanId ? "حفظ التعديل" : "إضافة الموضوع"}/>
+    </Modal>}
+
+    {showImportModal && <Modal wide title="استيراد خطة من Excel" onClose={() => !importingPlans && setShowImportModal(false)}>
+      <p style={{marginTop:0,color:"#475569"}}>الأعمدة المطلوبة: موضوع الدرس، الواجبات، الملاحظات. ويُنشأ موضوع درس لكل صف.</p>
+      <div style={twoCol}>
+        <Field label="الفصل الدراسي"><select style={inputStyle} value={importForm.termId} onChange={e=>setImportForm({...importForm,termId:e.target.value})}><option value="">اختر الفصل الدراسي</option>{terms.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
+        <Field label="المرحلة"><select style={inputStyle} value={importForm.levelId} onChange={e=>setImportForm({...importForm,levelId:e.target.value,gradeId:"",subjectId:""})}><option value="">اختر المرحلة</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></Field>
+        <Field label="الصف"><select style={inputStyle} value={importForm.gradeId} onChange={e=>setImportForm({...importForm,gradeId:e.target.value,subjectId:""})}><option value="">اختر الصف</option>{grades.filter(g=>!importForm.levelId||String(g.level_id)===importForm.levelId).map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>
+        <Field label="المادة"><select style={inputStyle} value={importForm.subjectId} onChange={e=>setImportForm({...importForm,subjectId:e.target.value})}><option value="">اختر المادة</option>{subjects.filter(s=>(!importForm.levelId||String(s.level_id)===importForm.levelId)&&(!importForm.gradeId||String(s.grade_id)===importForm.gradeId)).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+      </div>
+      <Field label="ملف Excel"><input ref={importFileRef} type="file" accept=".xlsx,.xls" style={inputStyle} onChange={importPlansFromExcel} disabled={importingPlans}/></Field>
+      {importingPlans && <div style={{color:"#2563EB",fontWeight:700}}>جارٍ استيراد الخطة...</div>}
     </Modal>}
   </div>;
 }

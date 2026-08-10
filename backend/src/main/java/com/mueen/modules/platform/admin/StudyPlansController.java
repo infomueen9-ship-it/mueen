@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequiredArgsConstructor
@@ -312,6 +313,40 @@ public class StudyPlansController {
                 Long.class, termId, subjectId, lessonTopic.trim(), nullable(homework), nullable(notes));
 
         return ResponseEntity.ok(Map.of("message", "تمت إضافة موضوع الدرس بنجاح", "id", id));
+    }
+
+    @PostMapping("/plans/batch")
+    @Transactional
+    public ResponseEntity<?> createPlansBatch(@RequestBody Map<String, Object> body) {
+        Long termId = getLong(body, "termId");
+        Long subjectId = getLong(body, "subjectId");
+        Object rawPlans = body.get("plans");
+
+        if (!(rawPlans instanceof List<?> planRows) || planRows.isEmpty()) {
+            return bad("لا توجد صفوف لاستيرادها");
+        }
+        if (planRows.size() > 500) return bad("الحد الأقصى للاستيراد هو 500 صف");
+
+        for (Object rawPlan : planRows) {
+            if (!(rawPlan instanceof Map<?, ?> row)) return bad("تنسيق صفوف الخطة غير صالح");
+            Map<String, Object> plan = new HashMap<>();
+            row.forEach((key, value) -> plan.put(String.valueOf(key), value));
+            String lessonTopic = getString(plan, "lessonTopic");
+            ResponseEntity<?> validation = validatePlan(termId, subjectId, lessonTopic);
+            if (validation != null) return validation;
+        }
+
+        for (Object rawPlan : planRows) {
+            Map<?, ?> row = (Map<?, ?>) rawPlan;
+            String lessonTopic = row.get("lessonTopic") == null ? null : String.valueOf(row.get("lessonTopic"));
+            String homework = row.get("homework") == null ? null : String.valueOf(row.get("homework"));
+            String notes = row.get("notes") == null ? null : String.valueOf(row.get("notes"));
+            jdbcTemplate.update(
+                    "INSERT INTO public.plan_bank (term_id, subject_id, lesson_topic, homework, notes) VALUES (?, ?, ?, ?, ?)",
+                    termId, subjectId, lessonTopic.trim(), nullable(homework), nullable(notes));
+        }
+
+        return ResponseEntity.ok(Map.of("message", "تم استيراد الخطة بنجاح", "count", planRows.size()));
     }
 
     @PutMapping("/plans/{id}")
