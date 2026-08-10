@@ -21,6 +21,7 @@ interface StudyPlan {
   grade_id: number;
   grade_name: string;
   lesson_topic: string;
+  lessonTopic?: string;
   homework: string | null;
   notes: string | null;
 }
@@ -76,7 +77,22 @@ export default function StudyPlansPage() {
   const filteredSubjects = useMemo(() => subjects.filter(s => (!selectedLevel || String(s.level_id) === selectedLevel) && (!selectedGrade || String(s.grade_id) === selectedGrade)), [subjects, selectedLevel, selectedGrade]);
   const planGrades = useMemo(() => planForm.levelId ? grades.filter(g => String(g.level_id) === planForm.levelId) : [], [grades, planForm.levelId]);
   const planSubjects = useMemo(() => subjects.filter(s => (!planForm.levelId || String(s.level_id) === planForm.levelId) && (!planForm.gradeId || String(s.grade_id) === planForm.gradeId)), [subjects, planForm.levelId, planForm.gradeId]);
-  const filteredPlans = useMemo(() => plans.filter(p => (!selectedTerm || String(p.term_id) === selectedTerm) && (!selectedLevel || String(p.level_id) === selectedLevel) && (!selectedGrade || String(p.grade_id) === selectedGrade) && (!selectedSubject || String(p.subject_id) === selectedSubject)), [plans, selectedTerm, selectedLevel, selectedGrade, selectedSubject]);
+  const displayPlans = useMemo(() => plans.map(plan => {
+    const subject = subjects.find(item => item.id === plan.subject_id);
+    const levelId = plan.level_id ?? subject?.level_id;
+    const gradeId = plan.grade_id ?? subject?.grade_id;
+    return {
+      ...plan,
+      term_name: plan.term_name || terms.find(item => item.id === plan.term_id)?.name || "—",
+      subject_name: plan.subject_name || subject?.name || "—",
+      level_id: levelId,
+      level_name: plan.level_name || levels.find(item => item.id === levelId)?.name || "—",
+      grade_id: gradeId,
+      grade_name: plan.grade_name || grades.find(item => item.id === gradeId)?.name || "—",
+      lesson_topic: plan.lesson_topic || plan.lessonTopic || "—",
+    };
+  }), [plans, terms, subjects, levels, grades]);
+  const filteredPlans = useMemo(() => displayPlans.filter(p => (!selectedTerm || String(p.term_id) === selectedTerm) && (!selectedLevel || String(p.level_id) === selectedLevel) && (!selectedGrade || String(p.grade_id) === selectedGrade) && (!selectedSubject || String(p.subject_id) === selectedSubject)), [displayPlans, selectedTerm, selectedLevel, selectedGrade, selectedSubject]);
 
   const errorMessage = (e: any, fallback: string) => e?.response?.data?.message || fallback;
 
@@ -127,7 +143,7 @@ export default function StudyPlansPage() {
   };
   const openEditPlan = (p: StudyPlan) => {
     setEditingPlanId(p.id);
-    setPlanForm({ termId: p.term_id ? String(p.term_id) : "", levelId: String(p.level_id), gradeId: String(p.grade_id), subjectId: String(p.subject_id), lessonTopic: p.lesson_topic || "", homework: p.homework || "", notes: p.notes || "" });
+    setPlanForm({ termId: p.term_id ? String(p.term_id) : "", levelId: String(p.level_id), gradeId: String(p.grade_id), subjectId: String(p.subject_id), lessonTopic: p.lesson_topic || p.lessonTopic || "", homework: p.homework || "", notes: p.notes || "" });
     setShowPlanModal(true);
   };
   const closePlan = () => { setShowPlanModal(false); setEditingPlanId(null); setPlanForm(emptyPlan); };
@@ -182,7 +198,7 @@ export default function StudyPlansPage() {
             {['الفصل','المرحلة','الصف','المادة','موضوع الدرس','الواجبات','الملاحظات','الإجراءات'].map(h => <th key={h} style={thStyle}>{h}</th>)}
           </tr></thead><tbody>
             {filteredPlans.map(p => <tr key={p.id}>
-              <td style={tdStyle}>{p.term_name || "—"}</td><td style={tdStyle}>{p.level_name}</td><td style={tdStyle}>{p.grade_name}</td><td style={{...tdStyle,fontWeight:700}}>{p.subject_name}</td>
+              <td style={tdStyle}>{p.term_name}</td><td style={tdStyle}>{p.level_name}</td><td style={tdStyle}>{p.grade_name}</td><td style={{...tdStyle,fontWeight:700}}>{p.subject_name}</td>
               <td style={{...tdStyle,textAlign:"right",minWidth:220}}>{p.lesson_topic}</td><td style={{...tdStyle,textAlign:"right",minWidth:180}}>{p.homework || "—"}</td><td style={{...tdStyle,textAlign:"right",minWidth:180}}>{p.notes || "—"}</td>
               <td style={tdStyle}><div style={actions}><IconButton icon={<Edit size={15}/>} color="#2563EB" onClick={() => openEditPlan(p)}/><IconButton icon={<Trash2 size={15}/>} color="#EF4444" onClick={() => deletePlan(p.id)}/></div></td>
             </tr>)}
