@@ -50,23 +50,22 @@ grade_name?: string;
 interface StudyPlan {
   id: number;
 
-  subject_id: number;
-  subject_name: string;
+  termId?: number;
+  termName?: string;
 
-  level_id: number;
-  level_name: string;
+  subjectId: number;
+  subjectName: string;
 
-  grade_id: number;
-  grade_name: string;
+  levelId: number;
+  levelName: string;
 
-  lesson_topic: string;
+  gradeId: number;
+  gradeName: string;
+
+  lessonTopic: string;
   homework?: string;
   notes?: string;
-
-  term_id?: number;
-  term_name?: string;
 }
-
 
 
 export default function StudyPlansPage() {
@@ -521,7 +520,7 @@ plans.filter(plan => {
 
   if (
     selectedTerm &&
-    String(plan.term_id) !==
+    String(plan.termId) !==
       selectedTerm
   ) {
     return false;
@@ -529,7 +528,7 @@ plans.filter(plan => {
 
   if (
     selectedLevel &&
-    String(plan.level_id) !==
+    String(plan.levelId) !==
       selectedLevel
   ) {
     return false;
@@ -537,7 +536,7 @@ plans.filter(plan => {
 
   if (
     selectedGrade &&
-    String(plan.grade_id) !==
+    String(plan.gradeId) !==
       selectedGrade
   ) {
     return false;
@@ -545,7 +544,7 @@ plans.filter(plan => {
 
   if (
     selectedSubject &&
-    String(plan.subject_id) !==
+    String(plan.subjectId) !==
       selectedSubject
   ) {
     return false;
@@ -843,88 +842,86 @@ padding: "30px",
           <div style={tableContainer}>
 
   <table style={tableStyle}>
-
   <thead>
-  <tr>
-    <th style={thStyle}>الفصل</th>
-    <th style={thStyle}>المرحلة</th>
-    <th style={thStyle}>الصف</th>
-    <th style={thStyle}>المادة</th>
-    <th style={thStyle}>موضوع الدرس</th>
-    <th style={thStyle}>الواجبات</th>
-    <th style={thStyle}>الملاحظات</th>
-    <th style={thStyle}>الإجراءات</th>
-  </tr>
-</thead>
+    <tr>
+      <th style={thStyle}>الفصل</th>
+      <th style={thStyle}>المرحلة</th>
+      <th style={thStyle}>الصف</th>
+      <th style={thStyle}>المادة</th>
+      <th style={thStyle}>موضوع الدرس</th>
+      <th style={thStyle}>الواجبات</th>
+      <th style={thStyle}>الملاحظات</th>
+      <th style={thStyle}>الإجراءات</th>
+    </tr>
+  </thead>
 
-<tbody>
-  {filteredPlans.map(plan => (
-    <tr key={plan.id}>
+  <tbody>
+    {filteredPlans.map(plan => (
+      <tr key={plan.id}>
 
-      <td style={tdStyle}>
-        {plan.term_name || "—"}
-      </td>
+        <td style={tdStyle}>
+          {plan.termName || "—"}
+        </td>
 
-      <td style={tdStyle}>
-        {plan.level_name || "—"}
-      </td>
+        <td style={tdStyle}>
+          {plan.levelName || "—"}
+        </td>
 
-      <td style={tdStyle}>
-        {plan.grade_name || "—"}
-      </td>
+        <td style={tdStyle}>
+          {plan.gradeName || "—"}
+        </td>
 
-      <td
-        style={{
-          ...tdStyle,
-          fontWeight: 700,
-        }}
-      >
-        {plan.subject_name || "—"}
-      </td>
-
-      <td style={tdStyle}>
-        {plan.lesson_topic || "—"}
-      </td>
-
-      <td style={tdStyle}>
-        {plan.homework || "—"}
-      </td>
-
-      <td style={tdStyle}>
-        {plan.notes || "—"}
-      </td>
-
-      <td style={tdStyle}>
-        <div
+        <td
           style={{
-            display: "flex",
-            gap: "5px",
-            justifyContent: "center",
+            ...tdStyle,
+            fontWeight: 700,
           }}
         >
-          <IconButton
-            icon={<Edit size={15} />}
-            color="#2563EB"
-            onClick={() => {
-              // تعديل موضوع الدرس
+          {plan.subjectName || "—"}
+        </td>
+
+        <td style={tdStyle}>
+          {plan.lessonTopic || "—"}
+        </td>
+
+        <td style={tdStyle}>
+          {plan.homework || "—"}
+        </td>
+
+        <td style={tdStyle}>
+          {plan.notes || "—"}
+        </td>
+
+        <td style={tdStyle}>
+          <div
+            style={{
+              display: "flex",
+              gap: "5px",
+              justifyContent: "center",
             }}
-          />
+          >
+            <IconButton
+              icon={<Edit size={15} />}
+              color="#2563EB"
+              onClick={() => {
+                // تعديل لاحقاً
+              }}
+            />
 
-          <IconButton
-            icon={<Trash2 size={15} />}
-            color="#EF4444"
-            onClick={() => {
-              deletePlan(plan.id)
-            }}
-          />
-        </div>
-      </td>
+            <IconButton
+              icon={<Trash2 size={15} />}
+              color="#EF4444"
+              onClick={() =>
+                deletePlan(plan.id)
+              }
+            />
+          </div>
+        </td>
 
-    </tr>
-  ))}
-</tbody>
-
-  </table>
+      </tr>
+    ))}
+  </tbody>
+</table>
 
   {filteredPlans.length === 0 && (
     <EmptyState
