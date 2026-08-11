@@ -844,152 +844,85 @@ padding: "30px",
 
   <table style={tableStyle}>
 
-    <thead>
-      <tr>
+  <thead>
+  <tr>
+    <th style={thStyle}>الفصل</th>
+    <th style={thStyle}>المرحلة</th>
+    <th style={thStyle}>الصف</th>
+    <th style={thStyle}>المادة</th>
+    <th style={thStyle}>موضوع الدرس</th>
+    <th style={thStyle}>الواجبات</th>
+    <th style={thStyle}>الملاحظات</th>
+    <th style={thStyle}>الإجراءات</th>
+  </tr>
+</thead>
 
-        <th style={thStyle}>
-          الفصل
-        </th>
+<tbody>
+  {filteredPlans.map(plan => (
+    <tr key={plan.id}>
 
-        <th style={thStyle}>
-          المرحلة
-        </th>
+      <td style={tdStyle}>
+        {plan.term_name || "—"}
+      </td>
 
-        <th style={thStyle}>
-          الصف
-        </th>
+      <td style={tdStyle}>
+        {plan.level_name || "—"}
+      </td>
 
-        <th style={thStyle}>
-          المادة
-        </th>
+      <td style={tdStyle}>
+        {plan.grade_name || "—"}
+      </td>
 
-        <th style={thStyle}>
-          موضوع الدرس
-        </th>
+      <td
+        style={{
+          ...tdStyle,
+          fontWeight: 700,
+        }}
+      >
+        {plan.subject_name || "—"}
+      </td>
 
-        <th style={thStyle}>
-          الواجبات
-        </th>
+      <td style={tdStyle}>
+        {plan.lesson_topic || "—"}
+      </td>
 
-        <th style={thStyle}>
-          الملاحظات
-        </th>
+      <td style={tdStyle}>
+        {plan.homework || "—"}
+      </td>
 
-        <th style={thStyle}>
-          الإجراءات
-        </th>
+      <td style={tdStyle}>
+        {plan.notes || "—"}
+      </td>
 
-      </tr>
-    </thead>
-
-    <tbody>
-
-      {filteredPlans.map(plan => (
-
-        <tr key={plan.id}>
-
-          {/* الفصل */}
-
-          <td style={tdStyle}>
-            {plan.term_name || "—"}
-          </td>
-
-          {/* المرحلة */}
-
-          <td style={tdStyle}>
-            {plan.level_name}
-          </td>
-
-          {/* الصف */}
-
-          <td style={tdStyle}>
-            {plan.grade_name}
-          </td>
-
-          {/* المادة */}
-
-          <td
-            style={{
-              ...tdStyle,
-              fontWeight: 700,
+      <td style={tdStyle}>
+        <div
+          style={{
+            display: "flex",
+            gap: "5px",
+            justifyContent: "center",
+          }}
+        >
+          <IconButton
+            icon={<Edit size={15} />}
+            color="#2563EB"
+            onClick={() => {
+              // تعديل موضوع الدرس
             }}
-          >
-            {plan.subject_name}
-          </td>
+          />
 
-          {/* موضوع الدرس */}
-
-          <td
-            style={{
-              ...tdStyle,
-              textAlign: "right",
-              minWidth: "220px",
+          <IconButton
+            icon={<Trash2 size={15} />}
+            color="#EF4444"
+            onClick={() => {
+              deletePlan(plan.id)
             }}
-          >
-            {plan.lesson_topic}
-          </td>
+          />
+        </div>
+      </td>
 
-          {/* الواجبات */}
-
-          <td
-            style={{
-              ...tdStyle,
-              textAlign: "right",
-              minWidth: "180px",
-            }}
-          >
-            {plan.homework || "—"}
-          </td>
-
-          {/* الملاحظات */}
-
-          <td
-            style={{
-              ...tdStyle,
-              textAlign: "right",
-              minWidth: "180px",
-            }}
-          >
-            {plan.notes || "—"}
-          </td>
-
-          {/* الإجراءات */}
-
-          <td style={tdStyle}>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "6px",
-                justifyContent: "center",
-              }}
-            >
-
-              <IconButton
-                icon={<Edit size={15} />}
-                color="#2563EB"
-                onClick={() => {
-                  // سنضيف التعديل هنا
-                }}
-              />
-
-              <IconButton
-                icon={<Trash2 size={15} />}
-                color="#EF4444"
-                onClick={() =>
-                  deletePlan(plan.id)
-                }
-              />
-
-            </div>
-
-          </td>
-
-        </tr>
-
-      ))}
-
-    </tbody>
+    </tr>
+  ))}
+</tbody>
 
   </table>
 
