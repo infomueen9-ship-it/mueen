@@ -1,83 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-الصورة التي تم إنشاؤها: تصميم شعارات عصريّ بنمطين
-
-تحرير
-
-
-الصورة التي تم إنشاؤها: تصميم شعار تقني عصري
-
-
-تحرير
-
-
-
-Pasted text.txt
-مستند
-
-
-Pasted code.ts
-TypeScript
-لماذا لايتم اظهار الاجراءات هنا
-
-لايتم عرض حقل الاجراءات 
-
-
-Pasted code(1).ts
-TypeScript
-هذا هو الكود
-
-السبت 11:50 م
-
-Pasted code(2).ts
-TypeScript
-
-
-Pasted text(1).txt
-مستند
-
-
-Pasted text(2).txt
-مستند
-
-
-كود ملصق واحد. java
-الملف
-
-
-نص واحد ملصق .txt
-مستند
-
-
-كود ملصق واحد. ts
-الملف
-
-
-خطه.xlsx
-جداول البيانات
-
 import { useCallback, useEffect, useState } from "react";
 import {
 BookOpen,
@@ -184,7 +105,7 @@ const [showModal, setShowModal] =
 useState(false);
 
 const [modalType, setModalType] =
-useState<EntityType>("term");
+useState("term");
 
 const [editingId, setEditingId] =
 useState<number | null>(null);
@@ -1493,7 +1414,7 @@ padding: "30px",
 
           <h3 style={{ margin: 0 }}>
             {getModalTitle(
-              modalType,
+              modalType as EntityType,
               !!editingId
             )}
           </h3>
@@ -2101,7 +2022,7 @@ grade: "الصف",
 subject: "المادة",
 };
 
-return ${action} ${names[type]};
+return `${action} ${names[type]}`;
 }
 
 function formatDate(
