@@ -68,11 +68,7 @@ created_by: string;
 created_at: string;
 }
 
-interface FormData {
-name: string;
-levelId: string;
-gradeId: string;
-}
+
 
 export default function StudyPlansPage() {
 
