@@ -151,7 +151,22 @@ try {
   setLevels(levelsRes.data);
   setGrades(gradesRes.data);
   setSubjects(subjectsRes.data);
-  setPlans(plansRes.data);
+  setPlans(
+    plansRes.data.map((plan: any): StudyPlan => ({
+      id: plan.id,
+      termId: plan.term_id,
+      termName: plan.term_name,
+      subjectId: plan.subject_id,
+      subjectName: plan.subject_name,
+      levelId: plan.level_id,
+      levelName: plan.level_name,
+      gradeId: plan.grade_id,
+      gradeName: plan.grade_name,
+      lessonTopic: plan.lesson_topic,
+      homework: plan.homework,
+      notes: plan.notes,
+    }))
+  );
 
 } catch (error) {
 
@@ -390,7 +405,7 @@ try {
 // =========================================================
 const uploadPlan = async () => {
   if (!uploadFile) {
-    toast.error("يرجى اختيار ملف Excel");
+    toast.error("يرجى اختيار الملف");
     return;
   }
 
@@ -405,83 +420,18 @@ const uploadPlan = async () => {
   }
 
   try {
-    // قراءة Excel في المتصفح فقط
-    const XLSX = await import("xlsx");
+    const data = new FormData();
 
-    const buffer = await uploadFile.arrayBuffer();
+    data.append("termId", uploadTerm);
+    data.append("subjectId", uploadSubject);
+    data.append("file", uploadFile);
 
-    const workbook = XLSX.read(buffer, {
-      type: "array",
-    });
-
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-
-    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(
-      worksheet,
-      {
-        defval: "",
-      }
-    );
-
-    if (!rows.length) {
-      toast.error("ملف Excel فارغ");
-      return;
-    }
-
-    // تحويل صفوف Excel إلى البيانات المطلوبة للقاعدة
-    const plans = rows
-      .map((row) => ({
-        lessonTopic: String(
-          row["موضوع الدرس"] ??
-          row["lessonTopic"] ??
-          ""
-        ).trim(),
-
-        homework: String(
-          row["الواجبات"] ??
-          row["الواجب"] ??
-          row["homework"] ??
-          ""
-        ).trim(),
-
-        notes: String(
-          row["الملاحظات"] ??
-          row["notes"] ??
-          ""
-        ).trim(),
-      }))
-      .filter(
-        (plan) => plan.lessonTopic !== ""
-      );
-
-    if (!plans.length) {
-      toast.error(
-        "لم يتم العثور على موضوعات دروس في ملف Excel"
-      );
-      return;
-    }
-
-    if (plans.length > 500) {
-      toast.error(
-        "الحد الأقصى للاستيراد هو 500 صف"
-      );
-      return;
-    }
-
-    // إرسال البيانات فقط للباك
     await api.post(
-      "/api/platform/admin/study-plans/plans/batch",
-      {
-        termId: Number(uploadTerm),
-        subjectId: Number(uploadSubject),
-        plans,
-      }
+      "/api/platform/admin/study-plans/plans/upload",
+      data
     );
 
-    toast.success(
-      `تم حفظ ${plans.length} موضوع درس بنجاح`
-    );
+    toast.success("تم رفع الخطة وحفظ البيانات بنجاح");
 
     setShowUploadModal(false);
     setUploadFile(null);
@@ -492,10 +442,7 @@ const uploadPlan = async () => {
 
   } catch (error) {
     console.error(error);
-
-    toast.error(
-      "حدث خطأ أثناء قراءة ملف Excel أو حفظ البيانات"
-    );
+    toast.error("حدث خطأ أثناء رفع الخطة");
   }
 };
 
