@@ -412,7 +412,7 @@ const uploadPlan = async () => {
     data.append("file", uploadFile);
 
     await api.post(
-      "/api/platform/admin/study-plans/plans/upload",
+      "/api/platform/admin/study-plans/plans",
       data
     );
 

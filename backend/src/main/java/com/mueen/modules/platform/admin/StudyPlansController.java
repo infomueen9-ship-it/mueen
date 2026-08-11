@@ -308,7 +308,7 @@ public class StudyPlansController {
 
         Long id = jdbcTemplate.queryForObject(
                 "INSERT INTO public.plan_bank " +
-                "(term_id, subject_id, lesson_topic, homework, notes) " +
+                "( subject_id, lesson_topic, homework, notes, term_id) " +
                 "VALUES (?, ?, ?, ?, ?) RETURNING id",
                 Long.class, termId, subjectId, lessonTopic.trim(), nullable(homework), nullable(notes));
 
