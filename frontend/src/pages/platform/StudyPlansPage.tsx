@@ -49,23 +49,23 @@ grade_name?: string;
 }
 
 interface StudyPlan {
-id: number;
-term_id: number;
-term_name: string;
+  id: number;
 
-subject_id: number;
-subject_name: string;
+  subject_id: number;
+  subject_name: string;
 
-level_id: number;
-level_name: string;
+  level_id: number;
+  level_name: string;
 
-grade_id: number;
-grade_name: string;
+  grade_id: number;
+  grade_name: string;
 
-file_name: string;
-file_size: number;
-created_by: string;
-created_at: string;
+  lesson_topic: string;
+  homework?: string;
+  notes?: string;
+
+  term_id?: number;
+  term_name?: string;
 }
 
 
@@ -865,154 +865,166 @@ padding: "30px",
 
           <div style={tableContainer}>
 
-            <table style={tableStyle}>
+  <table style={tableStyle}>
 
-              <thead>
+    <thead>
+      <tr>
 
-                <tr>
+        <th style={thStyle}>
+          الفصل
+        </th>
 
-                  <th style={thStyle}>
-                    الفصل
-                  </th>
+        <th style={thStyle}>
+          المرحلة
+        </th>
 
-                  <th style={thStyle}>
-                    المرحلة
-                  </th>
+        <th style={thStyle}>
+          الصف
+        </th>
 
-                  <th style={thStyle}>
-                    الصف
-                  </th>
+        <th style={thStyle}>
+          المادة
+        </th>
 
-                  <th style={thStyle}>
-                    المادة
-                  </th>
+        <th style={thStyle}>
+          موضوع الدرس
+        </th>
 
-                  <th style={thStyle}>
-                    الملف
-                  </th>
+        <th style={thStyle}>
+          الواجبات
+        </th>
 
-                  <th style={thStyle}>
-                    أضيفت بواسطة
-                  </th>
+        <th style={thStyle}>
+          الملاحظات
+        </th>
 
-                  <th style={thStyle}>
-                    التاريخ
-                  </th>
+        <th style={thStyle}>
+          الإجراءات
+        </th>
 
-                  <th style={thStyle}>
-                    الإجراءات
-                  </th>
+      </tr>
+    </thead>
 
-                </tr>
+    <tbody>
 
-              </thead>
+      {filteredPlans.map(plan => (
 
-              <tbody>
+        <tr key={plan.id}>
 
-                {filteredPlans.map(
-                  plan => (
+          {/* الفصل */}
 
-                    <tr key={plan.id}>
+          <td style={tdStyle}>
+            {plan.term_name || "—"}
+          </td>
 
-                      <td style={tdStyle}>
-                        {plan.term_name}
-                      </td>
+          {/* المرحلة */}
 
-                      <td style={tdStyle}>
-                        {plan.level_name}
-                      </td>
+          <td style={tdStyle}>
+            {plan.level_name}
+          </td>
 
-                      <td style={tdStyle}>
-                        {plan.grade_name}
-                      </td>
+          {/* الصف */}
 
-                      <td
-                        style={{
-                          ...tdStyle,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {plan.subject_name}
-                      </td>
+          <td style={tdStyle}>
+            {plan.grade_name}
+          </td>
 
-                      <td style={tdStyle}>
-                        {plan.file_name}
-                      </td>
+          {/* المادة */}
 
-                      <td style={tdStyle}>
-                        {plan.created_by}
-                      </td>
+          <td
+            style={{
+              ...tdStyle,
+              fontWeight: 700,
+            }}
+          >
+            {plan.subject_name}
+          </td>
 
-                      <td style={tdStyle}>
-                        {formatDate(
-                          plan.created_at
-                        )}
-                      </td>
+          {/* موضوع الدرس */}
 
-                      <td style={tdStyle}>
+          <td
+            style={{
+              ...tdStyle,
+              textAlign: "right",
+              minWidth: "220px",
+            }}
+          >
+            {plan.lesson_topic}
+          </td>
 
-                        <div
-                          style={{
-                            display:
-                              "flex",
-                            gap: "5px",
-                            justifyContent:
-                              "center",
-                          }}
-                        >
+          {/* الواجبات */}
 
-                          <IconButton
-                            icon={
-                              <Download
-                                size={15}
-                              />
-                            }
-                            color="#2563EB"
-                            onClick={() =>
-                              downloadPlan(
-                                plan.id,
-                                plan.file_name
-                              )
-                            }
-                          />
+          <td
+            style={{
+              ...tdStyle,
+              textAlign: "right",
+              minWidth: "180px",
+            }}
+          >
+            {plan.homework || "—"}
+          </td>
 
-                          <IconButton
-                            icon={
-                              <Trash2
-                                size={15}
-                              />
-                            }
-                            color="#EF4444"
-                            onClick={() =>
-                              deletePlan(
-                                plan.id
-                              )
-                            }
-                          />
+          {/* الملاحظات */}
 
-                        </div>
+          <td
+            style={{
+              ...tdStyle,
+              textAlign: "right",
+              minWidth: "180px",
+            }}
+          >
+            {plan.notes || "—"}
+          </td>
 
-                      </td>
+          {/* الإجراءات */}
 
-                    </tr>
+          <td style={tdStyle}>
 
-                  )
-                )}
+            <div
+              style={{
+                display: "flex",
+                gap: "6px",
+                justifyContent: "center",
+              }}
+            >
 
-              </tbody>
-
-            </table>
-
-            {filteredPlans.length ===
-              0 && (
-
-              <EmptyState
-                text="لا توجد خطط دراسية"
+              <IconButton
+                icon={<Edit size={15} />}
+                color="#2563EB"
+                onClick={() => {
+                  // سنضيف التعديل هنا
+                }}
               />
 
-            )}
+              <IconButton
+                icon={<Trash2 size={15} />}
+                color="#EF4444"
+                onClick={() =>
+                  deletePlan(plan.id)
+                }
+              />
 
-          </div>
+            </div>
+
+          </td>
+
+        </tr>
+
+      ))}
+
+    </tbody>
+
+  </table>
+
+  {filteredPlans.length === 0 && (
+    <EmptyState
+      text="لا توجد بيانات في بنك الخطط"
+    />
+  )}
+
+</div>
+
+     
 
         </>
 
