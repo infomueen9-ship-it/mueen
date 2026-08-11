@@ -389,54 +389,114 @@ try {
 // Upload
 // =========================================================
 const uploadPlan = async () => {
+  if (!uploadFile) {
+    toast.error("يرجى اختيار ملف Excel");
+    return;
+  }
 
-if (!uploadFile) {
-toast.error("يرجى اختيار الملف");
-return;
-}
+  if (!uploadTerm) {
+    toast.error("يرجى اختيار الفصل الدراسي");
+    return;
+  }
 
-if (!uploadSubject) {
-toast.error("يرجى اختيار المادة");
-return;
-}
+  if (!uploadSubject) {
+    toast.error("يرجى اختيار المادة");
+    return;
+  }
 
-try {
+  try {
+    // قراءة Excel في المتصفح فقط
+    const XLSX = await import("xlsx");
 
-const data = new FormData();
+    const buffer = await uploadFile.arrayBuffer();
 
-data.append(
-  "subjectId",
-  uploadSubject
-);
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+    });
 
-data.append(
-  "file",
-  uploadFile
-);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
 
-await api.post(
-  "/api/platform/admin/study-plans/plans/upload",
-  data
-);
+    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(
+      worksheet,
+      {
+        defval: "",
+      }
+    );
 
-toast.success(
-  "تم رفع الخطة وحفظ البيانات بنجاح"
-);
+    if (!rows.length) {
+      toast.error("ملف Excel فارغ");
+      return;
+    }
 
-setShowUploadModal(false);
-setUploadFile(null);
-setUploadTerm("");
-setUploadSubject("");
+    // تحويل صفوف Excel إلى البيانات المطلوبة للقاعدة
+    const plans = rows
+      .map((row) => ({
+        lessonTopic: String(
+          row["موضوع الدرس"] ??
+          row["lessonTopic"] ??
+          ""
+        ).trim(),
 
-await loadData();
-} catch (error) {
+        homework: String(
+          row["الواجبات"] ??
+          row["الواجب"] ??
+          row["homework"] ??
+          ""
+        ).trim(),
 
-console.error(error);
+        notes: String(
+          row["الملاحظات"] ??
+          row["notes"] ??
+          ""
+        ).trim(),
+      }))
+      .filter(
+        (plan) => plan.lessonTopic !== ""
+      );
 
-toast.error(
-  "حدث خطأ أثناء رفع الخطة"
-);
-}
+    if (!plans.length) {
+      toast.error(
+        "لم يتم العثور على موضوعات دروس في ملف Excel"
+      );
+      return;
+    }
+
+    if (plans.length > 500) {
+      toast.error(
+        "الحد الأقصى للاستيراد هو 500 صف"
+      );
+      return;
+    }
+
+    // إرسال البيانات فقط للباك
+    await api.post(
+      "/api/platform/admin/study-plans/plans/batch",
+      {
+        termId: Number(uploadTerm),
+        subjectId: Number(uploadSubject),
+        plans,
+      }
+    );
+
+    toast.success(
+      `تم حفظ ${plans.length} موضوع درس بنجاح`
+    );
+
+    setShowUploadModal(false);
+    setUploadFile(null);
+    setUploadTerm("");
+    setUploadSubject("");
+
+    await loadData();
+
+  } catch (error) {
+    console.error(error);
+
+    toast.error(
+      "حدث خطأ أثناء قراءة ملف Excel أو حفظ البيانات"
+    );
+  }
 };
 
 // =========================================================
