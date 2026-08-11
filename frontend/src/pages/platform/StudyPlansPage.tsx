@@ -8,7 +8,6 @@ FileText,
 Plus,
 Edit,
 Trash2,
-Download,
 Upload,
 X,
 RefreshCw,
@@ -481,29 +480,7 @@ try {
 // Download
 // =========================================================
 
-const downloadPlan = (
-id: number,
-fileName: string
-) => {
 
-const baseURL =
-  api.defaults.baseURL || "";
-
-const url =
-  `${baseURL}/api/platform/admin/study-plans/plans/${id}/download`;
-
-const link =
-  document.createElement("a");
-
-link.href = url;
-link.download = fileName;
-
-document.body.appendChild(link);
-
-link.click();
-
-document.body.removeChild(link);
-};
 
 // =========================================================
 // Filtering
@@ -2033,29 +2010,7 @@ subject: "المادة",
 return `${action} ${names[type]}`;
 }
 
-function formatDate(
-date: string
-) {
 
-if (!date) {
-return "—";
-}
-
-try {
-
-return new Intl.DateTimeFormat(
-  "ar-SA",
-  {
-    dateStyle: "medium",
-  }
-).format(
-  new Date(date)
-);
-} catch {
-
-return date;
-}
-}
 
 // =========================================================
 // Styles
