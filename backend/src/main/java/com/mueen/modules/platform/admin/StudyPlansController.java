@@ -5,7 +5,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -274,122 +280,483 @@ public class StudyPlansController {
     }
 
     // =========================================================
-    // PLAN BANK
-    // =========================================================
+// PLAN BANK
+// =========================================================
 
-    @GetMapping("/plans")
-    public ResponseEntity<List<Map<String, Object>>> getPlans() {
-        String sql = "SELECT " +
-                "p.id, p.term_id, t.name AS term_name, " +
-                "p.subject_id, s.name AS subject_name, " +
-                "s.level_id, l.name AS level_name, " +
-                "s.grade_id, g.name AS grade_name, " +
-                "p.lesson_topic, p.homework, p.notes " +
-                "FROM public.plan_bank p " +
-                "LEFT JOIN public.terms t ON p.term_id = t.id " +
-                "JOIN public.subject s ON p.subject_id = s.id " +
-                "JOIN public.grade g ON s.grade_id = g.id " +
-                "JOIN public.level l ON s.level_id = l.id " +
-                "ORDER BY p.id DESC";
-        return ResponseEntity.ok(jdbcTemplate.queryForList(sql));
+@GetMapping("/plans")
+public ResponseEntity<List<Map<String, Object>>> getPlans() {
+
+    String sql = "SELECT " +
+            "p.id, p.term_id, t.name AS term_name, " +
+            "p.subject_id, s.name AS subject_name, " +
+            "s.level_id, l.name AS level_name, " +
+            "s.grade_id, g.name AS grade_name, " +
+            "p.lesson_topic, p.homework, p.notes " +
+            "FROM public.plan_bank p " +
+            "LEFT JOIN public.terms t ON p.term_id = t.id " +
+            "JOIN public.subject s ON p.subject_id = s.id " +
+            "JOIN public.grade g ON s.grade_id = g.id " +
+            "JOIN public.level l ON s.level_id = l.id " +
+            "ORDER BY p.id DESC";
+
+    return ResponseEntity.ok(jdbcTemplate.queryForList(sql));
+}
+
+
+/**
+ * إنشاء خطة واحدة
+ */
+@PostMapping("/plans")
+@Transactional
+public ResponseEntity<?> createPlan(
+        @RequestBody Map<String, Object> body
+) {
+
+    Long termId = getLong(body, "termId");
+    Long subjectId = getLong(body, "subjectId");
+
+    String lessonTopic = getString(body, "lessonTopic");
+    String homework = getString(body, "homework");
+    String notes = getString(body, "notes");
+
+    ResponseEntity<?> validation =
+            validatePlan(termId, subjectId, lessonTopic);
+
+    if (validation != null) {
+        return validation;
     }
 
-    @PostMapping("/plans")
-    @Transactional
-    public ResponseEntity<?> createPlan(@RequestBody Map<String, Object> body) {
-        Long termId = getLong(body, "termId");
-        Long subjectId = getLong(body, "subjectId");
-        String lessonTopic = getString(body, "lessonTopic");
-        String homework = getString(body, "homework");
-        String notes = getString(body, "notes");
+    Long id = jdbcTemplate.queryForObject(
+            "INSERT INTO public.plan_bank " +
+                    "(subject_id, lesson_topic, homework, notes, term_id) " +
+                    "VALUES (?, ?, ?, ?, ?) RETURNING id",
+            Long.class,
+            subjectId,
+            lessonTopic.trim(),
+            nullable(homework),
+            nullable(notes),
+            termId
+    );
 
-        ResponseEntity<?> validation = validatePlan(termId, subjectId, lessonTopic);
-        if (validation != null) return validation;
+    return ResponseEntity.ok(
+            Map.of(
+                    "message", "تمت إضافة موضوع الدرس بنجاح",
+                    "id", id
+            )
+    );
+}
 
-        Long id = jdbcTemplate.queryForObject(
-                "INSERT INTO public.plan_bank " +
-                "( subject_id, lesson_topic, homework, notes, term_id) " +
-                "VALUES (?, ?, ?, ?, ?) RETURNING id",
-                Long.class, termId, subjectId, lessonTopic.trim(), nullable(homework), nullable(notes));
 
-        return ResponseEntity.ok(Map.of("message", "تمت إضافة موضوع الدرس بنجاح", "id", id));
+/**
+ * استيراد الخطة من Excel
+ *
+ * الأعمدة المطلوبة:
+ * العمود الأول = lesson_topic
+ * العمود الثاني = homework
+ * العمود الثالث = notes
+ *
+ * أول صف يعتبر Header ويتم تجاهله.
+ */
+@PostMapping(
+        value = "/plans/upload",
+        consumes = "multipart/form-data"
+)
+@Transactional
+public ResponseEntity<?> uploadPlan(
+        @RequestParam("termId") Long termId,
+        @RequestParam("subjectId") Long subjectId,
+        @RequestParam("file") MultipartFile file
+) throws IOException {
+
+    // ---------------------------------------------------------
+    // التحقق من الفصل والمادة
+    // ---------------------------------------------------------
+
+    if (termId == null) {
+        return bad("الفصل الدراسي مطلوب");
     }
 
-    @PostMapping("/plans/batch")
-    @Transactional
-    public ResponseEntity<?> createPlansBatch(@RequestBody Map<String, Object> body) {
-        Long termId = getLong(body, "termId");
-        Long subjectId = getLong(body, "subjectId");
-        Object rawPlans = body.get("plans");
+    if (subjectId == null) {
+        return bad("المادة مطلوبة");
+    }
 
-        if (!(rawPlans instanceof List<?> planRows) || planRows.isEmpty()) {
-            return bad("لا توجد صفوف لاستيرادها");
+    if (!exists("public.terms", termId)) {
+        return bad("الفصل الدراسي غير موجود");
+    }
+
+    if (!exists("public.subject", subjectId)) {
+        return bad("المادة غير موجودة");
+    }
+
+    // ---------------------------------------------------------
+    // التحقق من الملف
+    // ---------------------------------------------------------
+
+    if (file == null || file.isEmpty()) {
+        return bad("يرجى اختيار ملف الخطة");
+    }
+
+    String filename = file.getOriginalFilename();
+
+    if (filename == null ||
+            !filename.toLowerCase().endsWith(".xlsx")) {
+
+        return bad("يجب أن يكون الملف بصيغة Excel xlsx");
+    }
+
+    int insertedRows = 0;
+
+    // ---------------------------------------------------------
+    // قراءة Excel
+    // ---------------------------------------------------------
+
+    try (XSSFWorkbook workbook =
+                 new XSSFWorkbook(file.getInputStream())) {
+
+        if (workbook.getNumberOfSheets() == 0) {
+
+            return bad("ملف Excel لا يحتوي على أوراق");
         }
-        if (planRows.size() > 500) return bad("الحد الأقصى للاستيراد هو 500 صف");
 
-        for (Object rawPlan : planRows) {
-            if (!(rawPlan instanceof Map<?, ?> row)) return bad("تنسيق صفوف الخطة غير صالح");
-            Map<String, Object> plan = new HashMap<>();
-            row.forEach((key, value) -> plan.put(String.valueOf(key), value));
-            String lessonTopic = getString(plan, "lessonTopic");
-            ResponseEntity<?> validation = validatePlan(termId, subjectId, lessonTopic);
-            if (validation != null) return validation;
-        }
+        Sheet sheet = workbook.getSheetAt(0);
 
-        for (Object rawPlan : planRows) {
-            Map<?, ?> row = (Map<?, ?>) rawPlan;
-            String lessonTopic = row.get("lessonTopic") == null ? null : String.valueOf(row.get("lessonTopic"));
-            String homework = row.get("homework") == null ? null : String.valueOf(row.get("homework"));
-            String notes = row.get("notes") == null ? null : String.valueOf(row.get("notes"));
+        DataFormatter formatter = new DataFormatter();
+
+        boolean firstRow = true;
+
+        for (Row row : sheet) {
+
+            // تجاهل صف العناوين
+            if (firstRow) {
+                firstRow = false;
+                continue;
+            }
+
+            String lessonTopic =
+                    getExcelCellValue(row, 0, formatter);
+
+            String homework =
+                    getExcelCellValue(row, 1, formatter);
+
+            String notes =
+                    getExcelCellValue(row, 2, formatter);
+
+            // تجاهل الصفوف الفارغة
+            if (lessonTopic == null ||
+                    lessonTopic.isBlank()) {
+                continue;
+            }
+
             jdbcTemplate.update(
-                    "INSERT INTO public.plan_bank (term_id, subject_id, lesson_topic, homework, notes) VALUES (?, ?, ?, ?, ?)",
-                    termId, subjectId, lessonTopic.trim(), nullable(homework), nullable(notes));
-        }
+                    "INSERT INTO public.plan_bank " +
+                            "(term_id, subject_id, lesson_topic, homework, notes) " +
+                            "VALUES (?, ?, ?, ?, ?)",
 
-        return ResponseEntity.ok(Map.of("message", "تم استيراد الخطة بنجاح", "count", planRows.size()));
+                    termId,
+                    subjectId,
+                    lessonTopic.trim(),
+                    emptyToNull(homework),
+                    emptyToNull(notes)
+            );
+
+            insertedRows++;
+        }
     }
 
-    @PutMapping("/plans/{id}")
-    @Transactional
-    public ResponseEntity<?> updatePlan(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        if (!exists("public.plan_bank", id)) return ResponseEntity.notFound().build();
+    // ---------------------------------------------------------
+    // جلب معلومات المادة للرد
+    // ---------------------------------------------------------
 
-        Long termId = getLong(body, "termId");
-        Long subjectId = getLong(body, "subjectId");
-        String lessonTopic = getString(body, "lessonTopic");
-        String homework = getString(body, "homework");
-        String notes = getString(body, "notes");
+    List<Map<String, Object>> subjects =
+            jdbcTemplate.queryForList(
+                    "SELECT " +
+                            "s.id, " +
+                            "s.name AS subject_name, " +
+                            "s.grade_id, " +
+                            "g.name AS grade_name, " +
+                            "s.level_id, " +
+                            "l.name AS level_name " +
+                            "FROM public.subject s " +
+                            "JOIN public.grade g ON s.grade_id = g.id " +
+                            "JOIN public.level l ON s.level_id = l.id " +
+                            "WHERE s.id = ?",
+                    subjectId
+            );
 
-        ResponseEntity<?> validation = validatePlan(termId, subjectId, lessonTopic);
-        if (validation != null) return validation;
+    Map<String, Object> subject = subjects.get(0);
+
+    return ResponseEntity.ok(
+            Map.of(
+                    "message",
+                    "تم رفع الخطة وحفظ البيانات بنجاح",
+
+                    "insertedRows",
+                    insertedRows,
+
+                    "termId",
+                    termId,
+
+                    "subjectId",
+                    subjectId,
+
+                    "subjectName",
+                    subject.get("subject_name"),
+
+                    "gradeId",
+                    subject.get("grade_id"),
+
+                    "gradeName",
+                    subject.get("grade_name"),
+
+                    "levelId",
+                    subject.get("level_id"),
+
+                    "levelName",
+                    subject.get("level_name")
+            )
+    );
+}
+
+
+/**
+ * استيراد مجموعة خطط من JSON
+ */
+@PostMapping("/plans/batch")
+@Transactional
+public ResponseEntity<?> createPlansBatch(
+        @RequestBody Map<String, Object> body
+) {
+
+    Long termId = getLong(body, "termId");
+    Long subjectId = getLong(body, "subjectId");
+    Object rawPlans = body.get("plans");
+
+    if (!(rawPlans instanceof List<?> planRows)
+            || planRows.isEmpty()) {
+
+        return bad("لا توجد صفوف لاستيرادها");
+    }
+
+    if (planRows.size() > 500) {
+        return bad("الحد الأقصى للاستيراد هو 500 صف");
+    }
+
+    // التحقق أولًا من جميع الصفوف
+    for (Object rawPlan : planRows) {
+
+        if (!(rawPlan instanceof Map<?, ?> row)) {
+            return bad("تنسيق صفوف الخطة غير صالح");
+        }
+
+        Map<String, Object> plan = new HashMap<>();
+
+        row.forEach(
+                (key, value) ->
+                        plan.put(
+                                String.valueOf(key),
+                                value
+                        )
+        );
+
+        String lessonTopic =
+                getString(plan, "lessonTopic");
+
+        ResponseEntity<?> validation =
+                validatePlan(
+                        termId,
+                        subjectId,
+                        lessonTopic
+                );
+
+        if (validation != null) {
+            return validation;
+        }
+    }
+
+    // الإدخال
+    for (Object rawPlan : planRows) {
+
+        Map<?, ?> row = (Map<?, ?>) rawPlan;
+
+        String lessonTopic =
+                row.get("lessonTopic") == null
+                        ? null
+                        : String.valueOf(
+                                row.get("lessonTopic")
+                        );
+
+        String homework =
+                row.get("homework") == null
+                        ? null
+                        : String.valueOf(
+                                row.get("homework")
+                        );
+
+        String notes =
+                row.get("notes") == null
+                        ? null
+                        : String.valueOf(
+                                row.get("notes")
+                        );
 
         jdbcTemplate.update(
-                "UPDATE public.plan_bank SET term_id = ?, subject_id = ?, " +
-                "lesson_topic = ?, homework = ?, notes = ? WHERE id = ?",
-                termId, subjectId, lessonTopic.trim(), nullable(homework), nullable(notes), id);
+                "INSERT INTO public.plan_bank " +
+                        "(term_id, subject_id, lesson_topic, homework, notes) " +
+                        "VALUES (?, ?, ?, ?, ?)",
 
-        return ok("تم تعديل موضوع الدرس بنجاح");
+                termId,
+                subjectId,
+                lessonTopic.trim(),
+                nullable(homework),
+                nullable(notes)
+        );
     }
 
-    @DeleteMapping("/plans/{id}")
-    @Transactional
-    public ResponseEntity<?> deletePlan(@PathVariable Long id) {
-        int deleted = jdbcTemplate.update("DELETE FROM public.plan_bank WHERE id = ?", id);
-        return deleted == 0 ? ResponseEntity.notFound().build() : ok("تم حذف موضوع الدرس بنجاح");
+    return ResponseEntity.ok(
+            Map.of(
+                    "message",
+                    "تم استيراد الخطة بنجاح",
+
+                    "count",
+                    planRows.size()
+            )
+    );
+}
+
+
+@PutMapping("/plans/{id}")
+@Transactional
+public ResponseEntity<?> updatePlan(
+        @PathVariable Long id,
+        @RequestBody Map<String, Object> body
+) {
+
+    if (!exists("public.plan_bank", id)) {
+        return ResponseEntity.notFound().build();
     }
 
-    private ResponseEntity<?> validatePlan(Long termId, Long subjectId, String lessonTopic) {
-        if (termId == null) return bad("الفصل الدراسي مطلوب");
-        if (subjectId == null) return bad("المادة مطلوبة");
-        if (blank(lessonTopic)) return bad("موضوع الدرس مطلوب");
-        if (!exists("public.terms", termId)) return bad("الفصل الدراسي غير موجود");
-        if (!exists("public.subject", subjectId)) return bad("المادة غير موجودة");
-        return null;
+    Long termId = getLong(body, "termId");
+    Long subjectId = getLong(body, "subjectId");
+
+    String lessonTopic =
+            getString(body, "lessonTopic");
+
+    String homework =
+            getString(body, "homework");
+
+    String notes =
+            getString(body, "notes");
+
+    ResponseEntity<?> validation =
+            validatePlan(
+                    termId,
+                    subjectId,
+                    lessonTopic
+            );
+
+    if (validation != null) {
+        return validation;
     }
+
+    jdbcTemplate.update(
+            "UPDATE public.plan_bank SET " +
+                    "term_id = ?, " +
+                    "subject_id = ?, " +
+                    "lesson_topic = ?, " +
+                    "homework = ?, " +
+                    "notes = ? " +
+                    "WHERE id = ?",
+
+            termId,
+            subjectId,
+            lessonTopic.trim(),
+            nullable(homework),
+            nullable(notes),
+            id
+    );
+
+    return ok("تم تعديل موضوع الدرس بنجاح");
+}
+
+
+@DeleteMapping("/plans/{id}")
+@Transactional
+public ResponseEntity<?> deletePlan(
+        @PathVariable Long id
+) {
+
+    int deleted =
+            jdbcTemplate.update(
+                    "DELETE FROM public.plan_bank WHERE id = ?",
+                    id
+            );
+
+    return deleted == 0
+            ? ResponseEntity.notFound().build()
+            : ok("تم حذف موضوع الدرس بنجاح");
+}
+
+
+private ResponseEntity<?> validatePlan(
+        Long termId,
+        Long subjectId,
+        String lessonTopic
+) {
+
+    if (termId == null) {
+        return bad("الفصل الدراسي مطلوب");
+    }
+
+    if (subjectId == null) {
+        return bad("المادة مطلوبة");
+    }
+
+    if (blank(lessonTopic)) {
+        return bad("موضوع الدرس مطلوب");
+    }
+
+    if (!exists("public.terms", termId)) {
+        return bad("الفصل الدراسي غير موجود");
+    }
+
+    if (!exists("public.subject", subjectId)) {
+        return bad("المادة غير موجودة");
+    }
+
+    return null;
+}
 
     // =========================================================
     // HELPERS
     // =========================================================
+    private static String getExcelCellValue(
+        Row row,
+        int columnIndex,
+        DataFormatter formatter
+) {
+
+    if (row == null) {
+        return "";
+    }
+
+    var cell = row.getCell(
+            columnIndex,
+            Row.MissingCellPolicy.RETURN_BLANK_AS_NULL
+    );
+
+    if (cell == null) {
+        return "";
+    }
+
+    return formatter
+            .formatCellValue(cell)
+            .trim();
+}
+private static String emptyToNull(String value) {
+    return value == null || value.isBlank()
+            ? null
+            : value.trim();
+}
 
     private boolean exists(String table, Long id) {
         Integer count = jdbcTemplate.queryForObject(
