@@ -151,7 +151,28 @@ try {
   setLevels(levelsRes.data);
   setGrades(gradesRes.data);
   setSubjects(subjectsRes.data);
-  setPlans(plansRes.data);
+ setPlans(
+  plansRes.data.map((plan: any) => ({
+    id: plan.id,
+
+    termId: plan.term_id,
+    termName: plan.term_name,
+
+    subjectId: plan.subject_id,
+    subjectName: plan.subject_name,
+
+    levelId: plan.level_id,
+    levelName: plan.level_name,
+
+    gradeId: plan.grade_id,
+    gradeName: plan.grade_name,
+
+    lessonTopic: plan.lesson_topic,
+
+    homework: plan.homework,
+    notes: plan.notes,
+  }))
+);
 
 } catch (error) {
 
