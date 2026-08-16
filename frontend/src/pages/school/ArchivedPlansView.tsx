@@ -81,38 +81,90 @@ export default function ArchivedPlansView({ schemaName, classroomId, classroomNa
     } finally { setSaving(false) }
   }
 
-  return <div style={{ direction: 'rtl' }}>
-    <button onClick={onBack} style={backButton}><ArrowRight size={17} /> العودة إلى إدارة الجداول</button>
-    <div style={header}>الخطط المؤرشفة — {classroomName}</div>
-    <div style={filters}>
-      <label>الأسبوع
-        <select value={week} onChange={event => changeWeek(Number(event.target.value))} style={input}>
-          {weeks.map(value => <option key={value} value={value}>الأسبوع {value}</option>)}
-        </select>
-      </label>
-      <label>من التاريخ<input type="date" value={dates.startDate} onChange={event => setDates({ ...dates, startDate: event.target.value })} style={input} /></label>
-      <label>إلى التاريخ<input type="date" value={dates.endDate} onChange={event => setDates({ ...dates, endDate: event.target.value })} style={input} /></label>
+  return (
+    <div style={{ direction: 'rtl' }}>
+      <button onClick={onBack} style={backButton}><ArrowRight size={17} /> العودة إلى إدارة الجداول</button>
+      <div style={header}>الخطط المؤرشفة — {classroomName}</div>
+      
+      <div style={filters}>
+        <label>الأسبوع
+          <select value={week} onChange={event => changeWeek(Number(event.target.value))} style={input}>
+            {weeks.map(value => <option key={value} value={value}>الأسبوع {value}</option>)}
+          </select>
+        </label>
+        <label>من التاريخ
+          <input type="date" value={dates.startDate} onChange={event => setDates({ ...dates, startDate: event.target.value })} style={input} />
+        </label>
+        <label>إلى التاريخ
+          <input type="date" value={dates.endDate} onChange={event => setDates({ ...dates, endDate: event.target.value })} style={input} />
+        </label>
+      </div>
+
+      {loading ? (
+        <p style={{ textAlign: 'center' }}>جارٍ التحميل...</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={table}>
+            <thead>
+              <tr>
+                <th style={th}>#</th>
+                <th style={th}>الأسبوع</th>
+                <th style={th}>من</th>
+                <th style={th}>إلى</th>
+                <th style={th}>الصف</th>
+                <th style={th}>المادة</th>
+                <th style={th}>موضوع الدرس</th>
+                <th style={th}>الواجبات</th>
+                <th style={th}>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plans.map((plan, index) => (
+                <tr key={index}>
+                  <td style={td}>{index + 1}</td>
+                  <td style={td}>الأسبوع {week}</td>
+                  <td style={td}>{dates.startDate}</td>
+                  <td style={td}>{dates.endDate}</td>
+                  <td style={td}>{classroomName}</td>
+                  <td style={td}>
+                    <select value={plan.subjectId} onChange={event => updatePlan(index, 'subjectId', event.target.value)} style={input}>
+                      <option value="">اختر المادة</option>
+                      {subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}>
+                    <input value={plan.lesson} onChange={event => updatePlan(index, 'lesson', event.target.value)} style={input} placeholder="موضوع الدرس" />
+                  </td>
+                  <td style={td}>
+                    <input value={plan.homework} onChange={event => updatePlan(index, 'homework', event.target.value)} style={input} placeholder="الواجب" />
+                  </td>
+                  <td style={td}>
+                    <button onClick={() => setPlans(plans.filter((_, current) => current !== index))} style={iconButton} title="حذف">
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!plans.length && (
+                <tr>
+                  <td colSpan={9} style={{ ...td, color: '#9CA3AF' }}>لا توجد خطة لهذا الأسبوع. أضف درساً لبدء الخطة.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+        <button onClick={() => setPlans([...plans, { subjectId: '', lesson: '', homework: '' }])} style={secondaryButton}>
+          <Plus size={16} /> إضافة درس
+        </button>
+        <button onClick={save} disabled={saving} style={saveButton}>
+          <Save size={16} /> {saving ? 'جارٍ الحفظ...' : 'حفظ الخطة'}
+        </button>
+      </div>
     </div>
-    {loading ? <p style={{ textAlign: 'center' }}>جارٍ التحميل...</p> : <div style={{ overflowX: 'auto' }}>
-      <table style={table}><thead><tr>
-        <th style={th}>الصف</th><th style={th}>المادة</th><th style={th}>موضوع الدرس</th><th style={th}>الواجبات</th><th style={th}>الأسبوع</th><th style={th}>من</th><th style={th}>إلى</th><th style={th}>إجراء</th>
-      </tr></thead><tbody>
-        {plans.map((plan, index) => <tr key={index}>
-          <td style={td}>{classroomName}</td>
-          <td style={td}><select value={plan.subjectId} onChange={event => updatePlan(index, 'subjectId', event.target.value)} style={input}><option value="">اختر المادة</option>{subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select></td>
-          <td style={td}><input value={plan.lesson} onChange={event => updatePlan(index, 'lesson', event.target.value)} style={input} /></td>
-          <td style={td}><input value={plan.homework} onChange={event => updatePlan(index, 'homework', event.target.value)} style={input} /></td>
-          <td style={td}>الأسبوع {week}</td><td style={td}>{dates.startDate}</td><td style={td}>{dates.endDate}</td>
-          <td style={td}><button onClick={() => setPlans(plans.filter((_, current) => current !== index))} style={iconButton}><Trash2 size={16} /></button></td>
-        </tr>)}
-        {!plans.length && <tr><td colSpan={8} style={{ ...td, color: '#9CA3AF' }}>لا توجد خطة لهذا الأسبوع. أضف صفًا لبدء الخطة.</td></tr>}
-      </tbody></table>
-    </div>}
-    <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-      <button onClick={() => setPlans([...plans, { subjectId: '', lesson: '', homework: '' }])} style={secondaryButton}><Plus size={16} /> إضافة درس</button>
-      <button onClick={save} disabled={saving} style={saveButton}><Save size={16} /> {saving ? 'جارٍ الحفظ...' : 'حفظ الخطة'}</button>
-    </div>
-  </div>
+  )
 }
 
 const header: React.CSSProperties = { background: '#9EC5C7', color: '#fff', padding: 16, borderRadius: 12, textAlign: 'center', fontWeight: 700, marginBottom: 18 }
