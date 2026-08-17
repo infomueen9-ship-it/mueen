@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import ClassroomSchedule from './ClassroomSchedule'
 import StudentsView from './StudentsView'
 import ArchivedPlansView from './ArchivedPlansView'
+import PrintPlanView from './PrintPlanView'
 
 interface Classroom {
   id: number
@@ -31,6 +32,10 @@ export default function SchedulesView({
 
   // الفصل الذي تم اختيار "الخطط المؤرشفة" له
   const [archivedClassroom, setArchivedClassroom] =
+    useState<Classroom | null>(null)
+
+  // الفصل الذي تم اختيار "طباعة الخطة" له
+  const [printClassroom, setPrintClassroom] =
     useState<Classroom | null>(null)
 
   // =========================================================
@@ -307,6 +312,9 @@ export default function SchedulesView({
                         <Printer size={13} />
                       }
                       label="طباعة الخطة"
+                      onClick={() =>
+                        setPrintClassroom(cls)
+                      }
                     />
 
                     {/* الطلاب */}
@@ -470,6 +478,126 @@ export default function SchedulesView({
                 }
                 onBack={() =>
                   setArchivedClassroom(null)
+                }
+              />
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================== */}
+      {/* Print Plan Modal */}
+      {/* ===================================================== */}
+
+      {printClassroom && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background:
+              'rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3000,
+            padding: '20px',
+            backdropFilter: 'blur(3px)',
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              width: '95%',
+              maxWidth: '1400px',
+              height: '90vh',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow:
+                '0 20px 60px rgba(0,0,0,.2)',
+            }}
+          >
+
+            {/* Modal Header */}
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent:
+                  'space-between',
+                alignItems: 'center',
+                padding: '15px 20px',
+                borderBottom:
+                  '1px solid #E5E7EB',
+                background: '#F9FAFB',
+                direction: 'rtl',
+              }}
+            >
+              <div>
+                <h3
+                  style={{
+                    margin: 0,
+                    color: '#374151',
+                    fontSize: '16px',
+                  }}
+                >
+                  طباعة الخطة
+                </h3>
+
+                <div
+                  style={{
+                    marginTop: '4px',
+                    color: '#6B7280',
+                    fontSize: '12px',
+                  }}
+                >
+                  {printClassroom.name}
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setPrintClassroom(null)
+                }
+                style={{
+                  border: 'none',
+                  background: '#F3F4F6',
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#6B7280',
+                  fontSize: '16px',
+                }}
+                className="mueen-no-print"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Print Plan Content */}
+
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+              }}
+            >
+              <PrintPlanView
+                schemaName={schemaName}
+                classroomId={
+                  printClassroom.id
+                }
+                classroomName={
+                  printClassroom.name
+                }
+                onBack={() =>
+                  setPrintClassroom(null)
                 }
               />
             </div>
