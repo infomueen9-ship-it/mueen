@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -166,13 +167,13 @@ public class ArchivedControl {
                             body.get("weekNumber")
                     );
 
-            String startDate =
-                    getString(
+            Date startDate =
+                    getDate(
                             body.get("startDate")
                     );
 
-            String endDate =
-                    getString(
+            Date endDate =
+                    getDate(
                             body.get("endDate")
                     );
 
@@ -224,13 +225,13 @@ public class ArchivedControl {
                         body.get("weekNumber")
                 );
 
-        String startDate =
-                getString(
+        Date startDate =
+                getDate(
                         body.get("startDate")
                 );
 
-        String endDate =
-                getString(
+        Date endDate =
+                getDate(
                         body.get("endDate")
                 );
 
@@ -329,13 +330,13 @@ public class ArchivedControl {
                             plan.get("weekNumber")
                     );
 
-            String startDate =
-                    getString(
+            Date startDate =
+                    getDate(
                             plan.get("startDate")
                     );
 
-            String endDate =
-                    getString(
+            Date endDate =
+                    getDate(
                             plan.get("endDate")
                     );
 
@@ -512,6 +513,26 @@ public class ArchivedControl {
             return Integer.parseInt(
                     value.toString()
             );
+
+        } catch (Exception e) {
+
+            return null;
+        }
+    }
+
+
+    private Date getDate(Object value) {
+
+        String text =
+                getString(value);
+
+        if (text == null) {
+            return null;
+        }
+
+        try {
+
+            return Date.valueOf(text);
 
         } catch (Exception e) {
 
