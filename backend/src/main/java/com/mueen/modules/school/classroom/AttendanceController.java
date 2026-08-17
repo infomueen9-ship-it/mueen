@@ -35,7 +35,7 @@ public class AttendanceController {
                 LEFT JOIN
                     %s.student_enrollments se ON c.id = se.classroom_id
                 LEFT JOIN
-                    %s.attendance a ON se.student_id = a.student_id AND c.id = a.classroom_id AND CAST(a.attendance_date AS DATE) = CURRENT_DATE
+                    %s.attendance a ON se.student_id = a.student_id AND c.id = a.classroom_id AND a.date = CURRENT_DATE
                 GROUP BY
                     c.id, c.name
                 ORDER BY
@@ -88,7 +88,7 @@ public class AttendanceController {
                     COUNT(a.id) FILTER (WHERE a.status = 'absence') as absence_count
                 FROM %s.classroom_subjects cs
                 JOIN %s.classrooms c ON cs.classroom_id = c.id
-                LEFT JOIN %s.attendance a ON a.classroom_id = c.id AND CAST(a.attendance_date AS DATE) = CURRENT_DATE
+                LEFT JOIN %s.attendance a ON a.classroom_id = c.id AND a.date = CURRENT_DATE
                 WHERE cs.teacher_id = ?
                 GROUP BY c.id, c.name
                 """.formatted(schemaName, schemaName, schemaName);
