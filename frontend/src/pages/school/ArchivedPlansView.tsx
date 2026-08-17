@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+
+import { useEffect, useState } from 'react'
 import {
   ArrowRight,
   Plus,
@@ -6,6 +7,8 @@ import {
   Trash2,
   X,
   CalendarDays,
+  BookOpen,
+  Plane,
 } from 'lucide-react'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
@@ -48,36 +51,18 @@ type LessonPlan = {
 
 type ArchivedPlan = {
   id?: number
-  levelId: string
-  gradeId: string
-  subjectId: string
-  planIds: string[]
-  week: string
+  type: 'lesson' | 'leave'
+  planId?: string
+  lessonTopic?: string
+  weekNumber: string
   startDate: string
   endDate: string
-}
-
-type LeavePlan = {
-  id: string
-  type: string
-  title: string
-  startDate: string
-  endDate: string
-  notes: string
 }
 
 const weeks = Array.from(
   { length: 20 },
   (_, index) => index + 1
 )
-
-const leaveTypes = [
-  'إجازة رسمية',
-  'إجازة منتصف الفصل',
-  'إجازة نهاية الفصل',
-  'إجازة طارئة',
-  'إجازة أخرى',
-]
 
 /* =========================================================
    التاريخ الهجري
@@ -164,52 +149,30 @@ export default function ArchivedPlansView({
   const [plans, setPlans] =
     useState<ArchivedPlan[]>([])
 
-  const [leaves, setLeaves] =
-    useState<LeavePlan[]>([])
-
   const [loading, setLoading] =
     useState(true)
 
   const [saving, setSaving] =
     useState(false)
 
-  /*
-   * نموذج إضافة درس
-   */
   const [showAddForm, setShowAddForm] =
     useState(false)
 
-  /*
-   * نموذج إضافة إجازة
-   */
-  const [showLeaveForm, setShowLeaveForm] =
-    useState(false)
+  const [addType, setAddType] =
+    useState<'lesson' | 'leave'>(
+      'lesson'
+    )
 
-  /*
-   * البيانات الحالية للدرس
-   */
   const [newPlan, setNewPlan] =
     useState<ArchivedPlan>({
-      levelId: '',
-      gradeId: '',
-      subjectId: '',
-      planIds: [],
-      week: '1',
-      startDate: '',
-      endDate: '',
-    })
-
-  /*
-   * البيانات الحالية للإجازة
-   */
-  const [newLeave, setNewLeave] =
-    useState<LeavePlan>({
-      id: '',
-      type: 'إجازة رسمية',
-      title: '',
-      startDate: '',
-      endDate: '',
-      notes: '',
+      type: 'lesson',
+      planId: '',
+      lessonTopic: '',
+      weekNumber: '1',
+      startDate:
+        weekDates(1).startDate,
+      endDate:
+        weekDates(1).endDate,
     })
 
   /* =======================================================
@@ -228,6 +191,7 @@ export default function ArchivedPlansView({
           gradesResponse,
           subjectsResponse,
           plansResponse,
+          archivedResponse,
         ] = await Promise.all([
           api.get<Level[]>(
             '/api/platform/admin/study-plans/levels'
@@ -243,6 +207,10 @@ export default function ArchivedPlansView({
 
           api.get<LessonPlan[]>(
             '/api/platform/admin/study-plans/plans'
+          ),
+
+          api.get(
+            `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`
           ),
         ])
 
@@ -264,126 +232,65 @@ export default function ArchivedPlansView({
           plansResponse.data || []
         )
 
-        /*
-         * تحميل الدروس المؤرشفة الحالية
-         */
-        try {
-          const archivedResponse =
-            await api.get(
-              `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`
-            )
+        const data =
+          archivedResponse.data
 
-          if (cancelled) return
+        if (Array.isArray(data)) {
+          setPlans(
+            data.map(
+              (item: any) => ({
+                id: item.id,
 
-          const data =
-            archivedResponse.data
+                type:
+                  item.type === 'leave'
+                    ? 'leave'
+                    : 'lesson',
 
-          if (Array.isArray(data)) {
-            setPlans(
-              data.map(
-                (plan: any) => {
-                  const week =
-                    Number(
-                      plan.week ??
-                        plan.weekNumber ??
-                        plan.week_number ??
-                        1
-                    )
-
-                  const dates =
-                    weekDates(week)
-
-                  /*
-                   * دعم الشكل القديم planId
-                   * والشكل الجديد planIds
-                   */
-                  let planIds: string[] = []
-
-                  if (
-                    Array.isArray(
-                      plan.planIds
-                    )
-                  ) {
-                    planIds =
-                      plan.planIds.map(
-                        (id: any) =>
-                          String(id)
+                planId:
+                  item.planId != null
+                    ? String(
+                        item.planId
                       )
-                  } else if (
-                    plan.planId !==
-                      undefined &&
-                    plan.planId !== null
-                  ) {
-                    planIds = [
-                      String(
-                        plan.planId
-                      ),
-                    ]
-                  } else if (
-                    plan.plan_id !==
-                      undefined &&
-                    plan.plan_id !== null
-                  ) {
-                    planIds = [
-                      String(
-                        plan.plan_id
-                      ),
-                    ]
-                  }
+                    : undefined,
 
-                  return {
-                    id: plan.id,
+                lessonTopic:
+                  item.lessonTopic ??
+                  item.lesson_topic ??
+                  undefined,
 
-                    levelId: String(
-                      plan.levelId ??
-                        plan.level_id ??
-                        ''
-                    ),
+                weekNumber:
+                  String(
+                    item.weekNumber ??
+                      item.week_number ??
+                      1
+                  ),
 
-                    gradeId: String(
-                      plan.gradeId ??
-                        plan.grade_id ??
-                        ''
-                    ),
+                startDate:
+                  item.startDate ??
+                  item.date_from ??
+                  '',
 
-                    subjectId: String(
-                      plan.subjectId ??
-                        plan.subject_id ??
-                        ''
-                    ),
-
-                    planIds,
-
-                    week: String(week),
-
-                    startDate:
-                      plan.startDate ??
-                      plan.start_date ??
-                      dates.startDate,
-
-                    endDate:
-                      plan.endDate ??
-                      plan.end_date ??
-                      dates.endDate,
-                  }
-                }
-              )
+                endDate:
+                  item.endDate ??
+                  item.date_to ??
+                  '',
+              })
             )
-          }
-        } catch (error) {
-          console.error(
-            'Archived plans load error:',
-            error
           )
-
+        } else {
           setPlans([])
         }
       } catch (error) {
-        console.error(error)
+        console.error(
+          'Archived plans load error:',
+          error
+        )
 
         toast.error(
           'تعذر تحميل بيانات الخطط'
         )
+
+        setPlans([])
       } finally {
         if (!cancelled) {
           setLoading(false)
@@ -396,217 +303,63 @@ export default function ArchivedPlansView({
     return () => {
       cancelled = true
     }
-  }, [schemaName, classroomId])
+  }, [
+    schemaName,
+    classroomId,
+  ])
 
   /* =======================================================
-     الصفوف التابعة للمرحلة
+     فتح النموذج
      ======================================================= */
 
-  const availableGrades =
-    useMemo(() => {
-      if (!newPlan.levelId) {
-        return []
-      }
+  const openAddForm = (
+    type: 'lesson' | 'leave'
+  ) => {
+    const dates =
+      weekDates(1)
 
-      return grades.filter(
-        grade =>
-          String(
-            grade.level_id
-          ) === newPlan.levelId
-      )
-    }, [
-      grades,
-      newPlan.levelId,
-    ])
-
-  /* =======================================================
-     المواد التابعة للصف
-     ======================================================= */
-
-  const availableSubjects =
-    useMemo(() => {
-      if (
-        !newPlan.levelId ||
-        !newPlan.gradeId
-      ) {
-        return []
-      }
-
-      return subjects.filter(
-        subject =>
-          String(
-            subject.level_id
-          ) === newPlan.levelId &&
-          String(
-            subject.grade_id
-          ) === newPlan.gradeId
-      )
-    }, [
-      subjects,
-      newPlan.levelId,
-      newPlan.gradeId,
-    ])
-
-  /* =======================================================
-     مواضيع الدروس التابعة للمادة
-     ======================================================= */
-
-  const availableLessons =
-    useMemo(() => {
-      if (
-        !newPlan.levelId ||
-        !newPlan.gradeId ||
-        !newPlan.subjectId
-      ) {
-        return []
-      }
-
-      return lessonPlans.filter(
-        lesson =>
-          String(
-            lesson.level_id
-          ) === newPlan.levelId &&
-          String(
-            lesson.grade_id
-          ) === newPlan.gradeId &&
-          String(
-            lesson.subject_id
-          ) === newPlan.subjectId
-      )
-    }, [
-      lessonPlans,
-      newPlan.levelId,
-      newPlan.gradeId,
-      newPlan.subjectId,
-    ])
-
-  /* =======================================================
-     فتح نموذج إضافة درس
-     ======================================================= */
-
-  const openAddForm = () => {
-    setShowLeaveForm(false)
+    setAddType(type)
 
     setNewPlan({
-      levelId: '',
-      gradeId: '',
-      subjectId: '',
-      planIds: [],
-      week: '1',
-      startDate: '',
-      endDate: '',
+      type,
+      planId: '',
+      lessonTopic: '',
+      weekNumber: '1',
+      startDate:
+        dates.startDate,
+      endDate:
+        dates.endDate,
     })
 
     setShowAddForm(true)
   }
 
   /* =======================================================
-     إغلاق نموذج إضافة درس
+     إغلاق النموذج
      ======================================================= */
 
   const closeAddForm = () => {
     setShowAddForm(false)
 
+    setAddType('lesson')
+
+    const dates =
+      weekDates(1)
+
     setNewPlan({
-      levelId: '',
-      gradeId: '',
-      subjectId: '',
-      planIds: [],
-      week: '1',
-      startDate: '',
-      endDate: '',
+      type: 'lesson',
+      planId: '',
+      lessonTopic: '',
+      weekNumber: '1',
+      startDate:
+        dates.startDate,
+      endDate:
+        dates.endDate,
     })
   }
 
   /* =======================================================
-     فتح نموذج الإجازة
-     ======================================================= */
-
-  const openLeaveForm = () => {
-    setShowAddForm(false)
-
-    setNewLeave({
-      id: '',
-      type: 'إجازة رسمية',
-      title: '',
-      startDate: '',
-      endDate: '',
-      notes: '',
-    })
-
-    setShowLeaveForm(true)
-  }
-
-  /* =======================================================
-     إغلاق نموذج الإجازة
-     ======================================================= */
-
-  const closeLeaveForm = () => {
-    setShowLeaveForm(false)
-
-    setNewLeave({
-      id: '',
-      type: 'إجازة رسمية',
-      title: '',
-      startDate: '',
-      endDate: '',
-      notes: '',
-    })
-  }
-
-  /* =======================================================
-     اختيار المرحلة
-     ======================================================= */
-
-  const handleLevelChange = (
-    value: string
-  ) => {
-    setNewPlan(current => ({
-      ...current,
-
-      levelId: value,
-
-      gradeId: '',
-      subjectId: '',
-      planIds: [],
-    }))
-  }
-
-  /* =======================================================
-     اختيار الصف
-     ======================================================= */
-
-  const handleGradeChange = (
-    value: string
-  ) => {
-    setNewPlan(current => ({
-      ...current,
-
-      gradeId: value,
-
-      subjectId: '',
-      planIds: [],
-    }))
-  }
-
-  /* =======================================================
-     اختيار المادة
-     ======================================================= */
-
-  const handleSubjectChange = (
-    value: string
-  ) => {
-    setNewPlan(current => ({
-      ...current,
-
-      subjectId: value,
-
-      planIds: [],
-    }))
-  }
-
-  /* =======================================================
-     اختيار الأسبوع
+     تغيير الأسبوع
      ======================================================= */
 
   const handleWeekChange = (
@@ -617,53 +370,49 @@ export default function ArchivedPlansView({
         Number(value)
       )
 
-    setNewPlan(current => ({
-      ...current,
+    setNewPlan(
+      current => ({
+        ...current,
 
-      week: value,
+        weekNumber: value,
 
-      startDate:
-        dates.startDate,
+        startDate:
+          dates.startDate,
 
-      endDate:
-        dates.endDate,
-    }))
+        endDate:
+          dates.endDate,
+      })
+    )
   }
 
   /* =======================================================
-     اختيار أكثر من موضوع
+     تغيير موضوع الدرس
      ======================================================= */
 
-  const handleLessonToggle = (
-    lessonId: string
+  const handleLessonChange = (
+    value: string
   ) => {
-    setNewPlan(current => {
-      const exists =
-        current.planIds.includes(
-          lessonId
-        )
-
-      if (exists) {
-        return {
-          ...current,
-
-          planIds:
-            current.planIds.filter(
-              id =>
-                id !== lessonId
-            ),
-        }
-      }
-
-      return {
+    setNewPlan(
+      current => ({
         ...current,
+        planId: value,
+      })
+    )
+  }
 
-        planIds: [
-          ...current.planIds,
-          lessonId,
-        ],
-      }
-    })
+  /* =======================================================
+     تغيير الإجازة
+     ======================================================= */
+
+  const handleLeaveChange = (
+    value: string
+  ) => {
+    setNewPlan(
+      current => ({
+        ...current,
+        lessonTopic: value,
+      })
+    )
   }
 
   /* =======================================================
@@ -676,42 +425,24 @@ export default function ArchivedPlansView({
       | 'endDate',
     value: string
   ) => {
-    setNewPlan(current => ({
-      ...current,
-      [field]: value,
-    }))
+    setNewPlan(
+      current => ({
+        ...current,
+        [field]: value,
+      })
+    )
   }
 
   /* =======================================================
-     إضافة الدرس للقائمة
+     إضافة سجل محليًا
      ======================================================= */
 
   const addPlan = () => {
-    if (!newPlan.levelId) {
-      toast.error(
-        'يرجى اختيار المرحلة'
-      )
-      return
-    }
-
-    if (!newPlan.gradeId) {
-      toast.error(
-        'يرجى اختيار الصف'
-      )
-      return
-    }
-
-    if (!newPlan.subjectId) {
-      toast.error(
-        'يرجى اختيار المادة'
-      )
-      return
-    }
-
-    if (!newPlan.week) {
+    if (!newPlan.weekNumber) {
       toast.error(
         'يرجى اختيار الأسبوع'
       )
+
       return
     }
 
@@ -719,6 +450,7 @@ export default function ArchivedPlansView({
       toast.error(
         'يرجى اختيار تاريخ البداية'
       )
+
       return
     }
 
@@ -726,108 +458,64 @@ export default function ArchivedPlansView({
       toast.error(
         'يرجى اختيار تاريخ النهاية'
       )
+
       return
     }
 
     if (
-      !newPlan.planIds.length
+      newPlan.startDate >
+      newPlan.endDate
     ) {
       toast.error(
-        'يرجى اختيار موضوع درس واحد على الأقل'
+        'تاريخ البداية يجب أن يكون قبل تاريخ النهاية'
       )
+
       return
     }
 
-    setPlans(current => [
-      ...current,
-      {
-        ...newPlan,
-        planIds: [
-          ...newPlan.planIds,
-        ],
-      },
-    ])
+    if (
+      newPlan.type === 'lesson' &&
+      !newPlan.planId
+    ) {
+      toast.error(
+        'يرجى اختيار موضوع الدرس'
+      )
+
+      return
+    }
+
+    if (
+      newPlan.type === 'leave' &&
+      !newPlan.lessonTopic?.trim()
+    ) {
+      toast.error(
+        'يرجى إدخال اسم الإجازة'
+      )
+
+      return
+    }
+
+    setPlans(
+      current => [
+        ...current,
+        {
+          ...newPlan,
+          id: undefined,
+        },
+      ]
+    )
 
     toast.success(
-      `تمت إضافة ${newPlan.planIds.length} موضوع`
+      newPlan.type === 'lesson'
+        ? 'تمت إضافة الدرس'
+        : 'تمت إضافة الإجازة'
     )
 
     closeAddForm()
   }
 
   /* =======================================================
-     إضافة إجازة
-     
-     ملاحظة:
-     هذه المرحلة Frontend فقط.
-     لا يوجد API هنا.
-     ======================================================= */
-
-  const addLeave = () => {
-    if (!newLeave.type) {
-      toast.error(
-        'يرجى اختيار نوع الإجازة'
-      )
-
-      return
-    }
-
-    if (!newLeave.title.trim()) {
-      toast.error(
-        'يرجى كتابة بيان الإجازة'
-      )
-
-      return
-    }
-
-    if (!newLeave.startDate) {
-      toast.error(
-        'يرجى اختيار تاريخ البداية'
-      )
-
-      return
-    }
-
-    if (!newLeave.endDate) {
-      toast.error(
-        'يرجى اختيار تاريخ النهاية'
-      )
-
-      return
-    }
-
-    if (
-      newLeave.endDate <
-      newLeave.startDate
-    ) {
-      toast.error(
-        'تاريخ النهاية يجب أن يكون بعد تاريخ البداية'
-      )
-
-      return
-    }
-
-    const leave: LeavePlan = {
-      ...newLeave,
-
-      id:
-        Date.now().toString(),
-    }
-
-    setLeaves(current => [
-      ...current,
-      leave,
-    ])
-
-    toast.success(
-      'تمت إضافة الإجازة'
-    )
-
-    closeLeaveForm()
-  }
-
-  /* =======================================================
-     حذف درس
+     حذف سجل
      ======================================================= */
 
   const deletePlan = async (
@@ -838,12 +526,17 @@ export default function ArchivedPlansView({
 
     if (!plan) return
 
+    /*
+     * إذا كان السجل جديدًا ولم يحفظ
+     * نحذفه من القائمة فقط
+     */
     if (!plan.id) {
-      setPlans(current =>
-        current.filter(
-          (_, currentIndex) =>
-            currentIndex !== index
-        )
+      setPlans(
+        current =>
+          current.filter(
+            (_, currentIndex) =>
+              currentIndex !== index
+          )
       )
 
       return
@@ -854,55 +547,32 @@ export default function ArchivedPlansView({
         `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans/${plan.id}`
       )
 
-      setPlans(current =>
-        current.filter(
-          (_, currentIndex) =>
-            currentIndex !== index
-        )
+      setPlans(
+        current =>
+          current.filter(
+            (_, currentIndex) =>
+              currentIndex !== index
+          )
       )
 
       toast.success(
-        'تم حذف الدرس'
+        'تم حذف السجل'
       )
     } catch (error) {
       console.error(error)
 
       toast.error(
-        'تعذر حذف الدرس'
+        'تعذر حذف السجل'
       )
     }
   }
 
   /* =======================================================
-     حذف إجازة
-     
-     حاليًا محلي فقط
-     ======================================================= */
-
-  const deleteLeave = (
-    index: number
-  ) => {
-    setLeaves(current =>
-      current.filter(
-        (_, currentIndex) =>
-          currentIndex !== index
-      )
-    )
-
-    toast.success(
-      'تم حذف الإجازة'
-    )
-  }
-
-  /* =======================================================
-     حفظ الخطة
+     حفظ جميع السجلات الجديدة
      ======================================================= */
 
   const save = async () => {
-    if (
-      !plans.length &&
-      !leaves.length
-    ) {
+    if (!plans.length) {
       toast.error(
         'أضف درسًا أو إجازة واحدة على الأقل'
       )
@@ -910,98 +580,128 @@ export default function ArchivedPlansView({
       return
     }
 
-    const invalid =
-      plans.some(
-        plan =>
-          !plan.levelId ||
-          !plan.gradeId ||
-          !plan.subjectId ||
-          !plan.planIds.length ||
-          !plan.week ||
-          !plan.startDate ||
-          !plan.endDate
+    const unsavedPlans =
+      plans.filter(
+        plan => !plan.id
       )
 
-    if (invalid) {
-      toast.error(
-        'يرجى استكمال جميع بيانات الدروس'
+    if (!unsavedPlans.length) {
+      toast.success(
+        'جميع السجلات محفوظة بالفعل'
       )
 
       return
     }
 
-    /*
-     * حاليًا نحفظ الدروس فقط.
-     *
-     * الإجازات سيتم ربطها بالـ Backend
-     * في المرحلة القادمة.
-     */
     setSaving(true)
 
     try {
-      if (plans.length) {
+      const response =
         await api.post(
-          `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`,
+          `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans/bulk`,
           {
-            plans: plans.map(
-              plan => ({
-                id: plan.id,
+            plans:
+              unsavedPlans.map(
+                plan => ({
+                  type:
+                    plan.type,
 
-                levelId:
-                  Number(
-                    plan.levelId
-                  ),
+                  planId:
+                    plan.type ===
+                    'lesson'
+                      ? Number(
+                          plan.planId
+                        )
+                      : null,
 
-                gradeId:
-                  Number(
-                    plan.gradeId
-                  ),
+                  lessonTopic:
+                    plan.type ===
+                    'leave'
+                      ? plan.lessonTopic
+                      : null,
 
-                subjectId:
-                  Number(
-                    plan.subjectId
-                  ),
+                  weekNumber:
+                    Number(
+                      plan.weekNumber
+                    ),
 
-                /*
-                 * إرسال أول موضوع حاليًا
-                 *
-                 * سيتم تعديل الـ Backend
-                 * لاحقًا لاستقبال planIds
-                 */
-                planId:
-                  Number(
-                    plan.planIds[0]
-                  ),
+                  startDate:
+                    plan.startDate,
 
-                planIds:
-                  plan.planIds.map(
-                    id =>
-                      Number(id)
-                  ),
-
-                weekNumber:
-                  Number(
-                    plan.week
-                  ),
-
-                startDate:
-                  plan.startDate,
-
-                endDate:
-                  plan.endDate,
-              })
-            ),
+                  endDate:
+                    plan.endDate,
+                })
+              ),
           }
         )
-      }
 
       toast.success(
-        leaves.length
-          ? 'تم حفظ الدروس، والإجازات محفوظة مؤقتًا حتى ربط الـ Backend'
-          : 'تم حفظ الخطة بنجاح'
+        response.data
+          ?.message ||
+          'تم حفظ الخطة بنجاح'
       )
+
+      /*
+       * إعادة تحميل البيانات من السيرفر
+       * للحصول على IDs الحقيقية
+       */
+      const archivedResponse =
+        await api.get(
+          `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`
+        )
+
+      const data =
+        archivedResponse.data
+
+      if (Array.isArray(data)) {
+        setPlans(
+          data.map(
+            (item: any) => ({
+              id: item.id,
+
+              type:
+                item.type ===
+                'leave'
+                  ? 'leave'
+                  : 'lesson',
+
+              planId:
+                item.planId != null
+                  ? String(
+                      item.planId
+                    )
+                  : undefined,
+
+              lessonTopic:
+                item.lessonTopic ??
+                item.lesson_topic ??
+                undefined,
+
+              weekNumber:
+                String(
+                  item.weekNumber ??
+                    item.week_number ??
+                    1
+                ),
+
+              startDate:
+                item.startDate ??
+                item.date_from ??
+                '',
+
+              endDate:
+                item.endDate ??
+                item.date_to ??
+                '',
+            })
+          )
+        )
+      }
     } catch (error) {
-      console.error(error)
+      console.error(
+        'Save archived plans error:',
+        error
+      )
 
       toast.error(
         'تعذر حفظ الخطة'
@@ -1012,24 +712,66 @@ export default function ArchivedPlansView({
   }
 
   /* =======================================================
-     أسماء المواضيع
+     معلومات الخطة
      ======================================================= */
 
-  const getLessonNames = (
-    planIds: string[]
-  ) => {
-    return planIds
-      .map(
-        planId =>
-          lessonPlans.find(
-            lesson =>
-              String(
-                lesson.id
-              ) === planId
-          )?.lesson_topic
+  const getLesson =
+    (planId?: string) => {
+      if (!planId) {
+        return undefined
+      }
+
+      return lessonPlans.find(
+        lesson =>
+          String(
+            lesson.id
+          ) === planId
       )
-      .filter(Boolean)
-  }
+    }
+
+  /* =======================================================
+     عرض المرحلة/الصف/المادة
+     ======================================================= */
+
+  const getLessonInfo =
+    (lesson?: LessonPlan) => {
+      if (!lesson) {
+        return {
+          level: '-',
+          grade: '-',
+          subject: '-',
+        }
+      }
+
+      return {
+        level:
+          lesson.level_name ||
+          levels.find(
+            level =>
+              level.id ===
+              lesson.level_id
+          )?.name ||
+          '-',
+
+        grade:
+          lesson.grade_name ||
+          grades.find(
+            grade =>
+              grade.id ===
+              lesson.grade_id
+          )?.name ||
+          '-',
+
+        subject:
+          lesson.subject_name ||
+          subjects.find(
+            subject =>
+              subject.id ===
+              lesson.subject_id
+          )?.name ||
+          '-',
+      }
+    }
 
   /* =======================================================
      Render
@@ -1046,7 +788,7 @@ export default function ArchivedPlansView({
     >
 
       {/* =================================================
-          Header
+          Back
          ================================================= */}
 
       <button
@@ -1054,9 +796,12 @@ export default function ArchivedPlansView({
         style={backButton}
       >
         <ArrowRight size={18} />
-
         العودة
       </button>
+
+      {/* =================================================
+          Header
+         ================================================= */}
 
       <div style={header}>
         <div>
@@ -1066,7 +811,7 @@ export default function ArchivedPlansView({
               fontSize: 20,
             }}
           >
-            الخطط الدراسية
+            الخطط الدراسية المؤرشفة
           </h2>
 
           <p
@@ -1077,7 +822,7 @@ export default function ArchivedPlansView({
               opacity: 0.9,
             }}
           >
-            {classroomName}
+            الفصل: {classroomName}
           </p>
         </div>
       </div>
@@ -1096,9 +841,9 @@ export default function ArchivedPlansView({
         </div>
       ) : (
         <>
-          {/* ===============================================
-              Add Lesson Form
-             =============================================== */}
+          {/* =================================================
+              Add Form
+             ================================================= */}
 
           {showAddForm && (
             <div
@@ -1118,7 +863,10 @@ export default function ArchivedPlansView({
                       margin: 0,
                     }}
                   >
-                    إضافة درس جديد
+                    {addType ===
+                    'lesson'
+                      ? 'إضافة درس'
+                      : 'إضافة إجازة'}
                   </h3>
 
                   <p
@@ -1130,7 +878,7 @@ export default function ArchivedPlansView({
                       fontSize: 13,
                     }}
                   >
-                    اختر البيانات بالتسلسل
+                    الفصل: {classroomName}
                   </p>
                 </div>
 
@@ -1146,7 +894,9 @@ export default function ArchivedPlansView({
                 </button>
               </div>
 
-              {/* المرحلة */}
+              {/* =================================================
+                  WEEK
+                 ================================================= */}
 
               <div
                 style={
@@ -1171,15 +921,15 @@ export default function ArchivedPlansView({
                       label
                     }
                   >
-                    المرحلة
+                    الأسبوع
                   </label>
 
                   <select
                     value={
-                      newPlan.levelId
+                      newPlan.weekNumber
                     }
                     onChange={event =>
-                      handleLevelChange(
+                      handleWeekChange(
                         event.target.value
                       )
                     }
@@ -1187,21 +937,18 @@ export default function ArchivedPlansView({
                       selectInput
                     }
                   >
-                    <option value="">
-                      اختر المرحلة
-                    </option>
-
-                    {levels.map(
-                      level => (
+                    {weeks.map(
+                      week => (
                         <option
                           key={
-                            level.id
+                            week
                           }
                           value={
-                            level.id
+                            week
                           }
                         >
-                          {level.name}
+                          الأسبوع{' '}
+                          {week}
                         </option>
                       )
                     )}
@@ -1209,582 +956,9 @@ export default function ArchivedPlansView({
                 </div>
               </div>
 
-              {/* الصف */}
-
-              {newPlan.levelId && (
-                <div
-                  style={
-                    stepContainer
-                  }
-                >
-                  <div
-                    style={
-                      stepNumber
-                    }
-                  >
-                    2
-                  </div>
-
-                  <div
-                    style={
-                      stepContent
-                    }
-                  >
-                    <label
-                      style={
-                        label
-                      }
-                    >
-                      الصف
-                    </label>
-
-                    <select
-                      value={
-                        newPlan.gradeId
-                      }
-                      onChange={
-                        event =>
-                          handleGradeChange(
-                            event.target.value
-                          )
-                      }
-                      style={
-                        selectInput
-                      }
-                    >
-                      <option value="">
-                        اختر الصف
-                      </option>
-
-                      {availableGrades.map(
-                        grade => (
-                          <option
-                            key={
-                              grade.id
-                            }
-                            value={
-                              grade.id
-                            }
-                          >
-                            {grade.name}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* المادة */}
-
-              {newPlan.gradeId && (
-                <div
-                  style={
-                    stepContainer
-                  }
-                >
-                  <div
-                    style={
-                      stepNumber
-                    }
-                  >
-                    3
-                  </div>
-
-                  <div
-                    style={
-                      stepContent
-                    }
-                  >
-                    <label
-                      style={
-                        label
-                      }
-                    >
-                      المادة
-                    </label>
-
-                    <select
-                      value={
-                        newPlan.subjectId
-                      }
-                      onChange={
-                        event =>
-                          handleSubjectChange(
-                            event.target.value
-                          )
-                      }
-                      style={
-                        selectInput
-                    }
-                    >
-                      <option value="">
-                        اختر المادة
-                      </option>
-
-                      {availableSubjects.map(
-                        subject => (
-                          <option
-                            key={
-                              subject.id
-                            }
-                            value={
-                              subject.id
-                            }
-                          >
-                            {subject.name}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* الأسبوع */}
-
-              {newPlan.subjectId && (
-                <div
-                  style={
-                    stepContainer
-                  }
-                >
-                  <div
-                    style={
-                      stepNumber
-                    }
-                  >
-                    4
-                  </div>
-
-                  <div
-                    style={
-                      stepContent
-                  }
-                  >
-                    <label
-                      style={
-                        label
-                      }
-                    >
-                      الأسبوع
-                    </label>
-
-                    <select
-                      value={
-                        newPlan.week
-                      }
-                      onChange={
-                        event =>
-                          handleWeekChange(
-                            event.target.value
-                          )
-                      }
-                      style={
-                        selectInput
-                      }
-                    >
-                      {weeks.map(
-                        week => (
-                          <option
-                            key={
-                              week
-                            }
-                            value={
-                              week
-                            }
-                          >
-                            الأسبوع{' '}
-                            {week}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* التاريخ */}
-
-              {newPlan.subjectId && (
-                <div
-                  style={
-                    stepContainer
-                  }
-                >
-                  <div
-                    style={
-                      stepNumber
-                    }
-                  >
-                    5
-                  </div>
-
-                  <div
-                    style={
-                      stepContent
-                    }
-                  >
-                    <label
-                      style={
-                        label
-                      }
-                    >
-                      التاريخ
-                    </label>
-
-                    <div
-                      style={
-                        dateGrid
-                      }
-                    >
-                      <div>
-                        <span
-                          style={
-                            dateLabel
-                          }
-                        >
-                          من
-                        </span>
-
-                        <input
-                          type="date"
-                          value={
-                            newPlan.startDate
-                          }
-                          onChange={
-                            event =>
-                              handleDateChange(
-                                'startDate',
-                                event
-                                  .target
-                                  .value
-                              )
-                          }
-                          style={
-                            selectInput
-                          }
-                        />
-
-                        {newPlan.startDate && (
-                          <div
-                            style={
-                              hijriDate
-                            }
-                          >
-                            {getHijriDate(
-                              newPlan.startDate
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <span
-                          style={
-                            dateLabel
-                          }
-                        >
-                          إلى
-                        </span>
-
-                        <input
-                          type="date"
-                          value={
-                            newPlan.endDate
-                          }
-                          onChange={
-                            event =>
-                              handleDateChange(
-                                'endDate',
-                                event
-                                  .target
-                                  .value
-                              )
-                          }
-                          style={
-                            selectInput
-                          }
-                        />
-
-                        {newPlan.endDate && (
-                          <div
-                            style={
-                              hijriDate
-                            }
-                          >
-                            {getHijriDate(
-                              newPlan.endDate
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* موضوع الدرس - متعدد */}
-
-              {newPlan.subjectId && (
-                <div
-                  style={
-                    stepContainer
-                  }
-                >
-                  <div
-                    style={
-                      stepNumber
-                    }
-                  >
-                    6
-                  </div>
-
-                  <div
-                    style={
-                      stepContent
-                    }
-                  >
-                    <label
-                      style={
-                        label
-                      }
-                    >
-                      موضوع الدرس
-                    </label>
-
-                    <div
-                      style={
-                        lessonList
-                      }
-                    >
-                      {availableLessons.map(
-                        lesson => {
-                          const selected =
-                            newPlan.planIds.includes(
-                              String(
-                                lesson.id
-                              )
-                            )
-
-                          return (
-                            <button
-                              type="button"
-                              key={
-                                lesson.id
-                              }
-                              onClick={() =>
-                                handleLessonToggle(
-                                  String(
-                                    lesson.id
-                                  )
-                                )
-                              }
-                              style={{
-                                ...lessonOption,
-                                ...(selected
-                                  ? selectedLessonOption
-                                  : {}),
-                              }}
-                            >
-                              <span
-                                style={
-                                  lessonCheck
-                                }
-                              >
-                                {selected
-                                  ? '✓'
-                                  : ''}
-                              </span>
-
-                              <span>
-                                {
-                                  lesson.lesson_topic
-                                }
-                              </span>
-                            </button>
-                          )
-                        }
-                      )}
-
-                      {!availableLessons.length && (
-                        <div
-                          style={
-                            warningText
-                          }
-                        >
-                          لا توجد مواضيع دروس
-                          لهذه المادة.
-                        </div>
-                      )}
-                    </div>
-
-                    {newPlan.planIds.length >
-                      0 && (
-                      <div
-                        style={
-                          selectedCount
-                        }
-                      >
-                        تم اختيار{' '}
-                        {
-                          newPlan
-                            .planIds
-                            .length
-                        }{' '}
-                        موضوع
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* أزرار */}
-
-              <div
-                style={
-                  formActions
-                }
-              >
-                <button
-                  onClick={
-                    addPlan
-                  }
-                  style={
-                    saveButton
-                  }
-                >
-                  <Plus size={17} />
-
-                  إضافة الدرس
-                </button>
-
-                <button
-                  onClick={
-                    closeAddForm
-                  }
-                  style={
-                    cancelButton
-                  }
-                >
-                  إلغاء
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ===============================================
-              Add Leave Form
-             =============================================== */}
-
-          {showLeaveForm && (
-            <div
-              style={
-                addFormContainer
-              }
-            >
-              <div
-                style={
-                  addFormHeader
-                }
-              >
-                <div>
-                  <h3
-                    style={{
-                      margin: 0,
-                    }}
-                  >
-                    إضافة إجازة
-                  </h3>
-
-                  <p
-                    style={{
-                      margin:
-                        '6px 0 0',
-                      color:
-                        '#6B7280',
-                      fontSize: 13,
-                    }}
-                  >
-                    أضف فترة الإجازة
-                    وبياناتها
-                  </p>
-                </div>
-
-                <button
-                  onClick={
-                    closeLeaveForm
-                  }
-                  style={
-                    closeButton
-                  }
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* نوع الإجازة */}
-
-              <div
-                style={
-                  stepContainer
-                }
-              >
-                <div
-                  style={
-                    stepNumber
-                  }
-                >
-                  1
-                </div>
-
-                <div
-                  style={
-                    stepContent
-                  }
-                >
-                  <label
-                    style={
-                      label
-                    }
-                  >
-                    نوع الإجازة
-                  </label>
-
-                  <select
-                    value={
-                      newLeave.type
-                    }
-                    onChange={event =>
-                      setNewLeave(
-                        current => ({
-                          ...current,
-                          type:
-                            event
-                              .target
-                              .value,
-                        })
-                      )
-                    }
-                    style={
-                      selectInput
-                    }
-                  >
-                    {leaveTypes.map(
-                      type => (
-                        <option
-                          key={type}
-                          value={type}
-                        >
-                          {type}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              {/* البيان */}
+              {/* =================================================
+                  DATES
+                 ================================================= */}
 
               <div
                 style={
@@ -1809,59 +983,7 @@ export default function ArchivedPlansView({
                       label
                     }
                   >
-                    بيان الإجازة
-                  </label>
-
-                  <input
-                    type="text"
-                    value={
-                      newLeave.title
-                    }
-                    onChange={event =>
-                      setNewLeave(
-                        current => ({
-                          ...current,
-                          title:
-                            event
-                              .target
-                              .value,
-                        })
-                      )
-                    }
-                    placeholder="مثال: إجازة اليوم الوطني"
-                    style={
-                      selectInput
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* التاريخ */}
-
-              <div
-                style={
-                  stepContainer
-                }
-              >
-                <div
-                  style={
-                    stepNumber
-                  }
-                >
-                  3
-                </div>
-
-                <div
-                  style={
-                    stepContent
-                  }
-                >
-                  <label
-                    style={
-                      label
-                    }
-                  >
-                    فترة الإجازة
+                    التاريخ
                   </label>
 
                   <div
@@ -1869,6 +991,7 @@ export default function ArchivedPlansView({
                       dateGrid
                     }
                   >
+
                     <div>
                       <span
                         style={
@@ -1881,33 +1004,29 @@ export default function ArchivedPlansView({
                       <input
                         type="date"
                         value={
-                          newLeave.startDate
+                          newPlan.startDate
                         }
-                        onChange={
-                          event =>
-                            setNewLeave(
-                              current => ({
-                                ...current,
-                                startDate:
-                                  event
-                                    .target
-                                    .value,
-                              })
-                            )
+                        onChange={event =>
+                          handleDateChange(
+                            'startDate',
+                            event
+                              .target
+                              .value
+                          )
                         }
                         style={
                           selectInput
                         }
                       />
 
-                      {newLeave.startDate && (
+                      {newPlan.startDate && (
                         <div
                           style={
                             hijriDate
                           }
                         >
                           {getHijriDate(
-                            newLeave.startDate
+                            newPlan.startDate
                           )}
                         </div>
                       )}
@@ -1925,91 +1044,181 @@ export default function ArchivedPlansView({
                       <input
                         type="date"
                         value={
-                          newLeave.endDate
+                          newPlan.endDate
                         }
-                        onChange={
-                          event =>
-                            setNewLeave(
-                              current => ({
-                                ...current,
-                                endDate:
-                                  event
-                                    .target
-                                    .value,
-                              })
-                            )
+                        onChange={event =>
+                          handleDateChange(
+                            'endDate',
+                            event
+                              .target
+                              .value
+                          )
                         }
                         style={
                           selectInput
                         }
                       />
 
-                      {newLeave.endDate && (
+                      {newPlan.endDate && (
                         <div
                           style={
                             hijriDate
                           }
                         >
                           {getHijriDate(
-                            newLeave.endDate
+                            newPlan.endDate
                           )}
                         </div>
                       )}
                     </div>
+
                   </div>
                 </div>
               </div>
 
-              {/* الملاحظات */}
+              {/* =================================================
+                  LESSON
+                 ================================================= */}
 
-              <div
-                style={
-                  stepContainer
-                }
-              >
+              {addType ===
+                'lesson' && (
                 <div
                   style={
-                    stepNumber
+                    stepContainer
                   }
                 >
-                  4
-                </div>
-
-                <div
-                  style={
-                    stepContent
-                }
-                >
-                  <label
+                  <div
                     style={
-                      label
+                      stepNumber
                     }
                   >
-                    الملاحظات
-                  </label>
+                    3
+                  </div>
 
-                  <textarea
-                    value={
-                      newLeave.notes
-                    }
-                    onChange={event =>
-                      setNewLeave(
-                        current => ({
-                          ...current,
-                          notes:
-                            event
-                              .target
-                              .value,
-                        })
-                      )
-                    }
-                    placeholder="ملاحظات إضافية..."
+                  <div
                     style={
-                      textareaInput
+                      stepContent
                     }
-                  />
+                  >
+                    <label
+                      style={
+                        label
+                      }
+                    >
+                      موضوع الدرس
+                    </label>
+
+                    <select
+                      value={
+                        newPlan.planId ||
+                        ''
+                      }
+                      onChange={
+                        event =>
+                          handleLessonChange(
+                            event.target.value
+                          )
+                      }
+                      style={
+                        selectInput
+                      }
+                    >
+                      <option value="">
+                        اختر موضوع الدرس
+                      </option>
+
+                      {lessonPlans.map(
+                        lesson => (
+                          <option
+                            key={
+                              lesson.id
+                            }
+                            value={
+                              lesson.id
+                            }
+                          >
+                            {
+                              lesson.lesson_topic
+                            }
+                            {' — '}
+                            {
+                              lesson.subject_name
+                            }
+                          </option>
+                        )
+                      )}
+                    </select>
+
+                    {!lessonPlans.length && (
+                      <div
+                        style={
+                          warningText
+                        }
+                      >
+                        لا توجد خطط دراسية متاحة.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* =================================================
+                  LEAVE
+                 ================================================= */}
+
+              {addType ===
+                'leave' && (
+                <div
+                  style={
+                    stepContainer
+                  }
+                >
+                  <div
+                    style={
+                      stepNumber
+                    }
+                  >
+                    3
+                  </div>
+
+                  <div
+                    style={
+                      stepContent
+                    }
+                  >
+                    <label
+                      style={
+                        label
+                      }
+                    >
+                      اسم / وصف الإجازة
+                    </label>
+
+                    <input
+                      type="text"
+                      value={
+                        newPlan.lessonTopic ||
+                        ''
+                      }
+                      onChange={
+                        event =>
+                          handleLeaveChange(
+                            event.target
+                              .value
+                          )
+                      }
+                      placeholder="مثال: إجازة اليوم الوطني"
+                      style={
+                        selectInput
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* =================================================
+                  ACTIONS
+                 ================================================= */}
 
               <div
                 style={
@@ -2018,22 +1227,23 @@ export default function ArchivedPlansView({
               >
                 <button
                   onClick={
-                    addLeave
+                    addPlan
                   }
                   style={
-                    leaveSaveButton
+                    saveButton
                   }
                 >
-                  <CalendarDays
-                    size={17}
-                  />
+                  <Plus size={17} />
 
-                  إضافة الإجازة
+                  {addType ===
+                  'lesson'
+                    ? 'إضافة الدرس'
+                    : 'إضافة الإجازة'}
                 </button>
 
                 <button
                   onClick={
-                    closeLeaveForm
+                    closeAddForm
                   }
                   style={
                     cancelButton
@@ -2042,11 +1252,12 @@ export default function ArchivedPlansView({
                   إلغاء
                 </button>
               </div>
+
             </div>
           )}
 
           {/* =================================================
-              Archived Plans
+              Plans
              ================================================= */}
 
           <div
@@ -2054,6 +1265,7 @@ export default function ArchivedPlansView({
               plansContainer
             }
           >
+
             <div
               style={
                 plansHeader
@@ -2074,10 +1286,7 @@ export default function ArchivedPlansView({
                   }
                 >
                   {plans.length}{' '}
-                  درس
-                  {' • '}
-                  {leaves.length}{' '}
-                  إجازة
+                  سجل
                 </span>
               </div>
 
@@ -2086,55 +1295,82 @@ export default function ArchivedPlansView({
                   headerActions
                 }
               >
+
                 {!showAddForm && (
-                  <button
-                    onClick={
-                      openAddForm
-                    }
-                    style={
-                      primaryButton
-                    }
-                  >
-                    <Plus size={17} />
+                  <>
+                    <button
+                      onClick={() =>
+                        openAddForm(
+                          'lesson'
+                        )
+                      }
+                      style={
+                        primaryButton
+                      }
+                    >
+                      <BookOpen
+                        size={17}
+                      />
 
-                    إضافة درس
-                  </button>
+                      إضافة درس
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        openAddForm(
+                          'leave'
+                        )
+                      }
+                      style={
+                        leaveButton
+                      }
+                    >
+                      <Plane
+                        size={17}
+                      />
+
+                      إضافة إجازة
+                    </button>
+                  </>
                 )}
 
-                {!showLeaveForm && (
-                  <button
-                    onClick={
-                      openLeaveForm
-                    }
-                    style={
-                      leaveButton
-                    }
-                  >
-                    <CalendarDays
-                      size={17}
-                    />
-
-                    إضافة إجازة
-                  </button>
-                )}
               </div>
             </div>
 
-            {!plans.length &&
-            !leaves.length ? (
+            {/* =================================================
+                Empty
+               ================================================= */}
+
+            {!plans.length ? (
               <div
                 style={
                   emptyState
                 }
               >
-                لا توجد دروس أو إجازات
-                حتى الآن.
-                <br />
+                <CalendarDays
+                  size={36}
+                  style={{
+                    marginBottom: 10,
+                    opacity: 0.5,
+                  }}
+                />
 
-                استخدم الأزرار أعلاه
-                لبدء الخطة.
+                <div>
+                  لا توجد دروس أو إجازات
+                  مؤرشفة حتى الآن.
+                </div>
+
+                <div>
+                  استخدم الأزرار أعلاه
+                  لإضافة السجلات.
+                </div>
               </div>
             ) : (
+
+              /* =================================================
+                  Table
+                 ================================================= */
+
               <div
                 style={
                   tableContainer
@@ -2145,8 +1381,10 @@ export default function ArchivedPlansView({
                     table
                   }
                 >
+
                   <thead>
                     <tr>
+
                       <th
                         style={
                           th
@@ -2192,7 +1430,7 @@ export default function ArchivedPlansView({
                           th
                         }
                       >
-                        الموضوع / البيان
+                        الدرس / الإجازة
                       </th>
 
                       <th
@@ -2226,58 +1464,39 @@ export default function ArchivedPlansView({
                       >
                         الإجراءات
                       </th>
+
                     </tr>
                   </thead>
 
                   <tbody>
-                    {/* ==============================
-                        الدروس
-                       ============================== */}
 
                     {plans.map(
                       (
                         plan,
                         index
                       ) => {
-                        const level =
-                          levels.find(
-                            item =>
-                              String(
-                                item.id
-                              ) ===
-                              plan.levelId
-                          )
 
-                        const grade =
-                          grades.find(
-                            item =>
-                              String(
-                                item.id
-                              ) ===
-                              plan.gradeId
-                          )
+                        const lesson =
+                          plan.type ===
+                          'lesson'
+                            ? getLesson(
+                                plan.planId
+                              )
+                            : undefined
 
-                        const subject =
-                          subjects.find(
-                            item =>
-                              String(
-                                item.id
-                              ) ===
-                              plan.subjectId
-                          )
-
-                        const lessonNames =
-                          getLessonNames(
-                            plan.planIds
+                        const info =
+                          getLessonInfo(
+                            lesson
                           )
 
                         return (
                           <tr
                             key={
                               plan.id ??
-                              `new-plan-${index}`
+                              `new-${index}`
                             }
                           >
+
                             <td
                               style={
                                 td
@@ -2287,6 +1506,8 @@ export default function ArchivedPlansView({
                                 1}
                             </td>
 
+                            {/* TYPE */}
+
                             <td
                               style={
                                 td
@@ -2294,79 +1515,75 @@ export default function ArchivedPlansView({
                             >
                               <span
                                 style={
-                                  lessonBadge
+                                  plan.type ===
+                                  'lesson'
+                                    ? lessonBadge
+                                    : leaveBadge
                                 }
                               >
-                                درس
+                                {plan.type ===
+                                'lesson'
+                                  ? 'درس'
+                                  : 'إجازة'}
                               </span>
                             </td>
 
-                            <td
-                              style={
-                                td
-                              }
-                            >
-                              {
-                                level?.name ??
-                                '-'
-                              }
-                            </td>
+                            {/* LEVEL */}
 
                             <td
                               style={
                                 td
                               }
                             >
-                              {
-                                grade?.name ??
-                                '-'
-                              }
+                              {plan.type ===
+                              'lesson'
+                                ? info.level
+                                : '-'}
                             </td>
+
+                            {/* GRADE */}
 
                             <td
                               style={
                                 td
                               }
                             >
-                              {
-                                subject?.name ??
-                                '-'
-                              }
+                              {plan.type ===
+                              'lesson'
+                                ? info.grade
+                                : '-'}
                             </td>
+
+                            {/* SUBJECT */}
+
+                            <td
+                              style={
+                                td
+                              }
+                            >
+                              {plan.type ===
+                              'lesson'
+                                ? info.subject
+                                : '-'}
+                            </td>
+
+                            {/* TOPIC */}
 
                             <td
                               style={{
                                 ...td,
-                                textAlign:
-                                  'right',
+                                fontWeight: 600,
                               }}
                             >
-                              <div
-                                style={
-                                  lessonNamesContainer
-                                }
-                              >
-                                {lessonNames.map(
-                                  (
-                                    name,
-                                    lessonIndex
-                                  ) => (
-                                    <span
-                                      key={
-                                        lessonIndex
-                                      }
-                                      style={
-                                        topicBadge
-                                      }
-                                    >
-                                      {
-                                        name
-                                      }
-                                    </span>
-                                  )
-                                )}
-                              </div>
+                              {plan.type ===
+                              'lesson'
+                                ? lesson?.lesson_topic ??
+                                  '-'
+                                : plan.lessonTopic ??
+                                  '-'}
                             </td>
+
+                            {/* WEEK */}
 
                             <td
                               style={
@@ -2375,9 +1592,11 @@ export default function ArchivedPlansView({
                             >
                               الأسبوع{' '}
                               {
-                                plan.week
+                                plan.weekNumber
                               }
                             </td>
+
+                            {/* FROM */}
 
                             <td
                               style={
@@ -2405,6 +1624,8 @@ export default function ArchivedPlansView({
                               )}
                             </td>
 
+                            {/* TO */}
+
                             <td
                               style={
                                 td
@@ -2431,6 +1652,8 @@ export default function ArchivedPlansView({
                               )}
                             </td>
 
+                            {/* DELETE */}
+
                             <td
                               style={
                                 td
@@ -2452,213 +1675,21 @@ export default function ArchivedPlansView({
                                 />
                               </button>
                             </td>
+
                           </tr>
                         )
                       }
                     )}
 
-                    {/* ==============================
-                        الإجازات
-                       ============================== */}
-
-                    {leaves.map(
-                      (
-                        leave,
-                        index
-                      ) => (
-                        <tr
-                          key={
-                            leave.id
-                          }
-                          style={
-                            leaveRow
-                          }
-                        >
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            {
-                              plans.length +
-                              index +
-                              1
-                            }
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            <span
-                              style={
-                                leaveBadge
-                              }
-                            >
-                              إجازة
-                            </span>
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            -
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            -
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            -
-                          </td>
-
-                          <td
-                            style={{
-                              ...td,
-                              textAlign:
-                                'right',
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontWeight:
-                                  700,
-                                marginBottom:
-                                  4,
-                              }}
-                            >
-                              {
-                                leave.title
-                              }
-                            </div>
-
-                            <div
-                              style={
-                                leaveTypeText
-                              }
-                            >
-                              {
-                                leave.type
-                              }
-                            </div>
-
-                            {leave.notes && (
-                              <div
-                                style={
-                                  leaveNotes
-                                }
-                              >
-                                {
-                                  leave.notes
-                                }
-                              </div>
-                            )}
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            -
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            <div>
-                              {
-                                leave.startDate
-                              }
-                            </div>
-
-                            {leave.startDate && (
-                              <div
-                                style={
-                                  hijriDate
-                                }
-                              >
-                                {
-                                  getHijriDate(
-                                    leave.startDate
-                                  )
-                                }
-                              </div>
-                            )}
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            <div>
-                              {
-                                leave.endDate
-                              }
-                            </div>
-
-                            {leave.endDate && (
-                              <div
-                                style={
-                                  hijriDate
-                                }
-                              >
-                                {
-                                  getHijriDate(
-                                    leave.endDate
-                                  )
-                                }
-                              </div>
-                            )}
-                          </td>
-
-                          <td
-                            style={
-                              td
-                            }
-                          >
-                            <button
-                              onClick={() =>
-                                deleteLeave(
-                                  index
-                                )
-                              }
-                              style={
-                                iconButton
-                              }
-                              title="حذف"
-                            >
-                              <Trash2
-                                size={18}
-                              />
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    )}
                   </tbody>
                 </table>
               </div>
             )}
+
           </div>
 
           {/* =================================================
-              Save
+              SAVE
              ================================================= */}
 
           <div
@@ -2672,15 +1703,19 @@ export default function ArchivedPlansView({
               }
               disabled={
                 saving ||
-                (!plans.length &&
-                  !leaves.length)
+                !plans.some(
+                  plan =>
+                    !plan.id
+                )
               }
               style={{
                 ...saveButton,
                 opacity:
                   saving ||
-                  (!plans.length &&
-                    !leaves.length)
+                  !plans.some(
+                    plan =>
+                      !plan.id
+                  )
                     ? 0.6
                     : 1,
               }}
@@ -2692,6 +1727,7 @@ export default function ArchivedPlansView({
                 : 'حفظ الخطة'}
             </button>
           </div>
+
         </>
       )}
     </div>
@@ -2819,23 +1855,6 @@ const selectInput: React.CSSProperties = {
   color: '#374151',
 }
 
-const textareaInput: React.CSSProperties = {
-  width: '100%',
-  minHeight: 100,
-  boxSizing: 'border-box',
-  padding: '11px 12px',
-  border:
-    '1px solid #D1D5DB',
-  borderRadius: 8,
-  outline: 'none',
-  background: '#fff',
-  fontSize: 13,
-  color: '#374151',
-  resize: 'vertical',
-  fontFamily:
-    'inherit',
-}
-
 const dateGrid: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns:
@@ -2865,56 +1884,6 @@ const warningText: React.CSSProperties = {
   borderRadius: 7,
   padding: '8px 10px',
   fontSize: 12,
-}
-
-const lessonList: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-}
-
-const lessonOption: React.CSSProperties = {
-  width: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  padding: '11px 12px',
-  border:
-    '1px solid #D1D5DB',
-  borderRadius: 9,
-  background: '#fff',
-  color: '#374151',
-  cursor: 'pointer',
-  textAlign: 'right',
-  fontSize: 13,
-}
-
-const selectedLessonOption: React.CSSProperties = {
-  background: '#E8F4F4',
-  border:
-    '1px solid #2D7D82',
-  color: '#1F5F63',
-  fontWeight: 700,
-}
-
-const lessonCheck: React.CSSProperties = {
-  width: 24,
-  height: 24,
-  minWidth: 24,
-  borderRadius: 6,
-  background: '#2D7D82',
-  color: '#fff',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontWeight: 700,
-}
-
-const selectedCount: React.CSSProperties = {
-  marginTop: 10,
-  color: '#2D7D82',
-  fontSize: 12,
-  fontWeight: 700,
 }
 
 const formActions: React.CSSProperties = {
@@ -2964,6 +1933,9 @@ const emptyState: React.CSSProperties = {
   color: '#9CA3AF',
   lineHeight: 2,
   fontSize: 13,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
 }
 
 const tableContainer: React.CSSProperties = {
@@ -3018,7 +1990,7 @@ const leaveButton: React.CSSProperties = {
   justifyContent: 'center',
   gap: 7,
   padding: '10px 16px',
-  background: '#7C5C2E',
+  background: '#8B5CF6',
   color: '#fff',
   border: 'none',
   borderRadius: 9,
@@ -3034,21 +2006,6 @@ const saveButton: React.CSSProperties = {
   gap: 7,
   padding: '10px 18px',
   background: '#2D7D82',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 9,
-  cursor: 'pointer',
-  fontWeight: 600,
-  whiteSpace: 'nowrap',
-}
-
-const leaveSaveButton: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 7,
-  padding: '10px 18px',
-  background: '#7C5C2E',
   color: '#fff',
   border: 'none',
   borderRadius: 9,
@@ -3086,51 +2043,20 @@ const iconButton: React.CSSProperties = {
 
 const lessonBadge: React.CSSProperties = {
   display: 'inline-block',
-  padding: '4px 8px',
+  padding: '4px 9px',
   borderRadius: 20,
-  background: '#E8F4F4',
-  color: '#2D7D82',
+  background: '#E0F2FE',
+  color: '#0369A1',
   fontSize: 11,
   fontWeight: 700,
 }
 
 const leaveBadge: React.CSSProperties = {
   display: 'inline-block',
-  padding: '4px 8px',
+  padding: '4px 9px',
   borderRadius: 20,
-  background: '#F5EBDD',
-  color: '#7C5C2E',
+  background: '#EDE9FE',
+  color: '#6D28D9',
   fontSize: 11,
   fontWeight: 700,
-}
-
-const lessonNamesContainer: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 5,
-}
-
-const topicBadge: React.CSSProperties = {
-  display: 'block',
-  padding: '5px 8px',
-  borderRadius: 6,
-  background: '#F3F7F7',
-  color: '#2D7D82',
-  fontSize: 11,
-}
-
-const leaveRow: React.CSSProperties = {
-  background: '#FFFCF8',
-}
-
-const leaveTypeText: React.CSSProperties = {
-  color: '#7C5C2E',
-  fontSize: 11,
-  fontWeight: 600,
-}
-
-const leaveNotes: React.CSSProperties = {
-  marginTop: 5,
-  color: '#6B7280',
-  fontSize: 11,
 }
