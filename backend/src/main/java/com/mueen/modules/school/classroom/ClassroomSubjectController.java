@@ -24,7 +24,7 @@ public class ClassroomSubjectController {
             @PathVariable Long classroomId) {
 
         var subjects = jdbcTemplate.queryForList(
-            "SELECT id, name FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? ORDER BY id",
+            "SELECT id, name, teacher_id FROM " + schemaName + ".classroom_subjects WHERE classroom_id = ? ORDER BY id",
             classroomId
         );
         var result = subjects.stream().map(row -> {
@@ -35,7 +35,7 @@ public class ClassroomSubjectController {
             java.util.Map<String, Object> resultMap = new java.util.HashMap<>();
             resultMap.put("id", lowerRow.get("id"));
             resultMap.put("name", lowerRow.get("name"));
-            //resultMap.put("teacherId", lowerRow.get("teacher_id"));
+            resultMap.put("teacherId", lowerRow.get("teacher_id"));
             return resultMap;
         }).toList();
         return ResponseEntity.ok(result);
