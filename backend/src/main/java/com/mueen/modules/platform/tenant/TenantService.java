@@ -83,10 +83,19 @@ jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "classrooms (id BIGSERI
 jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "classroom_schedule (id BIGSERIAL PRIMARY KEY, classroom_id BIGINT NOT NULL REFERENCES " + p + "classrooms(id) ON DELETE CASCADE, period VARCHAR(50) NOT NULL, day VARCHAR(20) NOT NULL, subject_name VARCHAR(100), UNIQUE(classroom_id, period, day))");     
 jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "lesson_plans (id BIGSERIAL PRIMARY KEY, classroom_id BIGINT NOT NULL REFERENCES " + p + "classrooms(id) ON DELETE CASCADE, subject_id BIGINT NOT NULL REFERENCES " + p + "classroom_subjects(id) ON DELETE CASCADE, day VARCHAR(20) NOT NULL, period VARCHAR(20) NOT NULL, subject VARCHAR(100) NOT NULL, lesson TEXT, homework TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "classroom_students (id BIGSERIAL PRIMARY KEY, classroom_id BIGINT NOT NULL REFERENCES " + p + "classrooms(id) ON DELETE CASCADE, full_name VARCHAR(255) NOT NULL, guardian_phone VARCHAR(20), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
-/*/لم يتم استخدام جدول الطلاب بعد الآن، تم استبداله بجدول classroom_students الذي يربط الطلاب بالفصول الدراسية
-jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "students (" +
-                "id BIGSERIAL PRIMARY KEY, student_number VARCHAR(30) NOT NULL UNIQUE, national_id VARCHAR(20) UNIQUE, full_name VARCHAR(255) NOT NULL, gender VARCHAR(6) NOT NULL, birth_date DATE NOT NULL, nationality VARCHAR(50) NOT NULL DEFAULT 'سعودي', enrollment_date DATE NOT NULL DEFAULT CURRENT_DATE, enrollment_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', noor_id VARCHAR(50) UNIQUE, behavior_score INT NOT NULL DEFAULT 80, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
-*/
+jdbcTemplate.execute(
+    "CREATE TABLE IF NOT EXISTS " + p + "classroom_plans (" +
+        "id BIGSERIAL PRIMARY KEY, " +
+        "classroom_id BIGINT NOT NULL REFERENCES " +
+            p + "classrooms(id) ON DELETE CASCADE, " +
+        "type VARCHAR(20) NOT NULL CHECK (type IN ('lesson', 'leave')), " +
+        "plan_id BIGINT, " +
+        "lesson_topic TEXT, " +
+        "week_number INTEGER, " +
+        "date_from DATE, " +
+        "date_to DATE" +
+    ")"
+);
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "guardians (id BIGSERIAL PRIMARY KEY, full_name VARCHAR(255) NOT NULL, national_id VARCHAR(20), relationship VARCHAR(30) NOT NULL, phone VARCHAR(20) NOT NULL, phone_whatsapp VARCHAR(20), email VARCHAR(255), is_primary BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 
