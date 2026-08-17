@@ -45,6 +45,17 @@ const STATUS_COLORS: Record<AttendanceStatus, { bg: string; color: string }> = {
   permission: { bg: '#EDE9FE', color: '#7C3AED' },
 }
 
+interface BehaviorRecord {
+  id: number
+  statement: string
+  operationType: 'add' | 'deduct'
+  points: number
+  expectedScore: number
+  createdAt: string
+  studentId: number
+  studentName: string
+}
+
 export default function TeacherStudent({ classroomId, classroomName, schemaName, onClose }: Props) {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,6 +77,9 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
 
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [recordsLoading, setRecordsLoading] = useState(true)
+
+  const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>([])
+  const [behaviorRecordsLoading, setBehaviorRecordsLoading] = useState(true)
 
   interface ApiStudent {
     id: number;
@@ -119,10 +133,25 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
     }
   }, [schemaName, classroomId])
 
+  const fetchBehaviorRecords = useCallback(async () => {
+    setBehaviorRecordsLoading(true)
+    try {
+      const res = await api.get<BehaviorRecord[]>(
+        `/api/school/${schemaName}/classrooms/${classroomId}/behavior`
+      )
+      setBehaviorRecords(res.data)
+    } catch {
+      toast.error('تعذر تحميل سجل السلوك')
+    } finally {
+      setBehaviorRecordsLoading(false)
+    }
+  }, [schemaName, classroomId])
+
   useEffect(() => {
     void Promise.resolve().then(fetchStudents)
     void Promise.resolve().then(fetchAttendanceRecords)
-  }, [fetchStudents, fetchAttendanceRecords])
+    void Promise.resolve().then(fetchBehaviorRecords)
+  }, [fetchStudents, fetchAttendanceRecords, fetchBehaviorRecords])
 
   const handleOpenBehaviorModal = (student: Student) => {
     setSelectedStudent(student)
@@ -163,6 +192,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
       toast.success('تم تسجيل السلوك بنجاح')
       setShowBehaviorModal(false)
       fetchStudents()
+      fetchBehaviorRecords()
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>
       toast.error(error.response?.data?.message || 'تعذر حفظ السلوك')
@@ -289,6 +319,53 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
                         {STATUS_LABELS[record.status]}
                       </span>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* سجل السلوك */}
+      <div style={{ marginTop: '32px' }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 700, color: '#374151' }}>سجل السلوك</h3>
+
+        {behaviorRecordsLoading ? (
+          <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
+        ) : behaviorRecords.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
+            لا توجد سجلات سلوك بعد. استخدم زر "السلوك" بجانب اسم الطالب لإضافة سجل.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableStyle}>
+              <thead>
+                <tr style={{ backgroundColor: '#F9FAFB' }}>
+                  <th style={thStyle}>اسم الطالب</th>
+                  <th style={thStyle}>البيان</th>
+                  <th style={thStyle}>النقاط</th>
+                  <th style={thStyle}>الدرجة المتوقعة</th>
+                  <th style={thStyle}>التاريخ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {behaviorRecords.map(record => (
+                  <tr key={record.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>{record.studentName}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>{record.statement}</td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        display: 'inline-block', padding: '4px 12px', borderRadius: '20px',
+                        fontSize: '12px', fontWeight: 700,
+                        backgroundColor: record.operationType === 'add' ? '#DCFCE7' : '#FEE2E2',
+                        color: record.operationType === 'add' ? '#16A34A' : '#DC2626',
+                      }}>
+                        {record.operationType === 'add' ? `+${record.points}` : `-${record.points}`}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>{record.expectedScore}</td>
+                    <td style={tdStyle}>{new Date(record.createdAt).toLocaleDateString('ar-SA')}</td>
                   </tr>
                 ))}
               </tbody>
