@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { X, User, Plus, Search, Minus, Save, Image, Video, Ban, CalendarCheck } from 'lucide-react'
+import { X, User, Plus, Minus, Save, Image, Video, Ban, CalendarCheck } from 'lucide-react'
 import api from '../../../api/axios'
 import toast from 'react-hot-toast'
 import { AxiosError } from 'axios'
@@ -59,7 +59,6 @@ interface BehaviorRecord {
 export default function TeacherStudent({ classroomId, classroomName, schemaName, onClose }: Props) {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
 
   // حالات نافذة رصد السلوك
   const [showBehaviorModal, setShowBehaviorModal] = useState(false)
@@ -153,8 +152,8 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
     void Promise.resolve().then(fetchBehaviorRecords)
   }, [fetchStudents, fetchAttendanceRecords, fetchBehaviorRecords])
 
-  const handleOpenBehaviorModal = (student: Student) => {
-    setSelectedStudent(student)
+  const handleOpenBehaviorModal = () => {
+    setSelectedStudent(null)
     setBehaviorStatement('')
     setBehaviorPoints(5)
     setBehaviorOperation('add')
@@ -164,7 +163,10 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
   }
 
   const handleSaveBehavior = async () => {
-    if (!selectedStudent) return
+    if (!selectedStudent) {
+      toast.error('يرجى اختيار الطالب')
+      return
+    }
     if (behaviorStatement.trim().length < 5) {
       toast.error('يرجى كتابة بيان سلوك واضح')
       return
@@ -222,8 +224,6 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
     }
   }
 
-  const filteredStudents = students.filter(s => s.fullName.includes(searchQuery))
-
   return (
     <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #E5E7EB' }}>
       <div style={headerRow}>
@@ -233,60 +233,28 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
         </button>
       </div>
 
-      <div style={blueHeader}>قائمة الطلاب والإجراءات</div>
+      <div style={blueHeader}>الحضور والسلوك</div>
 
-      <div style={{ marginBottom: '20px', position: 'relative' }}>
-        <input
-          type="text"
-          placeholder="ابحث عن اسم طالب..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={searchInputStyle}
-        />
-        <Search size={18} color="#9CA3AF" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '32px', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setShowAttendanceModal(true)}
+          disabled={loading}
+          style={{ ...actionBtnStyle('#2D7D82', '#fff'), padding: '10px 20px', fontSize: '13px' }}
+        >
+          <CalendarCheck size={16} /> إضافة حضور
+        </button>
+        <button
+          onClick={handleOpenBehaviorModal}
+          disabled={loading}
+          style={{ ...actionBtnStyle('#7C3AED', '#fff'), padding: '10px 20px', fontSize: '13px' }}
+        >
+          <Plus size={16} /> إضافة سلوك
+        </button>
       </div>
-
-      {loading ? <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p> : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={tableStyle}>
-            <thead>
-              <tr style={{ backgroundColor: '#F9FAFB' }}>
-                <th style={thStyle}>اسم الطالب</th>
-                <th style={thStyle}>الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.map((student) => (
-                <tr key={student.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={avatarStyle}><User size={16} color="#9CA3AF" /></div>
-                      {student.fullName}
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <button onClick={() => handleOpenBehaviorModal(student)} style={actionBtnStyle('#E8F4F5', '#2D7D82')}>
-                      <Plus size={14} /> السلوك
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
 
       {/* سجل الحضور */}
       <div style={{ marginTop: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '10px', flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#374151' }}>سجل الحضور</h3>
-          <button
-            onClick={() => setShowAttendanceModal(true)}
-            style={{ ...actionBtnStyle('#2D7D82', '#fff'), padding: '8px 16px', fontSize: '12px' }}
-          >
-            <CalendarCheck size={14} /> إضافة حضور
-          </button>
-        </div>
+        <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 700, color: '#374151' }}>سجل الحضور</h3>
 
         {recordsLoading ? (
           <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
@@ -335,7 +303,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
           <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
         ) : behaviorRecords.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
-            لا توجد سجلات سلوك بعد. استخدم زر "السلوك" بجانب اسم الطالب لإضافة سجل.
+            لا توجد سجلات سلوك بعد. استخدم زر "إضافة سلوك" أعلاه لإضافة سجل.
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -461,14 +429,27 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
         </div>
       )}
 
-      {showBehaviorModal && selectedStudent && (
+      {showBehaviorModal && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>رصد سلوك: {selectedStudent.fullName}</h3>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>رصد سلوك — {classroomName}</h3>
               <button onClick={() => setShowBehaviorModal(false)} style={closeBtnStyle}><X size={16} /></button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>الطالب</label>
+                <select
+                  value={selectedStudent?.id ?? ''}
+                  onChange={(e) => setSelectedStudent(students.find(s => s.id === Number(e.target.value)) || null)}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  <option value="">اختر الطالب</option>
+                  {students.map(student => (
+                    <option key={student.id} value={student.id}>{student.fullName}</option>
+                  ))}
+                </select>
+              </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>البيان</label>
                 <textarea value={behaviorStatement} onChange={(e) => setBehaviorStatement(e.target.value)} style={{ ...inputStyle, height: '80px', paddingTop: '10px' }} placeholder="مثال: مشاركة متميزة..." />
@@ -542,7 +523,6 @@ const headerRow: React.CSSProperties = { display: 'flex', justifyContent: 'space
 const closeHeaderBtnStyle: React.CSSProperties = { border: 'none', background: '#F3F4F6', borderRadius: '10px', width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const closeBtnStyle: React.CSSProperties = { border: 'none', background: '#F3F4F6', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const blueHeader: React.CSSProperties = { background: '#9EC5C7', color: '#fff', padding: '12px', borderRadius: '10px', textAlign: 'center', fontWeight: 600, fontSize: '15px', marginBottom: '20px' }
-const searchInputStyle: React.CSSProperties = { width: '100%', height: '38px', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0 40px 0 12px', fontSize: '13px', outline: 'none', textAlign: 'right' }
 const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' }
 const thStyle: React.CSSProperties = { border: '1px solid #E5E7EB', padding: '10px', textAlign: 'center', color: '#6B7280', fontSize: '12px', fontWeight: 600 }
 const tdStyle: React.CSSProperties = { border: '1px solid #E5E7EB', padding: '10px', textAlign: 'center', color: '#374151', fontSize: '13px' }
