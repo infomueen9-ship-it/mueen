@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react'
-import { ArrowRight, Plus, Save, Trash2 } from 'lucide-react'
+
+import { useEffect, useMemo, useState } from 'react'
+import {
+  ArrowRight,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from 'lucide-react'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
 
@@ -50,7 +57,10 @@ type ArchivedPlan = {
   endDate: string
 }
 
-const weeks = Array.from({ length: 20 }, (_, index) => index + 1)
+const weeks = Array.from(
+  { length: 20 },
+  (_, index) => index + 1
+)
 
 /* =========================================================
    التاريخ الهجري
@@ -62,31 +72,44 @@ function getHijriDate(dateString: string) {
   try {
     const date = new Date(`${dateString}T00:00:00`)
 
-    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(date)
+    return new Intl.DateTimeFormat(
+      'ar-SA-u-ca-islamic',
+      {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }
+    ).format(date)
   } catch {
     return ''
   }
 }
 
 /* =========================================================
-   التواريخ الافتراضية
+   تواريخ الأسبوع الافتراضية
    ========================================================= */
 
 function weekDates(week: number) {
-  const start = new Date(new Date().getFullYear(), 0, 1)
+  const year = new Date().getFullYear()
 
-  start.setDate(start.getDate() + (week - 1) * 7)
+  const start = new Date(year, 0, 1)
+
+  start.setDate(
+    start.getDate() + (week - 1) * 7
+  )
 
   const end = new Date(start)
+
   end.setDate(end.getDate() + 6)
 
   return {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
+    startDate: start
+      .toISOString()
+      .slice(0, 10),
+
+    endDate: end
+      .toISOString()
+      .slice(0, 10),
   }
 }
 
@@ -105,18 +128,43 @@ export default function ArchivedPlansView({
   classroomName: string
   onBack: () => void
 }) {
-  const [levels, setLevels] = useState<Level[]>([])
-  const [grades, setGrades] = useState<Grade[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([])
+  const [levels, setLevels] =
+    useState<Level[]>([])
 
-  const [plans, setPlans] = useState<ArchivedPlan[]>([])
+  const [grades, setGrades] =
+    useState<Grade[]>([])
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [subjects, setSubjects] =
+    useState<Subject[]>([])
+
+  const [lessonPlans, setLessonPlans] =
+    useState<LessonPlan[]>([])
+
+  const [plans, setPlans] =
+    useState<ArchivedPlan[]>([])
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [saving, setSaving] =
+    useState(false)
+
+  const [showAddForm, setShowAddForm] =
+    useState(false)
+
+  const [newPlan, setNewPlan] =
+    useState<ArchivedPlan>({
+      levelId: '',
+      gradeId: '',
+      subjectId: '',
+      planId: '',
+      week: '',
+      startDate: '',
+      endDate: '',
+    })
 
   /* =======================================================
-     تحميل البيانات الأساسية
+     تحميل البيانات
      ======================================================= */
 
   useEffect(() => {
@@ -151,89 +199,138 @@ export default function ArchivedPlansView({
 
         if (cancelled) return
 
-        setLevels(levelsResponse.data || [])
-        setGrades(gradesResponse.data || [])
-        setSubjects(subjectsResponse.data || [])
-        setLessonPlans(plansResponse.data || [])
+        const levelsData =
+          levelsResponse.data || []
 
-        /*
-         * نحاول تحميل الأرشيف الحالي إذا كان API موجودًا.
-         *
-         * إذا كان غير موجود حاليًا في الـ Backend،
-         * سيبدأ الجدول فارغًا ويمكن إضافة صفوف جديدة.
-         */
+        const gradesData =
+          gradesResponse.data || []
+
+        const subjectsData =
+          subjectsResponse.data || []
+
+        const plansData =
+          plansResponse.data || []
+
+        console.log(
+          'ArchivedPlansView LEVELS:',
+          levelsData
+        )
+
+        console.log(
+          'ArchivedPlansView GRADES:',
+          gradesData
+        )
+
+        console.log(
+          'ArchivedPlansView SUBJECTS:',
+          subjectsData
+        )
+
+        console.log(
+          'ArchivedPlansView LESSON PLANS:',
+          plansData
+        )
+
+        setLevels(levelsData)
+        setGrades(gradesData)
+        setSubjects(subjectsData)
+        setLessonPlans(plansData)
+
+        /* ===============================================
+           الدروس المؤرشفة
+           =============================================== */
+
         try {
-          const archivedResponse = await api.get(
-            `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`
-          )
+          const archivedResponse =
+            await api.get(
+              `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`
+            )
 
           if (cancelled) return
 
-          const data = archivedResponse.data
+          const data =
+            archivedResponse.data
+
+          console.log(
+            'ArchivedPlansView ARCHIVED:',
+            data
+          )
 
           if (Array.isArray(data)) {
             setPlans(
-              data.map((plan: any) => ({
-                id: plan.id,
-                levelId: String(
-                  plan.levelId ??
-                  plan.level_id ??
-                  ''
-                ),
-                gradeId: String(
-                  plan.gradeId ??
-                  plan.grade_id ??
-                  ''
-                ),
-                subjectId: String(
-                  plan.subjectId ??
-                  plan.subject_id ??
-                  ''
-                ),
-                planId: String(
-                  plan.planId ??
-                  plan.plan_id ??
-                  ''
-                ),
-                week: String(
-                  plan.week ??
-                  plan.weekNumber ??
-                  plan.week_number ??
-                  1
-                ),
-                startDate:
-                  plan.startDate ??
-                  plan.start_date ??
-                  weekDates(
+              data.map(
+                (plan: any) => {
+                  const week =
                     Number(
                       plan.week ??
-                      plan.weekNumber ??
-                      1
+                        plan.weekNumber ??
+                        plan.week_number ??
+                        1
                     )
-                  ).startDate,
-                endDate:
-                  plan.endDate ??
-                  plan.end_date ??
-                  weekDates(
-                    Number(
-                      plan.week ??
-                      plan.weekNumber ??
-                      1
-                    )
-                  ).endDate,
-              }))
+
+                  const dates =
+                    weekDates(week)
+
+                  return {
+                    id: plan.id,
+
+                    levelId: String(
+                      plan.levelId ??
+                        plan.level_id ??
+                        ''
+                    ),
+
+                    gradeId: String(
+                      plan.gradeId ??
+                        plan.grade_id ??
+                        ''
+                    ),
+
+                    subjectId: String(
+                      plan.subjectId ??
+                        plan.subject_id ??
+                        ''
+                    ),
+
+                    planId: String(
+                      plan.planId ??
+                        plan.plan_id ??
+                        ''
+                    ),
+
+                    week: String(week),
+
+                    startDate:
+                      plan.startDate ??
+                      plan.start_date ??
+                      dates.startDate,
+
+                    endDate:
+                      plan.endDate ??
+                      plan.end_date ??
+                      dates.endDate,
+                  }
+                }
+              )
             )
           }
-        } catch {
-          /*
-           * الـ API الخاص بالأرشيف قد لا يكون موجودًا
-           * حتى الآن، لذلك لا نوقف الصفحة.
-           */
+        } catch (error) {
+          console.error(
+            'Archived plans load error:',
+            error
+          )
+
           setPlans([])
         }
       } catch (error) {
-        console.error(error)
-        toast.error('تعذر تحميل بيانات الخطط')
+        console.error(
+          'Study plans load error:',
+          error
+        )
+
+        toast.error(
+          'تعذر تحميل بيانات الخطط'
+        )
       } finally {
         if (!cancelled) {
           setLoading(false)
@@ -249,254 +346,342 @@ export default function ArchivedPlansView({
   }, [schemaName, classroomId])
 
   /* =======================================================
-     إضافة صف جديد
+     الصفوف التابعة للمرحلة
+     ======================================================= */
+
+  const availableGrades =
+    useMemo(() => {
+      if (!newPlan.levelId) {
+        return []
+      }
+
+      return grades.filter(
+        grade =>
+          String(grade.level_id) ===
+          String(newPlan.levelId)
+      )
+    }, [
+      grades,
+      newPlan.levelId,
+    ])
+
+  /* =======================================================
+     المواد التابعة للصف
+     ======================================================= */
+
+  const availableSubjects =
+    useMemo(() => {
+      if (
+        !newPlan.levelId ||
+        !newPlan.gradeId
+      ) {
+        return []
+      }
+
+      return subjects.filter(
+        subject =>
+          String(subject.level_id) ===
+            String(newPlan.levelId) &&
+          String(subject.grade_id) ===
+            String(newPlan.gradeId)
+      )
+    }, [
+      subjects,
+      newPlan.levelId,
+      newPlan.gradeId,
+    ])
+
+  /* =======================================================
+     الدروس التابعة للمادة
+     ======================================================= */
+
+  const availableLessons =
+    useMemo(() => {
+      if (
+        !newPlan.levelId ||
+        !newPlan.gradeId ||
+        !newPlan.subjectId
+      ) {
+        return []
+      }
+
+      const result =
+        lessonPlans.filter(
+          lesson =>
+            String(lesson.level_id) ===
+              String(newPlan.levelId) &&
+            String(lesson.grade_id) ===
+              String(newPlan.gradeId) &&
+            String(lesson.subject_id) ===
+              String(newPlan.subjectId)
+        )
+
+      console.log(
+        'Available lessons:',
+        result
+      )
+
+      return result
+    }, [
+      lessonPlans,
+      newPlan.levelId,
+      newPlan.gradeId,
+      newPlan.subjectId,
+    ])
+
+  /* =======================================================
+     فتح النموذج
+     ======================================================= */
+
+  const openAddForm = () => {
+    setNewPlan({
+      levelId: '',
+      gradeId: '',
+      subjectId: '',
+      planId: '',
+      week: '',
+      startDate: '',
+      endDate: '',
+    })
+
+    setShowAddForm(true)
+  }
+
+  /* =======================================================
+     إغلاق النموذج
+     ======================================================= */
+
+  const closeAddForm = () => {
+    setShowAddForm(false)
+
+    setNewPlan({
+      levelId: '',
+      gradeId: '',
+      subjectId: '',
+      planId: '',
+      week: '',
+      startDate: '',
+      endDate: '',
+    })
+  }
+
+  /* =======================================================
+     المرحلة
+     ======================================================= */
+
+  const handleLevelChange = (
+    value: string
+  ) => {
+    console.log(
+      'Selected level:',
+      value
+    )
+
+    setNewPlan(current => ({
+      ...current,
+
+      levelId: value,
+
+      gradeId: '',
+      subjectId: '',
+      planId: '',
+      week: '',
+      startDate: '',
+      endDate: '',
+    }))
+  }
+
+  /* =======================================================
+     الصف
+     ======================================================= */
+
+  const handleGradeChange = (
+    value: string
+  ) => {
+    console.log(
+      'Selected grade:',
+      value
+    )
+
+    setNewPlan(current => ({
+      ...current,
+
+      gradeId: value,
+
+      subjectId: '',
+      planId: '',
+      week: '',
+      startDate: '',
+      endDate: '',
+    }))
+  }
+
+  /* =======================================================
+     المادة
+     ======================================================= */
+
+  const handleSubjectChange = (
+    value: string
+  ) => {
+    console.log(
+      'Selected subject:',
+      value
+    )
+
+    setNewPlan(current => ({
+      ...current,
+
+      subjectId: value,
+
+      planId: '',
+      week: '',
+      startDate: '',
+      endDate: '',
+    }))
+  }
+
+  /* =======================================================
+     الأسبوع
+     ======================================================= */
+
+  const handleWeekChange = (
+    value: string
+  ) => {
+    if (!value) {
+      setNewPlan(current => ({
+        ...current,
+        week: '',
+        startDate: '',
+        endDate: '',
+      }))
+
+      return
+    }
+
+    const dates =
+      weekDates(Number(value))
+
+    setNewPlan(current => ({
+      ...current,
+
+      week: value,
+
+      startDate:
+        dates.startDate,
+
+      endDate:
+        dates.endDate,
+    }))
+  }
+
+  /* =======================================================
+     التاريخ
+     ======================================================= */
+
+  const handleDateChange = (
+    field:
+      | 'startDate'
+      | 'endDate',
+    value: string
+  ) => {
+    setNewPlan(current => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  /* =======================================================
+     موضوع الدرس
+     ======================================================= */
+
+  const handleLessonChange = (
+    value: string
+  ) => {
+    setNewPlan(current => ({
+      ...current,
+      planId: value,
+    }))
+  }
+
+  /* =======================================================
+     إضافة الدرس
      ======================================================= */
 
   const addPlan = () => {
-    const firstLevel = levels[0]
+    if (!newPlan.levelId) {
+      toast.error(
+        'يرجى اختيار المرحلة'
+      )
+      return
+    }
 
-    const firstGrade = firstLevel
-      ? grades.find(
-          grade => grade.level_id === firstLevel.id
-        )
-      : undefined
+    if (!newPlan.gradeId) {
+      toast.error(
+        'يرجى اختيار الصف'
+      )
+      return
+    }
 
-    const firstSubject = firstGrade
-      ? subjects.find(
-          subject =>
-            subject.grade_id === firstGrade.id &&
-            subject.level_id === firstLevel?.id
-        )
-      : undefined
+    if (!newPlan.subjectId) {
+      toast.error(
+        'يرجى اختيار المادة'
+      )
+      return
+    }
 
-    const firstLesson = firstSubject
-      ? lessonPlans.find(
-          plan =>
-            plan.subject_id === firstSubject.id &&
-            plan.level_id === firstLevel?.id &&
-            plan.grade_id === firstGrade?.id
-        )
-      : undefined
+    if (!newPlan.week) {
+      toast.error(
+        'يرجى اختيار الأسبوع'
+      )
+      return
+    }
 
-    const dates = weekDates(1)
+    if (!newPlan.startDate) {
+      toast.error(
+        'يرجى اختيار تاريخ البداية'
+      )
+      return
+    }
+
+    if (!newPlan.endDate) {
+      toast.error(
+        'يرجى اختيار تاريخ النهاية'
+      )
+      return
+    }
+
+    if (!newPlan.planId) {
+      toast.error(
+        'يرجى اختيار موضوع الدرس'
+      )
+      return
+    }
 
     setPlans(current => [
       ...current,
       {
-        levelId: firstLevel
-          ? String(firstLevel.id)
-          : '',
-
-        gradeId: firstGrade
-          ? String(firstGrade.id)
-          : '',
-
-        subjectId: firstSubject
-          ? String(firstSubject.id)
-          : '',
-
-        planId: firstLesson
-          ? String(firstLesson.id)
-          : '',
-
-        week: '1',
-
-        startDate: dates.startDate,
-
-        endDate: dates.endDate,
+        ...newPlan,
       },
     ])
+
+    toast.success(
+      'تمت إضافة الدرس'
+    )
+
+    closeAddForm()
   }
 
   /* =======================================================
-     تعديل الصف
-     ======================================================= */
-
-  const updatePlan = (
-    index: number,
-    field: keyof ArchivedPlan,
-    value: string
-  ) => {
-    setPlans(current =>
-      current.map((plan, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...plan,
-              [field]: value,
-            }
-          : plan
-      )
-    )
-  }
-
-  /* =======================================================
-     تغيير الفصل الدراسي
-     ======================================================= */
-
-  const changeLevel = (
-    index: number,
-    levelId: string
-  ) => {
-    const firstGrade = grades.find(
-      grade =>
-        String(grade.level_id) === levelId
-    )
-
-    const gradeId = firstGrade
-      ? String(firstGrade.id)
-      : ''
-
-    const firstSubject = firstGrade
-      ? subjects.find(
-          subject =>
-            subject.grade_id === firstGrade.id &&
-            String(subject.level_id) === levelId
-        )
-      : undefined
-
-    const subjectId = firstSubject
-      ? String(firstSubject.id)
-      : ''
-
-    const firstLesson = firstSubject
-      ? lessonPlans.find(
-          plan =>
-            plan.subject_id === firstSubject.id &&
-            String(plan.level_id) === levelId &&
-            plan.grade_id === firstGrade?.id
-        )
-      : undefined
-
-    const planId = firstLesson
-      ? String(firstLesson.id)
-      : ''
-
-    setPlans(current =>
-      current.map((plan, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...plan,
-              levelId,
-              gradeId,
-              subjectId,
-              planId,
-            }
-          : plan
-      )
-    )
-  }
-
-  /* =======================================================
-     تغيير الصف
-     ======================================================= */
-
-  const changeGrade = (
-    index: number,
-    gradeId: string
-  ) => {
-    const currentPlan = plans[index]
-
-    const firstSubject = subjects.find(
-      subject =>
-        String(subject.grade_id) === gradeId &&
-        String(subject.level_id) === currentPlan.levelId
-    )
-
-    const subjectId = firstSubject
-      ? String(firstSubject.id)
-      : ''
-
-    const firstLesson = firstSubject
-      ? lessonPlans.find(
-          plan =>
-            plan.subject_id === firstSubject.id &&
-            plan.grade_id === Number(gradeId) &&
-            plan.level_id === Number(currentPlan.levelId)
-        )
-      : undefined
-
-    const planId = firstLesson
-      ? String(firstLesson.id)
-      : ''
-
-    setPlans(current =>
-      current.map((plan, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...plan,
-              gradeId,
-              subjectId,
-              planId,
-            }
-          : plan
-      )
-    )
-  }
-
-  /* =======================================================
-     تغيير المادة
-     ======================================================= */
-
-  const changeSubject = (
-    index: number,
-    subjectId: string
-  ) => {
-    const currentPlan = plans[index]
-
-    const firstLesson = lessonPlans.find(
-      plan =>
-        plan.subject_id === Number(subjectId) &&
-        plan.grade_id === Number(currentPlan.gradeId) &&
-        plan.level_id === Number(currentPlan.levelId)
-    )
-
-    setPlans(current =>
-      current.map((plan, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...plan,
-              subjectId,
-              planId: firstLesson
-                ? String(firstLesson.id)
-                : '',
-            }
-          : plan
-      )
-    )
-  }
-
-  /* =======================================================
-     تغيير الأسبوع
-     ======================================================= */
-
-  const changeWeek = (
-    index: number,
-    value: string
-  ) => {
-    const dates = weekDates(Number(value))
-
-    setPlans(current =>
-      current.map((plan, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...plan,
-              week: value,
-              startDate: dates.startDate,
-              endDate: dates.endDate,
-            }
-          : plan
-      )
-    )
-  }
-
-  /* =======================================================
-     حذف صف
+     حذف
      ======================================================= */
 
   const deletePlan = async (
     index: number
   ) => {
-    const plan = plans[index]
+    const plan =
+      plans[index]
+
+    if (!plan) return
 
     if (!plan.id) {
       setPlans(current =>
@@ -504,6 +689,10 @@ export default function ArchivedPlansView({
           (_, currentIndex) =>
             currentIndex !== index
         )
+      )
+
+      toast.success(
+        'تم حذف الدرس'
       )
 
       return
@@ -521,38 +710,48 @@ export default function ArchivedPlansView({
         )
       )
 
-      toast.success('تم حذف الخطة')
+      toast.success(
+        'تم حذف الدرس'
+      )
     } catch (error) {
       console.error(error)
-      toast.error('تعذر حذف الخطة')
+
+      toast.error(
+        'تعذر حذف الدرس'
+      )
     }
   }
 
   /* =======================================================
-     حفظ الخطة
+     حفظ
      ======================================================= */
 
   const save = async () => {
     if (!plans.length) {
-      toast.error('أضف درسًا واحدًا على الأقل')
+      toast.error(
+        'أضف درسًا واحدًا على الأقل'
+      )
+
       return
     }
 
-    const invalid = plans.some(
-      plan =>
-        !plan.levelId ||
-        !plan.gradeId ||
-        !plan.subjectId ||
-        !plan.planId ||
-        !plan.week ||
-        !plan.startDate ||
-        !plan.endDate
-    )
+    const invalid =
+      plans.some(
+        plan =>
+          !plan.levelId ||
+          !plan.gradeId ||
+          !plan.subjectId ||
+          !plan.planId ||
+          !plan.week ||
+          !plan.startDate ||
+          !plan.endDate
+      )
 
     if (invalid) {
       toast.error(
         'يرجى استكمال جميع بيانات الخطة'
       )
+
       return
     }
 
@@ -562,26 +761,53 @@ export default function ArchivedPlansView({
       await api.post(
         `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`,
         {
-          plans: plans.map(plan => ({
-            id: plan.id,
-            levelId: Number(plan.levelId),
-            gradeId: Number(plan.gradeId),
-            subjectId: Number(plan.subjectId),
-            planId: Number(plan.planId),
-            weekNumber: Number(plan.week),
-            startDate: plan.startDate,
-            endDate: plan.endDate,
-          })),
+          plans: plans.map(
+            plan => ({
+              id: plan.id,
+
+              levelId:
+                Number(
+                  plan.levelId
+                ),
+
+              gradeId:
+                Number(
+                  plan.gradeId
+                ),
+
+              subjectId:
+                Number(
+                  plan.subjectId
+                ),
+
+              planId:
+                Number(
+                  plan.planId
+                ),
+
+              weekNumber:
+                Number(
+                  plan.week
+                ),
+
+              startDate:
+                plan.startDate,
+
+              endDate:
+                plan.endDate,
+            })
+          ),
         }
       )
 
       toast.success(
-        'تم حفظ الخطة المؤرشفة بنجاح'
+        'تم حفظ الخطة بنجاح'
       )
     } catch (error) {
       console.error(error)
+
       toast.error(
-        'تعذر حفظ الخطة المؤرشفة'
+        'تعذر حفظ الخطة'
       )
     } finally {
       setSaving(false)
@@ -589,472 +815,696 @@ export default function ArchivedPlansView({
   }
 
   /* =======================================================
-     القوائم التابعة
-     ======================================================= */
-
-  const getGrades = (
-    levelId: string
-  ) =>
-    grades.filter(
-      grade =>
-        String(grade.level_id) === levelId
-    )
-
-  const getSubjects = (
-    levelId: string,
-    gradeId: string
-  ) =>
-    subjects.filter(
-      subject =>
-        String(subject.level_id) === levelId &&
-        String(subject.grade_id) === gradeId
-    )
-
-  const getLessonPlans = (
-    levelId: string,
-    gradeId: string,
-    subjectId: string
-  ) =>
-    lessonPlans.filter(
-      plan =>
-        String(plan.level_id) === levelId &&
-        String(plan.grade_id) === gradeId &&
-        String(plan.subject_id) === subjectId
-    )
-
-  /* =======================================================
-     JSX
+     RENDER
      ======================================================= */
 
   return (
-    <div style={{ direction: 'rtl' }}>
-
-      {/* العودة */}
-
+    <div
+      style={{
+        direction: 'rtl',
+        padding: 30,
+        maxWidth: 1100,
+        margin: '0 auto',
+      }}
+    >
       <button
         onClick={onBack}
         style={backButton}
       >
-        <ArrowRight size={17} />
-        العودة إلى إدارة الجداول
+        <ArrowRight size={18} />
+        العودة
       </button>
 
-      {/* العنوان */}
-
       <div style={header}>
-        الخطط المؤرشفة — {classroomName}
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: 20,
+            }}
+          >
+            الخطط الدراسية
+          </h2>
+
+          <p
+            style={{
+              margin: '6px 0 0',
+              fontSize: 13,
+              opacity: 0.9,
+            }}
+          >
+            {classroomName}
+          </p>
+        </div>
       </div>
 
-      {/* الجدول */}
-
       {loading ? (
-        <p style={{ textAlign: 'center' }}>
+        <div style={loadingContainer}>
           جارٍ تحميل البيانات...
-        </p>
+        </div>
       ) : (
-        <div
-          style={{
-            overflowX: 'auto',
-          }}
-        >
-          <table style={table}>
+        <>
+          {/* =================================================
+              نموذج إضافة الدرس
+             ================================================= */}
 
-            <thead>
-              <tr>
+          {showAddForm && (
+            <div
+              style={addFormContainer}
+            >
+              <div
+                style={addFormHeader}
+              >
+                <div>
+                  <h3
+                    style={{
+                      margin: 0,
+                    }}
+                  >
+                    إضافة درس جديد
+                  </h3>
 
-                <th style={th}>
-                  الفصل الدراسي
-                </th>
+                  <p
+                    style={{
+                      margin:
+                        '6px 0 0',
+                      color:
+                        '#6B7280',
+                      fontSize: 13,
+                    }}
+                  >
+                    اختر البيانات بالتسلسل
+                  </p>
+                </div>
 
-                <th style={th}>
-                  الصف
-                </th>
+                <button
+                  onClick={
+                    closeAddForm
+                  }
+                  style={closeButton}
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-                <th style={th}>
-                  المادة
-                </th>
+              {/* =================================================
+                  1 - المرحلة
+                 ================================================= */}
 
-                <th style={th}>
-                  موضوع الدرس
-                </th>
+              <div style={stepContainer}>
+                <div style={stepNumber}>
+                  1
+                </div>
 
-                <th style={th}>
-                  الأسبوع
-                </th>
+                <div style={stepContent}>
+                  <label style={label}>
+                    المرحلة
+                  </label>
 
-                <th style={th}>
-                  من
-                </th>
+                  <select
+                    value={
+                      newPlan.levelId
+                    }
+                    onChange={event =>
+                      handleLevelChange(
+                        event.target.value
+                      )
+                    }
+                    style={selectInput}
+                  >
+                    <option value="">
+                      اختر المرحلة
+                    </option>
 
-                <th style={th}>
-                  إلى
-                </th>
-
-                <th style={th}>
-                  الإجراءات
-                </th>
-
-              </tr>
-            </thead>
-
-            <tbody>
-
-              {plans.map(
-                (plan, index) => {
-
-                  const rowGrades =
-                    getGrades(
-                      plan.levelId
-                    )
-
-                  const rowSubjects =
-                    getSubjects(
-                      plan.levelId,
-                      plan.gradeId
-                    )
-
-                  const rowLessonPlans =
-                    getLessonPlans(
-                      plan.levelId,
-                      plan.gradeId,
-                      plan.subjectId
-                    )
-
-                  return (
-                    <tr key={plan.id ?? index}>
-
-                      {/* الفصل */}
-
-                      <td style={td}>
-
-                        <select
-                          value={plan.levelId}
-                          onChange={event =>
-                            changeLevel(
-                              index,
-                              event.target.value
-                            )
-                          }
-                          style={input}
+                    {levels.map(
+                      level => (
+                        <option
+                          key={level.id}
+                          value={level.id}
                         >
+                          {level.name}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+              </div>
 
-                          <option value="">
-                            اختر الفصل الدراسي
+              {/* =================================================
+                  2 - الصف
+                 ================================================= */}
+
+              {newPlan.levelId && (
+                <div style={stepContainer}>
+                  <div style={stepNumber}>
+                    2
+                  </div>
+
+                  <div style={stepContent}>
+                    <label style={label}>
+                      الصف
+                    </label>
+
+                    <select
+                      value={
+                        newPlan.gradeId
+                      }
+                      onChange={event =>
+                        handleGradeChange(
+                          event.target.value
+                        )
+                      }
+                      style={selectInput}
+                    >
+                      <option value="">
+                        اختر الصف
+                      </option>
+
+                      {availableGrades.map(
+                        grade => (
+                          <option
+                            key={grade.id}
+                            value={grade.id}
+                          >
+                            {grade.name}
                           </option>
+                        )
+                      )}
+                    </select>
 
-                          {levels.map(
-                            level => (
-                              <option
-                                key={level.id}
-                                value={level.id}
-                              >
-                                {level.name}
-                              </option>
-                            )
-                          )}
+                    {!availableGrades.length && (
+                      <div style={warningText}>
+                        لا توجد صفوف مرتبطة بهذه المرحلة.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                        </select>
+              {/* =================================================
+                  3 - المادة
+                 ================================================= */}
 
-                      </td>
+              {newPlan.gradeId && (
+                <div style={stepContainer}>
+                  <div style={stepNumber}>
+                    3
+                  </div>
 
-                      {/* الصف */}
+                  <div style={stepContent}>
+                    <label style={label}>
+                      المادة
+                    </label>
 
-                      <td style={td}>
+                    <select
+                      value={
+                        newPlan.subjectId
+                      }
+                      onChange={event =>
+                        handleSubjectChange(
+                          event.target.value
+                        )
+                      }
+                      style={selectInput}
+                    >
+                      <option value="">
+                        اختر المادة
+                      </option>
 
-                        <select
-                          value={plan.gradeId}
-                          onChange={event =>
-                            changeGrade(
-                              index,
-                              event.target.value
-                            )
-                          }
-                          disabled={!plan.levelId}
-                          style={input}
-                        >
-
-                          <option value="">
-                            اختر الصف
+                      {availableSubjects.map(
+                        subject => (
+                          <option
+                            key={subject.id}
+                            value={subject.id}
+                          >
+                            {subject.name}
                           </option>
+                        )
+                      )}
+                    </select>
 
-                          {rowGrades.map(
-                            grade => (
-                              <option
-                                key={grade.id}
-                                value={grade.id}
-                              >
-                                {grade.name}
-                              </option>
-                            )
-                          )}
+                    {!availableSubjects.length && (
+                      <div style={warningText}>
+                        لا توجد مواد مرتبطة بهذا الصف.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                        </select>
+              {/* =================================================
+                  4 - الأسبوع
+                 ================================================= */}
 
-                      </td>
+              {newPlan.subjectId && (
+                <div style={stepContainer}>
+                  <div style={stepNumber}>
+                    4
+                  </div>
 
-                      {/* المادة */}
+                  <div style={stepContent}>
+                    <label style={label}>
+                      الأسبوع
+                    </label>
 
-                      <td style={td}>
+                    <select
+                      value={
+                        newPlan.week
+                      }
+                      onChange={event =>
+                        handleWeekChange(
+                          event.target.value
+                        )
+                      }
+                      style={selectInput}
+                    >
+                      <option value="">
+                        اختر الأسبوع
+                      </option>
 
-                        <select
-                          value={plan.subjectId}
-                          onChange={event =>
-                            changeSubject(
-                              index,
-                              event.target.value
-                            )
-                          }
-                          disabled={
-                            !plan.gradeId
-                          }
-                          style={input}
-                        >
-
-                          <option value="">
-                            اختر المادة
+                      {weeks.map(
+                        week => (
+                          <option
+                            key={week}
+                            value={week}
+                          >
+                            الأسبوع {week}
                           </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+              )}
 
-                          {rowSubjects.map(
-                            subject => (
-                              <option
-                                key={subject.id}
-                                value={subject.id}
-                              >
-                                {subject.name}
-                              </option>
-                            )
-                          )}
+              {/* =================================================
+                  5 - التاريخ
+                 ================================================= */}
 
-                        </select>
+              {newPlan.week && (
+                <div style={stepContainer}>
+                  <div style={stepNumber}>
+                    5
+                  </div>
 
-                      </td>
+                  <div style={stepContent}>
+                    <label style={label}>
+                      التاريخ
+                    </label>
 
-                      {/* موضوع الدرس */}
-
-                      <td style={td}>
-
-                        <select
-                          value={plan.planId}
-                          onChange={event =>
-                            updatePlan(
-                              index,
-                              'planId',
-                              event.target.value
-                            )
-                          }
-                          disabled={
-                            !plan.subjectId
-                          }
-                          style={{
-                            ...input,
-                            minWidth: 220,
-                          }}
+                    <div style={dateGrid}>
+                      <div>
+                        <span
+                          style={dateLabel}
                         >
-
-                          <option value="">
-                            اختر موضوع الدرس
-                          </option>
-
-                          {rowLessonPlans.map(
-                            lesson => (
-                              <option
-                                key={lesson.id}
-                                value={lesson.id}
-                              >
-                                {
-                                  lesson.lesson_topic
-                                }
-                              </option>
-                            )
-                          )}
-
-                        </select>
-
-                      </td>
-
-                      {/* الأسبوع */}
-
-                      <td style={td}>
-
-                        <select
-                          value={plan.week}
-                          onChange={event =>
-                            changeWeek(
-                              index,
-                              event.target.value
-                            )
-                          }
-                          style={input}
-                        >
-
-                          {weeks.map(
-                            week => (
-                              <option
-                                key={week}
-                                value={week}
-                              >
-                                الأسبوع {week}
-                              </option>
-                            )
-                          )}
-
-                        </select>
-
-                      </td>
-
-                      {/* من */}
-
-                      <td style={td}>
+                          من
+                        </span>
 
                         <input
                           type="date"
                           value={
-                            plan.startDate
+                            newPlan.startDate
                           }
                           onChange={event =>
-                            updatePlan(
-                              index,
+                            handleDateChange(
                               'startDate',
                               event.target.value
                             )
                           }
-                          style={input}
+                          style={selectInput}
                         />
 
-                        {plan.startDate && (
-                          <div
-                            style={
-                              hijriDate
-                            }
-                          >
-                            {
-                              getHijriDate(
-                                plan.startDate
-                              )
-                            }
+                        {newPlan.startDate && (
+                          <div style={hijriDate}>
+                            {getHijriDate(
+                              newPlan.startDate
+                            )}
                           </div>
                         )}
+                      </div>
 
-                      </td>
-
-                      {/* إلى */}
-
-                      <td style={td}>
+                      <div>
+                        <span
+                          style={dateLabel}
+                        >
+                          إلى
+                        </span>
 
                         <input
                           type="date"
                           value={
-                            plan.endDate
+                            newPlan.endDate
                           }
                           onChange={event =>
-                            updatePlan(
-                              index,
+                            handleDateChange(
                               'endDate',
                               event.target.value
                             )
                           }
-                          style={input}
+                          style={selectInput}
                         />
 
-                        {plan.endDate && (
-                          <div
-                            style={
-                              hijriDate
-                            }
-                          >
-                            {
-                              getHijriDate(
-                                plan.endDate
-                              )
-                            }
+                        {newPlan.endDate && (
+                          <div style={hijriDate}>
+                            {getHijriDate(
+                              newPlan.endDate
+                            )}
                           </div>
                         )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                      </td>
+              {/* =================================================
+                  6 - موضوع الدرس
+                 ================================================= */}
 
-                      {/* حذف */}
+              {newPlan.week && (
+                <div style={stepContainer}>
+                  <div style={stepNumber}>
+                    6
+                  </div>
 
-                      <td style={td}>
+                  <div style={stepContent}>
+                    <label style={label}>
+                      موضوع الدرس
+                    </label>
 
-                        <button
-                          onClick={() =>
-                            deletePlan(index)
-                          }
-                          style={
-                            iconButton
-                          }
-                          title="حذف"
-                        >
-                          <Trash2
-                            size={18}
-                          />
-                        </button>
+                    <select
+                      value={
+                        newPlan.planId
+                      }
+                      onChange={event =>
+                        handleLessonChange(
+                          event.target.value
+                        )
+                      }
+                      style={selectInput}
+                    >
+                      <option value="">
+                        اختر موضوع الدرس
+                      </option>
 
-                      </td>
+                      {availableLessons.map(
+                        lesson => (
+                          <option
+                            key={lesson.id}
+                            value={lesson.id}
+                          >
+                            {
+                              lesson.lesson_topic
+                            }
+                          </option>
+                        )
+                      )}
+                    </select>
 
+                    {!availableLessons.length && (
+                      <div style={warningText}>
+                        لا توجد مواضيع دروس لهذه المادة.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* =================================================
+                  أزرار
+                 ================================================= */}
+
+              <div style={formActions}>
+                <button
+                  onClick={addPlan}
+                  style={saveButton}
+                >
+                  <Plus size={17} />
+                  إضافة الدرس
+                </button>
+
+                <button
+                  onClick={closeAddForm}
+                  style={cancelButton}
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================
+              الدروس المضافة
+             ================================================= */}
+
+          <div style={plansContainer}>
+            <div style={plansHeader}>
+              <div>
+                <h3
+                  style={{
+                    margin: 0,
+                  }}
+                >
+                  الدروس المضافة
+                </h3>
+
+                <span style={plansCount}>
+                  {plans.length} درس
+                </span>
+              </div>
+
+              {!showAddForm && (
+                <button
+                  onClick={openAddForm}
+                  style={primaryButton}
+                >
+                  <Plus size={17} />
+                  إضافة درس
+                </button>
+              )}
+            </div>
+
+            {!plans.length ? (
+              <div style={emptyState}>
+                لا توجد دروس مؤرشفة حتى الآن.
+                <br />
+
+                اضغط على
+                <strong>
+                  {' '}
+                  "إضافة درس"
+                </strong>{' '}
+                لبدء الخطة.
+              </div>
+            ) : (
+              <div style={tableContainer}>
+                <table style={table}>
+                  <thead>
+                    <tr>
+                      <th style={th}>#</th>
+                      <th style={th}>المرحلة</th>
+                      <th style={th}>الصف</th>
+                      <th style={th}>المادة</th>
+                      <th style={th}>موضوع الدرس</th>
+                      <th style={th}>الأسبوع</th>
+                      <th style={th}>من</th>
+                      <th style={th}>إلى</th>
+                      <th style={th}>الإجراءات</th>
                     </tr>
-                  )
-                }
-              )}
+                  </thead>
 
-              {!plans.length && (
-                <tr>
-                  <td
-                    colSpan={8}
-                    style={{
-                      ...td,
-                      color: '#9CA3AF',
-                      padding: 30,
-                    }}
-                  >
-                    لا توجد خطة مؤرشفة.
-                    اضغط على "إضافة درس"
-                    لبدء الخطة.
-                  </td>
-                </tr>
-              )}
+                  <tbody>
+                    {plans.map(
+                      (plan, index) => {
+                        const level =
+                          levels.find(
+                            item =>
+                              String(
+                                item.id
+                              ) ===
+                              String(
+                                plan.levelId
+                              )
+                          )
 
-            </tbody>
+                        const grade =
+                          grades.find(
+                            item =>
+                              String(
+                                item.id
+                              ) ===
+                              String(
+                                plan.gradeId
+                              )
+                          )
 
-          </table>
-        </div>
+                        const subject =
+                          subjects.find(
+                            item =>
+                              String(
+                                item.id
+                              ) ===
+                              String(
+                                plan.subjectId
+                              )
+                          )
+
+                        const lesson =
+                          lessonPlans.find(
+                            item =>
+                              String(
+                                item.id
+                              ) ===
+                              String(
+                                plan.planId
+                              )
+                          )
+
+                        return (
+                          <tr
+                            key={
+                              plan.id ??
+                              `new-${index}`
+                            }
+                          >
+                            <td style={td}>
+                              {index + 1}
+                            </td>
+
+                            <td style={td}>
+                              {
+                                level?.name ??
+                                '-'
+                              }
+                            </td>
+
+                            <td style={td}>
+                              {
+                                grade?.name ??
+                                '-'
+                              }
+                            </td>
+
+                            <td style={td}>
+                              {
+                                subject?.name ??
+                                '-'
+                              }
+                            </td>
+
+                            <td
+                              style={{
+                                ...td,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {
+                                lesson?.lesson_topic ??
+                                '-'
+                              }
+                            </td>
+
+                            <td style={td}>
+                              الأسبوع{' '}
+                              {plan.week}
+                            </td>
+
+                            <td style={td}>
+                              <div>
+                                {
+                                  plan.startDate
+                                }
+                              </div>
+
+                              {plan.startDate && (
+                                <div
+                                  style={
+                                    hijriDate
+                                  }
+                                >
+                                  {getHijriDate(
+                                    plan.startDate
+                                  )}
+                                </div>
+                              )}
+                            </td>
+
+                            <td style={td}>
+                              <div>
+                                {
+                                  plan.endDate
+                                }
+                              </div>
+
+                              {plan.endDate && (
+                                <div
+                                  style={
+                                    hijriDate
+                                  }
+                                >
+                                  {getHijriDate(
+                                    plan.endDate
+                                  )}
+                                </div>
+                              )}
+                            </td>
+
+                            <td style={td}>
+                              <button
+                                onClick={() =>
+                                  deletePlan(
+                                    index
+                                  )
+                                }
+                                style={
+                                  iconButton
+                                }
+                                title="حذف"
+                              >
+                                <Trash2
+                                  size={18}
+                                />
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      }
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* =================================================
+              حفظ
+             ================================================= */}
+
+          <div style={bottomActions}>
+            <button
+              onClick={save}
+              disabled={
+                saving ||
+                !plans.length
+              }
+              style={{
+                ...saveButton,
+                opacity:
+                  saving ||
+                  !plans.length
+                    ? 0.6
+                    : 1,
+              }}
+            >
+              <Save size={17} />
+
+              {saving
+                ? 'جارٍ الحفظ...'
+                : 'حفظ الخطة'}
+            </button>
+          </div>
+        </>
       )}
-
-      {/* الأزرار */}
-
-      <div
-        style={{
-          display: 'flex',
-          gap: 10,
-          marginTop: 18,
-        }}
-      >
-
-        <button
-          onClick={addPlan}
-          style={secondaryButton}
-        >
-          <Plus size={16} />
-          إضافة درس
-        </button>
-
-        <button
-          onClick={save}
-          disabled={saving}
-          style={{
-            ...saveButton,
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          <Save size={16} />
-
-          {saving
-            ? 'جارٍ الحفظ...'
-            : 'حفظ الخطة'}
-        </button>
-
-      </div>
-
     </div>
   )
 }
@@ -1066,44 +1516,12 @@ export default function ArchivedPlansView({
 const header: React.CSSProperties = {
   background: '#9EC5C7',
   color: '#fff',
-  padding: 16,
+  padding: 18,
   borderRadius: 12,
-  textAlign: 'center',
-  fontWeight: 700,
   marginBottom: 18,
-}
-
-const input: React.CSSProperties = {
-  display: 'block',
-  marginTop: 6,
-  minWidth: 150,
-  width: '100%',
-  padding: '8px 10px',
-  border: '1px solid #E5E7EB',
-  borderRadius: 7,
-  boxSizing: 'border-box',
-  background: '#fff',
-}
-
-const table: React.CSSProperties = {
-  width: '100%',
-  minWidth: 1200,
-  borderCollapse: 'collapse',
-}
-
-const th: React.CSSProperties = {
-  border: '1px solid #E5E7EB',
-  padding: 10,
-  background: '#F9FAFB',
-  color: '#4B5563',
-  whiteSpace: 'nowrap',
-}
-
-const td: React.CSSProperties = {
-  border: '1px solid #E5E7EB',
-  padding: 8,
-  textAlign: 'center',
-  verticalAlign: 'middle',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
 }
 
 const backButton: React.CSSProperties = {
@@ -1115,29 +1533,254 @@ const backButton: React.CSSProperties = {
   alignItems: 'center',
   gap: 6,
   marginBottom: 12,
+  fontSize: 14,
 }
 
-const secondaryButton: React.CSSProperties = {
-  border: '1px solid #D1D5DB',
+const loadingContainer: React.CSSProperties = {
   background: '#fff',
-  padding: '9px 14px',
-  borderRadius: 8,
+  border: '1px solid #E5E7EB',
+  borderRadius: 14,
+  padding: 60,
+  textAlign: 'center',
+  color: '#6B7280',
+}
+
+const addFormContainer: React.CSSProperties = {
+  background: '#fff',
+  border: '1px solid #DDE7E8',
+  borderRadius: 16,
+  padding: 22,
+  marginBottom: 20,
+  boxShadow:
+    '0 4px 18px rgba(0,0,0,0.05)',
+}
+
+const addFormHeader: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingBottom: 18,
+  borderBottom:
+    '1px solid #E5E7EB',
+  marginBottom: 18,
+}
+
+const closeButton: React.CSSProperties = {
+  border: 'none',
+  background: '#F3F4F6',
+  width: 34,
+  height: 34,
+  borderRadius: '50%',
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
-  gap: 6,
+  justifyContent: 'center',
+  color: '#6B7280',
+}
+
+const stepContainer: React.CSSProperties = {
+  display: 'flex',
+  gap: 14,
+  alignItems: 'flex-start',
+  marginBottom: 18,
+  padding: 14,
+  background: '#FAFCFC',
+  border:
+    '1px solid #E5E7EB',
+  borderRadius: 12,
+}
+
+const stepNumber: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  minWidth: 32,
+  borderRadius: '50%',
+  background: '#2D7D82',
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 700,
+  fontSize: 13,
+}
+
+const stepContent: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+}
+
+const label: React.CSSProperties = {
+  display: 'block',
+  marginBottom: 7,
+  fontSize: 13,
+  color: '#374151',
+  fontWeight: 700,
+}
+
+const selectInput: React.CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '11px 12px',
+  border:
+    '1px solid #D1D5DB',
+  borderRadius: 8,
+  outline: 'none',
+  background: '#fff',
+  fontSize: 13,
+  color: '#374151',
+}
+
+const dateGrid: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns:
+    'repeat(2, minmax(0, 1fr))',
+  gap: 12,
+}
+
+const dateLabel: React.CSSProperties = {
+  display: 'block',
+  marginBottom: 6,
+  color: '#6B7280',
+  fontSize: 12,
+  fontWeight: 600,
+}
+
+const hijriDate: React.CSSProperties = {
+  marginTop: 5,
+  fontSize: 11,
+  color: '#2D7D82',
+  whiteSpace: 'nowrap',
+}
+
+const warningText: React.CSSProperties = {
+  marginTop: 8,
+  color: '#B45309',
+  background: '#FEF3C7',
+  borderRadius: 7,
+  padding: '8px 10px',
+  fontSize: 12,
+}
+
+const formActions: React.CSSProperties = {
+  display: 'flex',
+  gap: 10,
+  marginTop: 22,
+  paddingTop: 18,
+  borderTop:
+    '1px solid #E5E7EB',
+}
+
+const plansContainer: React.CSSProperties = {
+  background: '#fff',
+  border:
+    '1px solid #E5E7EB',
+  borderRadius: 14,
+  overflow: 'hidden',
+}
+
+const plansHeader: React.CSSProperties = {
+  padding: 16,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  borderBottom:
+    '1px solid #E5E7EB',
+}
+
+const plansCount: React.CSSProperties = {
+  display: 'inline-block',
+  marginTop: 5,
+  color: '#6B7280',
+  fontSize: 12,
+}
+
+const emptyState: React.CSSProperties = {
+  padding: 45,
+  textAlign: 'center',
+  color: '#9CA3AF',
+  lineHeight: 2,
+  fontSize: 13,
+}
+
+const tableContainer: React.CSSProperties = {
+  width: '100%',
+  overflowX: 'auto',
+}
+
+const table: React.CSSProperties = {
+  width: '100%',
+  minWidth: 1000,
+  borderCollapse: 'collapse',
+}
+
+const th: React.CSSProperties = {
+  border:
+    '1px solid #E5E7EB',
+  padding: 10,
+  background: '#F9FAFB',
+  color: '#4B5563',
+  whiteSpace: 'nowrap',
+  fontSize: 12,
+}
+
+const td: React.CSSProperties = {
+  border:
+    '1px solid #E5E7EB',
+  padding: 9,
+  textAlign: 'center',
+  verticalAlign: 'middle',
+  fontSize: 12,
+  color: '#374151',
+}
+
+const primaryButton: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 7,
+  padding: '10px 16px',
+  background: '#2D7D82',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 9,
+  cursor: 'pointer',
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
 }
 
 const saveButton: React.CSSProperties = {
-  border: 'none',
-  background: '#2D7D82',
-  color: '#fff',
-  padding: '9px 14px',
-  borderRadius: 8,
-  cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
-  gap: 6,
+  justifyContent: 'center',
+  gap: 7,
+  padding: '10px 18px',
+  background: '#2D7D82',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 9,
+  cursor: 'pointer',
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+}
+
+const cancelButton: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 7,
+  padding: '10px 18px',
+  background: '#F3F4F6',
+  color: '#6B7280',
+  border: 'none',
+  borderRadius: 9,
+  cursor: 'pointer',
+  fontWeight: 600,
+}
+
+const bottomActions: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-start',
+  marginTop: 18,
 }
 
 const iconButton: React.CSSProperties = {
@@ -1145,11 +1788,4 @@ const iconButton: React.CSSProperties = {
   background: 'none',
   color: '#DC2626',
   cursor: 'pointer',
-}
-
-const hijriDate: React.CSSProperties = {
-  marginTop: 5,
-  fontSize: 12,
-  color: '#2D7D82',
-  whiteSpace: 'nowrap',
 }
