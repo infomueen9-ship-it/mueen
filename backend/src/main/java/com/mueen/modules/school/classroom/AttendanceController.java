@@ -16,6 +16,46 @@ public class AttendanceController {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /*
+     * =========================================================
+     * سجل الحضور التفصيلي لفصل معين
+     * =========================================================
+     *
+     * GET:
+     * /api/school/{schemaName}/attendance/classroom/{classroomId}
+     */
+    @GetMapping("/classroom/{classroomId}")
+    public ResponseEntity<?> getClassroomAttendance(
+            @PathVariable String schemaName,
+            @PathVariable Long classroomId) {
+        try {
+            String sql = """
+                SELECT a.id, a.date, a.status, s.full_name AS student_name
+                FROM %s.attendance a
+                JOIN %s.students s ON s.id = a.student_id
+                WHERE a.classroom_id = ?
+                ORDER BY a.date DESC, s.full_name
+                """.formatted(schemaName, schemaName);
+
+            List<Map<String, Object>> rows =
+                    jdbcTemplate.queryForList(sql, classroomId);
+
+            List<Map<String, Object>> result = rows.stream().map(row -> {
+                Map<String, Object> map = new java.util.HashMap<>();
+                map.put("id", row.get("id"));
+                map.put("date", row.get("date"));
+                map.put("status", row.get("status"));
+                map.put("studentName", row.get("student_name"));
+                return map;
+            }).toList();
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "تعذر تحميل سجل الحضور"));
+        }
+    }
+
     @GetMapping("/summary") // تم تغيير المسار لإزالة classroomId، حيث أن الواجهة الأمامية تستدعي بدونها
     public ResponseEntity<?> getClassroomsAttendanceSummary( // تم إعادة تسمية الدالة للوضوح
             @PathVariable String schemaName) {
