@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   Plus,
@@ -163,6 +163,15 @@ export default function ArchivedPlansView({
       'lesson'
     )
 
+  const [formLevelId, setFormLevelId] =
+    useState('')
+
+  const [formGradeId, setFormGradeId] =
+    useState('')
+
+  const [formSubjectId, setFormSubjectId] =
+    useState('')
+
   const [newPlan, setNewPlan] =
     useState<ArchivedPlan>({
       type: 'lesson',
@@ -174,6 +183,88 @@ export default function ArchivedPlansView({
       endDate:
         weekDates(1).endDate,
     })
+
+  /* =======================================================
+     الصفوف التابعة للمرحلة
+     ======================================================= */
+
+  const availableGrades =
+    useMemo(() => {
+      if (!formLevelId) {
+        return []
+      }
+
+      return grades.filter(
+        grade =>
+          String(
+            grade.level_id
+          ) === formLevelId
+      )
+    }, [
+      grades,
+      formLevelId,
+    ])
+
+  /* =======================================================
+     المواد التابعة للصف
+     ======================================================= */
+
+  const availableSubjects =
+    useMemo(() => {
+      if (
+        !formLevelId ||
+        !formGradeId
+      ) {
+        return []
+      }
+
+      return subjects.filter(
+        subject =>
+          String(
+            subject.level_id
+          ) === formLevelId &&
+          String(
+            subject.grade_id
+          ) === formGradeId
+      )
+    }, [
+      subjects,
+      formLevelId,
+      formGradeId,
+    ])
+
+  /* =======================================================
+     مواضيع الدروس التابعة للمادة
+     ======================================================= */
+
+  const availableLessons =
+    useMemo(() => {
+      if (
+        !formLevelId ||
+        !formGradeId ||
+        !formSubjectId
+      ) {
+        return []
+      }
+
+      return lessonPlans.filter(
+        lesson =>
+          String(
+            lesson.level_id
+          ) === formLevelId &&
+          String(
+            lesson.grade_id
+          ) === formGradeId &&
+          String(
+            lesson.subject_id
+          ) === formSubjectId
+      )
+    }, [
+      lessonPlans,
+      formLevelId,
+      formGradeId,
+      formSubjectId,
+    ])
 
   /* =======================================================
      تحميل البيانات
@@ -320,6 +411,10 @@ export default function ArchivedPlansView({
 
     setAddType(type)
 
+    setFormLevelId('')
+    setFormGradeId('')
+    setFormSubjectId('')
+
     setNewPlan({
       type,
       planId: '',
@@ -343,6 +438,10 @@ export default function ArchivedPlansView({
 
     setAddType('lesson')
 
+    setFormLevelId('')
+    setFormGradeId('')
+    setFormSubjectId('')
+
     const dates =
       weekDates(1)
 
@@ -356,6 +455,60 @@ export default function ArchivedPlansView({
       endDate:
         dates.endDate,
     })
+  }
+
+  /* =======================================================
+     اختيار المرحلة
+     ======================================================= */
+
+  const handleLevelChange = (
+    value: string
+  ) => {
+    setFormLevelId(value)
+    setFormGradeId('')
+    setFormSubjectId('')
+
+    setNewPlan(
+      current => ({
+        ...current,
+        planId: '',
+      })
+    )
+  }
+
+  /* =======================================================
+     اختيار الصف
+     ======================================================= */
+
+  const handleGradeChange = (
+    value: string
+  ) => {
+    setFormGradeId(value)
+    setFormSubjectId('')
+
+    setNewPlan(
+      current => ({
+        ...current,
+        planId: '',
+      })
+    )
+  }
+
+  /* =======================================================
+     اختيار المادة
+     ======================================================= */
+
+  const handleSubjectChange = (
+    value: string
+  ) => {
+    setFormSubjectId(value)
+
+    setNewPlan(
+      current => ({
+        ...current,
+        planId: '',
+      })
+    )
   }
 
   /* =======================================================
@@ -438,6 +591,39 @@ export default function ArchivedPlansView({
      ======================================================= */
 
   const addPlan = () => {
+    if (
+      newPlan.type === 'lesson' &&
+      !formLevelId
+    ) {
+      toast.error(
+        'يرجى اختيار المرحلة'
+      )
+
+      return
+    }
+
+    if (
+      newPlan.type === 'lesson' &&
+      !formGradeId
+    ) {
+      toast.error(
+        'يرجى اختيار الصف'
+      )
+
+      return
+    }
+
+    if (
+      newPlan.type === 'lesson' &&
+      !formSubjectId
+    ) {
+      toast.error(
+        'يرجى اختيار المادة'
+      )
+
+      return
+    }
+
     if (!newPlan.weekNumber) {
       toast.error(
         'يرجى اختيار الأسبوع'
@@ -895,6 +1081,212 @@ export default function ArchivedPlansView({
               </div>
 
               {/* =================================================
+                  LEVEL
+                 ================================================= */}
+
+              {addType ===
+                'lesson' && (
+                <div
+                  style={
+                    stepContainer
+                  }
+                >
+                  <div
+                    style={
+                      stepNumber
+                    }
+                  >
+                    1
+                  </div>
+
+                  <div
+                    style={
+                      stepContent
+                    }
+                  >
+                    <label
+                      style={
+                        label
+                      }
+                    >
+                      المرحلة
+                    </label>
+
+                    <select
+                      value={
+                        formLevelId
+                      }
+                      onChange={event =>
+                        handleLevelChange(
+                          event.target.value
+                        )
+                      }
+                      style={
+                        selectInput
+                      }
+                    >
+                      <option value="">
+                        اختر المرحلة
+                      </option>
+
+                      {levels.map(
+                        level => (
+                          <option
+                            key={
+                              level.id
+                            }
+                            value={
+                              level.id
+                            }
+                          >
+                            {level.name}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* =================================================
+                  GRADE
+                 ================================================= */}
+
+              {addType ===
+                'lesson' &&
+                formLevelId && (
+                <div
+                  style={
+                    stepContainer
+                  }
+                >
+                  <div
+                    style={
+                      stepNumber
+                    }
+                  >
+                    2
+                  </div>
+
+                  <div
+                    style={
+                      stepContent
+                    }
+                  >
+                    <label
+                      style={
+                        label
+                      }
+                    >
+                      الصف
+                    </label>
+
+                    <select
+                      value={
+                        formGradeId
+                      }
+                      onChange={event =>
+                        handleGradeChange(
+                          event.target.value
+                        )
+                      }
+                      style={
+                        selectInput
+                      }
+                    >
+                      <option value="">
+                        اختر الصف
+                      </option>
+
+                      {availableGrades.map(
+                        grade => (
+                          <option
+                            key={
+                              grade.id
+                            }
+                            value={
+                              grade.id
+                            }
+                          >
+                            {grade.name}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* =================================================
+                  SUBJECT
+                 ================================================= */}
+
+              {addType ===
+                'lesson' &&
+                formGradeId && (
+                <div
+                  style={
+                    stepContainer
+                  }
+                >
+                  <div
+                    style={
+                      stepNumber
+                    }
+                  >
+                    3
+                  </div>
+
+                  <div
+                    style={
+                      stepContent
+                    }
+                  >
+                    <label
+                      style={
+                        label
+                      }
+                    >
+                      المادة
+                    </label>
+
+                    <select
+                      value={
+                        formSubjectId
+                      }
+                      onChange={event =>
+                        handleSubjectChange(
+                          event.target.value
+                        )
+                      }
+                      style={
+                        selectInput
+                      }
+                    >
+                      <option value="">
+                        اختر المادة
+                      </option>
+
+                      {availableSubjects.map(
+                        subject => (
+                          <option
+                            key={
+                              subject.id
+                            }
+                            value={
+                              subject.id
+                            }
+                          >
+                            {subject.name}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* =================================================
                   WEEK
                  ================================================= */}
 
@@ -908,7 +1300,10 @@ export default function ArchivedPlansView({
                     stepNumber
                   }
                 >
-                  1
+                  {addType ===
+                  'lesson'
+                    ? 4
+                    : 1}
                 </div>
 
                 <div
@@ -970,7 +1365,10 @@ export default function ArchivedPlansView({
                     stepNumber
                   }
                 >
-                  2
+                  {addType ===
+                  'lesson'
+                    ? 5
+                    : 2}
                 </div>
 
                 <div
@@ -1081,7 +1479,8 @@ export default function ArchivedPlansView({
                  ================================================= */}
 
               {addType ===
-                'lesson' && (
+                'lesson' &&
+                formSubjectId && (
                 <div
                   style={
                     stepContainer
@@ -1092,7 +1491,7 @@ export default function ArchivedPlansView({
                       stepNumber
                     }
                   >
-                    3
+                    6
                   </div>
 
                   <div
@@ -1127,7 +1526,7 @@ export default function ArchivedPlansView({
                         اختر موضوع الدرس
                       </option>
 
-                      {lessonPlans.map(
+                      {availableLessons.map(
                         lesson => (
                           <option
                             key={
@@ -1140,22 +1539,18 @@ export default function ArchivedPlansView({
                             {
                               lesson.lesson_topic
                             }
-                            {' — '}
-                            {
-                              lesson.subject_name
-                            }
                           </option>
                         )
                       )}
                     </select>
 
-                    {!lessonPlans.length && (
+                    {!availableLessons.length && (
                       <div
                         style={
                           warningText
                         }
                       >
-                        لا توجد خطط دراسية متاحة.
+                        لا توجد مواضيع دروس لهذه المادة.
                       </div>
                     )}
                   </div>
