@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
-import logo from '../../assets/logo.png'
+import moeLogo from '../../assets/moe-logo.png'
 
 type ArchivedPlan = {
   id: number
@@ -628,16 +628,18 @@ export default function PrintPlanView({
                   <div
                     style={{
                       flex: '0 0 auto',
-                      textAlign: 'center',
-                      padding: '0 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 20px',
                     }}
                   >
                     <img
-                      src={logo}
-                      alt="شعار"
+                      src={moeLogo}
+                      alt="وزارة التعليم"
                       style={{
-                        width: 60,
-                        height: 60,
+                        width: 110,
+                        height: 'auto',
                         objectFit: 'contain',
                       }}
                     />
