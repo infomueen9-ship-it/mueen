@@ -111,6 +111,23 @@ levelId: "",
 gradeId: "",
 });
 
+const [showPlanModal, setShowPlanModal] =
+useState(false);
+
+const [editingPlanId, setEditingPlanId] =
+useState<number | null>(null);
+
+const [planFormData, setPlanFormData] =
+useState({
+termId: "",
+levelId: "",
+gradeId: "",
+subjectId: "",
+lessonTopic: "",
+homework: "",
+notes: "",
+});
+
 const [showUploadModal, setShowUploadModal] =
 useState(false);
 
@@ -484,6 +501,105 @@ try {
 
   toast.error(
     "تعذر حذف الخطة"
+  );
+}
+};
+
+// =========================================================
+// Edit plan
+// =========================================================
+
+const openEditPlanModal = (
+plan: StudyPlan
+) => {
+
+setEditingPlanId(plan.id);
+
+setPlanFormData({
+  termId:
+    plan.termId
+      ? String(plan.termId)
+      : "",
+  levelId:
+    plan.levelId
+      ? String(plan.levelId)
+      : "",
+  gradeId:
+    plan.gradeId
+      ? String(plan.gradeId)
+      : "",
+  subjectId:
+    plan.subjectId
+      ? String(plan.subjectId)
+      : "",
+  lessonTopic: plan.lessonTopic || "",
+  homework: plan.homework || "",
+  notes: plan.notes || "",
+});
+
+setShowPlanModal(true);
+};
+
+const closePlanModal = () => {
+
+setShowPlanModal(false);
+setEditingPlanId(null);
+
+setPlanFormData({
+  termId: "",
+  levelId: "",
+  gradeId: "",
+  subjectId: "",
+  lessonTopic: "",
+  homework: "",
+  notes: "",
+});
+};
+
+const savePlanEdit = async () => {
+
+if (!editingPlanId) return;
+
+if (!planFormData.termId) {
+  toast.error("يرجى اختيار الفصل الدراسي");
+  return;
+}
+
+if (!planFormData.subjectId) {
+  toast.error("يرجى اختيار المادة");
+  return;
+}
+
+if (!planFormData.lessonTopic.trim()) {
+  toast.error("يرجى إدخال موضوع الدرس");
+  return;
+}
+
+try {
+
+  await api.put(
+    `/api/platform/admin/study-plans/plans/${editingPlanId}`,
+    {
+      termId: Number(planFormData.termId),
+      subjectId: Number(planFormData.subjectId),
+      lessonTopic: planFormData.lessonTopic.trim(),
+      homework: planFormData.homework.trim() || null,
+      notes: planFormData.notes.trim() || null,
+    }
+  );
+
+  toast.success("تم تعديل الخطة بنجاح");
+
+  closePlanModal();
+
+  await loadData();
+
+} catch (error) {
+
+  console.error(error);
+
+  toast.error(
+    "تعذر تعديل الخطة"
   );
 }
 };
@@ -916,9 +1032,9 @@ padding: "30px",
             <IconButton
               icon={<Edit size={15} />}
               color="#2563EB"
-              onClick={() => {
-                // تعديل لاحقاً
-              }}
+              onClick={() =>
+                openEditPlanModal(plan)
+              }
             />
 
             <IconButton
@@ -1507,6 +1623,292 @@ padding: "30px",
 
           <button
             onClick={closeModal}
+            style={secondaryButton}
+          >
+            إلغاء
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  )}
+
+  {/* ===================================================== */}
+  {/* PLAN EDIT MODAL */}
+  {/* ===================================================== */}
+
+  {showPlanModal && (
+
+    <div style={overlayStyle}>
+
+      <div style={modalStyle}>
+
+        <div style={modalHeader}>
+
+          <h3 style={{ margin: 0 }}>
+            تعديل موضوع الدرس
+          </h3>
+
+          <button
+            onClick={closePlanModal}
+            style={closeButton}
+          >
+            <X size={18} />
+          </button>
+
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "15px",
+          }}
+        >
+
+          <div>
+
+            <label style={labelStyle}>
+              الفصل الدراسي
+            </label>
+
+            <select
+              value={planFormData.termId}
+              onChange={e =>
+                setPlanFormData({
+                  ...planFormData,
+                  termId: e.target.value,
+                })
+              }
+              style={inputStyle}
+            >
+
+              <option value="">
+                اختر الفصل الدراسي
+              </option>
+
+              {terms.map(term => (
+
+                <option
+                  key={term.id}
+                  value={term.id}
+                >
+                  {term.name}
+                </option>
+
+              ))}
+
+            </select>
+
+          </div>
+
+          <div>
+
+            <label style={labelStyle}>
+              المرحلة
+            </label>
+
+            <select
+              value={planFormData.levelId}
+              onChange={e =>
+                setPlanFormData({
+                  ...planFormData,
+                  levelId: e.target.value,
+                  gradeId: "",
+                  subjectId: "",
+                })
+              }
+              style={inputStyle}
+            >
+
+              <option value="">
+                اختر المرحلة
+              </option>
+
+              {levels.map(level => (
+
+                <option
+                  key={level.id}
+                  value={level.id}
+                >
+                  {level.name}
+                </option>
+
+              ))}
+
+            </select>
+
+          </div>
+
+          <div>
+
+            <label style={labelStyle}>
+              الصف
+            </label>
+
+            <select
+              value={planFormData.gradeId}
+              onChange={e =>
+                setPlanFormData({
+                  ...planFormData,
+                  gradeId: e.target.value,
+                  subjectId: "",
+                })
+              }
+              style={inputStyle}
+            >
+
+              <option value="">
+                اختر الصف
+              </option>
+
+              {grades
+                .filter(
+                  grade =>
+                    !planFormData.levelId ||
+                    String(grade.level_id) ===
+                      planFormData.levelId
+                )
+                .map(grade => (
+
+                  <option
+                    key={grade.id}
+                    value={grade.id}
+                  >
+                    {grade.name}
+                  </option>
+
+                ))}
+
+            </select>
+
+          </div>
+
+          <div>
+
+            <label style={labelStyle}>
+              المادة
+            </label>
+
+            <select
+              value={planFormData.subjectId}
+              onChange={e =>
+                setPlanFormData({
+                  ...planFormData,
+                  subjectId: e.target.value,
+                })
+              }
+              style={inputStyle}
+            >
+
+              <option value="">
+                اختر المادة
+              </option>
+
+              {subjects
+                .filter(
+                  subject =>
+                    (!planFormData.levelId ||
+                      String(subject.level_id) ===
+                        planFormData.levelId) &&
+                    (!planFormData.gradeId ||
+                      String(subject.grade_id) ===
+                        planFormData.gradeId)
+                )
+                .map(subject => (
+
+                  <option
+                    key={subject.id}
+                    value={subject.id}
+                  >
+                    {subject.name}
+                  </option>
+
+                ))}
+
+            </select>
+
+          </div>
+
+          <div>
+
+            <label style={labelStyle}>
+              موضوع الدرس
+            </label>
+
+            <input
+              value={planFormData.lessonTopic}
+              onChange={e =>
+                setPlanFormData({
+                  ...planFormData,
+                  lessonTopic: e.target.value,
+                })
+              }
+              style={inputStyle}
+            />
+
+          </div>
+
+          <div>
+
+            <label style={labelStyle}>
+              الواجب
+            </label>
+
+            <input
+              value={planFormData.homework}
+              onChange={e =>
+                setPlanFormData({
+                  ...planFormData,
+                  homework: e.target.value,
+                })
+              }
+              style={inputStyle}
+            />
+
+          </div>
+
+          <div>
+
+            <label style={labelStyle}>
+              الملاحظات
+            </label>
+
+            <input
+              value={planFormData.notes}
+              onChange={e =>
+                setPlanFormData({
+                  ...planFormData,
+                  notes: e.target.value,
+                })
+              }
+              style={inputStyle}
+            />
+
+          </div>
+
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            marginTop: "25px",
+          }}
+        >
+
+          <button
+            onClick={savePlanEdit}
+            style={primaryButton}
+          >
+            حفظ
+          </button>
+
+          <button
+            onClick={closePlanModal}
             style={secondaryButton}
           >
             إلغاء
