@@ -2549,6 +2549,8 @@ background: "#fff",
 borderRadius: "16px",
 width: "90%",
 maxWidth: "500px",
+maxHeight: "90vh",
+overflowY: "auto",
 padding: "25px",
 boxSizing: "border-box",
 };
