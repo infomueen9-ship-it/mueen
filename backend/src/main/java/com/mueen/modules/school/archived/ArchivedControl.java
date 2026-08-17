@@ -41,7 +41,8 @@ public class ArchivedControl {
                 "lesson_topic, " +
                 "week_number, " +
                 "date_from, " +
-                "date_to " +
+                "date_to, " +
+                "homework " +
                 "FROM " + schemaName + ".classroom_plans " +
                 "WHERE classroom_id = ? " +
                 "ORDER BY date_from NULLS LAST, id";
@@ -90,6 +91,11 @@ public class ArchivedControl {
             item.put(
                     "endDate",
                     row.get("date_to")
+            );
+
+            item.put(
+                    "homework",
+                    row.get("homework")
             );
 
             result.add(item);
@@ -449,6 +455,59 @@ public class ArchivedControl {
                 Map.of(
                         "message",
                         "تم حذف السجل بنجاح"
+                )
+        );
+    }
+
+
+    /*
+     * =========================================================
+     * تعديل الواجب (خاص بالمعلم)
+     * =========================================================
+     *
+     * PUT:
+     * /api/school/{schemaName}/classrooms/{classroomId}/archived-plans/{id}/homework
+     *
+     * Body:
+     *
+     * {
+     *   "homework": "حل ص20"
+     * }
+     */
+    @PutMapping("/{id}/homework")
+    public ResponseEntity<?> updateHomework(
+            @PathVariable String schemaName,
+            @PathVariable Long classroomId,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+
+        String homework =
+                getString(
+                        body.get("homework")
+                );
+
+        int updated =
+                jdbcTemplate.update(
+                        "UPDATE " +
+                        schemaName +
+                        ".classroom_plans " +
+                        "SET homework = ? " +
+                        "WHERE id = ? " +
+                        "AND classroom_id = ?",
+                        homework,
+                        id,
+                        classroomId
+                );
+
+        if (updated == 0) {
+
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message",
+                        "تم تحديث الواجب بنجاح"
                 )
         );
     }

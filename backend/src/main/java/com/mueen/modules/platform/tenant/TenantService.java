@@ -1,6 +1,8 @@
 package com.mueen.modules.platform.tenant;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,12 +11,42 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TenantService {
 
     private final TenantRepository tenantRepository;
     private final JdbcTemplate jdbcTemplate;
+
+    /*
+     * =========================================================
+     * إصلاح المخططات القديمة عند بدء التشغيل
+     * =========================================================
+     *
+     * applyTenantMigrations() لا تُنفَّذ إلا عند إنشاء مدرسة جديدة،
+     * لذا نضيف هنا أعمدة جديدة على المدارس الموجودة مسبقاً
+     * بشكل آمن (ADD COLUMN IF NOT EXISTS).
+     */
+    @PostConstruct
+    public void applyPendingSchemaFixes() {
+        for (Tenant tenant : tenantRepository.findAll()) {
+            try {
+                jdbcTemplate.execute(
+                        "ALTER TABLE " +
+                        tenant.getSchemaName() +
+                        ".classroom_plans " +
+                        "ADD COLUMN IF NOT EXISTS homework TEXT"
+                );
+            } catch (Exception e) {
+                log.warn(
+                        "تعذر تحديث مخطط المدرسة {}: {}",
+                        tenant.getSchemaName(),
+                        e.getMessage()
+                );
+            }
+        }
+    }
 
     @Transactional
     public Tenant createTenant(CreateTenantRequest request) {
@@ -93,7 +125,8 @@ jdbcTemplate.execute(
         "lesson_topic TEXT, " +
         "week_number INTEGER, " +
         "date_from DATE, " +
-        "date_to DATE" +
+        "date_to DATE, " +
+        "homework TEXT" +
     ")"
 );
 

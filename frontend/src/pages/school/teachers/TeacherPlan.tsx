@@ -25,6 +25,23 @@ interface PlanEntry {
   homework: string
 }
 
+interface ArchivedPlan {
+  id: number
+  type: 'lesson' | 'leave'
+  planId?: number
+  weekNumber: number
+  startDate: string
+  endDate: string
+  homework?: string
+}
+
+interface LessonCatalogItem {
+  id: number
+  subject_name: string
+  lesson_topic: string
+  homework?: string
+}
+
 const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
 const PERIODS = ['1', '2', '3', '4', '5', '6', '7']
 
@@ -34,6 +51,12 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
   const [planEntries, setPlanEntries] = useState<PlanEntry[]>([])
   const [saving, setSaving] = useState(false)
+
+  const [archivedPlans, setArchivedPlans] = useState<ArchivedPlan[]>([])
+  const [lessonCatalog, setLessonCatalog] = useState<LessonCatalogItem[]>([])
+  const [archivedLoading, setArchivedLoading] = useState(true)
+  const [homeworkDrafts, setHomeworkDrafts] = useState<Record<number, string>>({})
+  const [savingHomeworkId, setSavingHomeworkId] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchMySubjects = async () => {
@@ -50,6 +73,53 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
     }
     fetchMySubjects()
   }, [schemaName, classroomId, teacherId])
+
+  useEffect(() => {
+    const fetchArchived = async () => {
+      try {
+        const [archivedRes, catalogRes] = await Promise.all([
+          api.get<ArchivedPlan[]>(`/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`),
+          api.get<LessonCatalogItem[]>('/api/platform/admin/study-plans/plans'),
+        ])
+        setArchivedPlans(archivedRes.data)
+        setLessonCatalog(catalogRes.data)
+      } catch {
+        toast.error('تعذر تحميل الخطط المؤرشفة')
+      } finally {
+        setArchivedLoading(false)
+      }
+    }
+    fetchArchived()
+  }, [schemaName, classroomId])
+
+  // الدروس المؤرشفة لمواد هذا المعلم فقط
+  const mySubjectNames = new Set(subjects.map(s => s.name))
+
+  const myArchivedLessons = archivedPlans
+    .filter(plan => plan.type === 'lesson')
+    .map(plan => ({
+      plan,
+      lesson: lessonCatalog.find(l => l.id === plan.planId),
+    }))
+    .filter((entry): entry is { plan: ArchivedPlan; lesson: LessonCatalogItem } =>
+      !!entry.lesson && mySubjectNames.has(entry.lesson.subject_name)
+    )
+
+  const handleSaveHomework = async (archivedId: number) => {
+    setSavingHomeworkId(archivedId)
+    try {
+      const homework = homeworkDrafts[archivedId] ?? ''
+      await api.put(`/api/school/${schemaName}/classrooms/${classroomId}/archived-plans/${archivedId}/homework`, { homework })
+      setArchivedPlans(current =>
+        current.map(plan => (plan.id === archivedId ? { ...plan, homework } : plan))
+      )
+      toast.success('تم حفظ الواجب')
+    } catch {
+      toast.error('تعذر حفظ الواجب')
+    } finally {
+      setSavingHomeworkId(null)
+    }
+  }
 
   const handleOpenPlan = async (subject: Subject) => {
     setSelectedSubject(subject)
@@ -121,6 +191,75 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
           )}
         </div>
       )}
+
+      {/* الخطط المؤرشفة */}
+      <div style={{ marginTop: '28px' }}>
+        <div style={{ background: '#F4F8FB', color: '#2D7D82', padding: '10px', borderRadius: '10px', textAlign: 'center', fontWeight: 700, fontSize: '14px', marginBottom: '16px', border: '1px solid #E5E7EB' }}>
+          الخطط المؤرشفة
+        </div>
+
+        {archivedLoading ? (
+          <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
+        ) : myArchivedLessons.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF' }}>
+            لا توجد خطط مؤرشفة لموادك في هذا الفصل.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#F9FAFB' }}>
+                  <th style={thStyle}>الأسبوع</th>
+                  <th style={thStyle}>من</th>
+                  <th style={thStyle}>إلى</th>
+                  <th style={thStyle}>المادة</th>
+                  <th style={thStyle}>الدرس المقرر</th>
+                  <th style={thStyle}>الواجب</th>
+                  <th style={thStyle}>حفظ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myArchivedLessons.map(({ plan, lesson }) => {
+                  const draft =
+                    homeworkDrafts[plan.id] ??
+                    plan.homework ??
+                    lesson.homework ??
+                    ''
+
+                  return (
+                    <tr key={plan.id}>
+                      <td style={tdStyle}>الأسبوع {plan.weekNumber}</td>
+                      <td style={tdStyle}>{plan.startDate}</td>
+                      <td style={tdStyle}>{plan.endDate}</td>
+                      <td style={tdStyle}>{lesson.subject_name}</td>
+                      <td style={tdStyle}>{lesson.lesson_topic}</td>
+                      <td style={tdStyle}>
+                        <input
+                          value={draft}
+                          onChange={e =>
+                            setHomeworkDrafts(current => ({ ...current, [plan.id]: e.target.value }))
+                          }
+                          placeholder="الواجب المطلوب"
+                          style={inputStyle}
+                        />
+                      </td>
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => handleSaveHomework(plan.id)}
+                          disabled={savingHomeworkId === plan.id}
+                          style={{ border: 'none', background: '#2D7D82', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}
+                        >
+                          <Save size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Modal إدارة الخطة */}
       {selectedSubject && (
