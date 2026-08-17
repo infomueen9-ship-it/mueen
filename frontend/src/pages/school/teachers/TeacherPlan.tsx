@@ -105,6 +105,11 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
       !!entry.lesson && mySubjectNames.has(entry.lesson.subject_name)
     )
 
+  // الخطط المؤرشفة الخاصة بالمادة المفتوحة حالياً في نافذة إدارة الخطة
+  const subjectArchivedLessons = selectedSubject
+    ? myArchivedLessons.filter(({ lesson }) => lesson.subject_name === selectedSubject.name)
+    : []
+
   const handleSaveHomework = async (archivedId: number) => {
     setSavingHomeworkId(archivedId)
     try {
@@ -192,75 +197,6 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
         </div>
       )}
 
-      {/* الخطط المؤرشفة */}
-      <div style={{ marginTop: '28px' }}>
-        <div style={{ background: '#F4F8FB', color: '#2D7D82', padding: '10px', borderRadius: '10px', textAlign: 'center', fontWeight: 700, fontSize: '14px', marginBottom: '16px', border: '1px solid #E5E7EB' }}>
-          الخطط المؤرشفة
-        </div>
-
-        {archivedLoading ? (
-          <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
-        ) : myArchivedLessons.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF' }}>
-            لا توجد خطط مؤرشفة لموادك في هذا الفصل.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#F9FAFB' }}>
-                  <th style={thStyle}>الأسبوع</th>
-                  <th style={thStyle}>من</th>
-                  <th style={thStyle}>إلى</th>
-                  <th style={thStyle}>المادة</th>
-                  <th style={thStyle}>الدرس المقرر</th>
-                  <th style={thStyle}>الواجب</th>
-                  <th style={thStyle}>حفظ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myArchivedLessons.map(({ plan, lesson }) => {
-                  const draft =
-                    homeworkDrafts[plan.id] ??
-                    plan.homework ??
-                    lesson.homework ??
-                    ''
-
-                  return (
-                    <tr key={plan.id}>
-                      <td style={tdStyle}>الأسبوع {plan.weekNumber}</td>
-                      <td style={tdStyle}>{plan.startDate}</td>
-                      <td style={tdStyle}>{plan.endDate}</td>
-                      <td style={tdStyle}>{lesson.subject_name}</td>
-                      <td style={tdStyle}>{lesson.lesson_topic}</td>
-                      <td style={tdStyle}>
-                        <input
-                          value={draft}
-                          onChange={e =>
-                            setHomeworkDrafts(current => ({ ...current, [plan.id]: e.target.value }))
-                          }
-                          placeholder="الواجب المطلوب"
-                          style={inputStyle}
-                        />
-                      </td>
-                      <td style={tdStyle}>
-                        <button
-                          onClick={() => handleSaveHomework(plan.id)}
-                          disabled={savingHomeworkId === plan.id}
-                          style={{ border: 'none', background: '#2D7D82', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}
-                        >
-                          <Save size={13} />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       {/* Modal إدارة الخطة */}
       {selectedSubject && (
         <div style={{
@@ -285,6 +221,77 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
             <div style={{ background: '#F4F8FB', padding: '12px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #E5E7EB', color: '#2D7D82', fontWeight: 600, fontSize: '14px', textAlign: 'center' }}>
               الخطة الدراسية — {classroomName}
             </div>
+
+            {/* الخطط المؤرشفة لهذه المادة */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
+                الخطط المؤرشفة
+              </h3>
+
+              {archivedLoading ? (
+                <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
+              ) : subjectArchivedLessons.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
+                  لا توجد خطط مؤرشفة لهذه المادة بعد.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#F9FAFB' }}>
+                        <th style={thStyle}>الأسبوع</th>
+                        <th style={thStyle}>من</th>
+                        <th style={thStyle}>إلى</th>
+                        <th style={thStyle}>الدرس المقرر</th>
+                        <th style={thStyle}>الواجب</th>
+                        <th style={thStyle}>حفظ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subjectArchivedLessons.map(({ plan, lesson }) => {
+                        const draft =
+                          homeworkDrafts[plan.id] ??
+                          plan.homework ??
+                          lesson.homework ??
+                          ''
+
+                        return (
+                          <tr key={plan.id}>
+                            <td style={tdStyle}>الأسبوع {plan.weekNumber}</td>
+                            <td style={tdStyle}>{plan.startDate}</td>
+                            <td style={tdStyle}>{plan.endDate}</td>
+                            <td style={tdStyle}>{lesson.lesson_topic}</td>
+                            <td style={tdStyle}>
+                              <input
+                                value={draft}
+                                onChange={e =>
+                                  setHomeworkDrafts(current => ({ ...current, [plan.id]: e.target.value }))
+                                }
+                                placeholder="الواجب المطلوب"
+                                style={inputStyle}
+                              />
+                            </td>
+                            <td style={tdStyle}>
+                              <button
+                                onClick={() => handleSaveHomework(plan.id)}
+                                disabled={savingHomeworkId === plan.id}
+                                style={{ border: 'none', background: '#2D7D82', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}
+                              >
+                                <Save size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
+              الخطة اليدوية
+            </h3>
 
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
