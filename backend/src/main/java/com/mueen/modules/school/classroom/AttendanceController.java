@@ -30,7 +30,7 @@ public class AttendanceController {
             @PathVariable Long classroomId) {
         try {
             String sql = """
-                SELECT a.id, a.date, a.status, s.full_name AS student_name
+                SELECT a.id, a.date, a.status, a.student_id, s.full_name AS student_name
                 FROM %s.attendance a
                 JOIN %s.students s ON s.id = a.student_id
                 WHERE a.classroom_id = ?
@@ -45,6 +45,7 @@ public class AttendanceController {
                 map.put("id", row.get("id"));
                 map.put("date", row.get("date"));
                 map.put("status", row.get("status"));
+                map.put("studentId", row.get("student_id"));
                 map.put("studentName", row.get("student_name"));
                 return map;
             }).toList();
@@ -53,6 +54,78 @@ public class AttendanceController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", "تعذر تحميل سجل الحضور"));
+        }
+    }
+
+    /*
+     * =========================================================
+     * تسجيل حضور الفصل ليوم معين
+     * =========================================================
+     *
+     * POST:
+     * /api/school/{schemaName}/attendance/classroom/{classroomId}
+     *
+     * Body:
+     *
+     * {
+     *   "date": "2026-08-17",
+     *   "attendance": { "5": "present", "6": "absence" }
+     * }
+     */
+    @PostMapping("/classroom/{classroomId}")
+    public ResponseEntity<?> saveClassroomAttendance(
+            @PathVariable String schemaName,
+            @PathVariable Long classroomId,
+            @RequestBody Map<String, Object> body) {
+        try {
+            Object dateValue = body.get("date");
+
+            if (dateValue == null) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("message", "التاريخ مطلوب")
+                );
+            }
+
+            java.sql.Date date =
+                    java.sql.Date.valueOf(dateValue.toString());
+
+            Object attendanceObject = body.get("attendance");
+
+            if (!(attendanceObject instanceof Map<?, ?> attendanceMap)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("message", "بيانات الحضور غير صحيحة")
+                );
+            }
+
+            String sql =
+                    "INSERT INTO " + schemaName + ".attendance " +
+                    "(student_id, classroom_id, date, status) " +
+                    "VALUES (?, ?, ?, ?) " +
+                    "ON CONFLICT (student_id, classroom_id, date) " +
+                    "DO UPDATE SET status = EXCLUDED.status";
+
+            for (Map.Entry<?, ?> entry : attendanceMap.entrySet()) {
+
+                Long studentId =
+                        Long.valueOf(entry.getKey().toString());
+
+                String status = entry.getValue().toString();
+
+                jdbcTemplate.update(
+                        sql,
+                        studentId,
+                        classroomId,
+                        date,
+                        status
+                );
+            }
+
+            return ResponseEntity.ok(
+                    Map.of("message", "تم حفظ الحضور بنجاح")
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "تعذر حفظ الحضور"));
         }
     }
 

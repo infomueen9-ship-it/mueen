@@ -19,6 +19,17 @@ interface Student {
   score: number
 }
 
+interface AttendanceRecord {
+  id: number
+  date: string
+  status: AttendanceStatus
+  studentName: string
+}
+
+const today = new Date()
+const todayIso = today.toISOString().slice(0, 10)
+const todayDayName = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(today)
+
 export default function TeacherStudent({ classroomId, classroomName, schemaName, onClose }: Props) {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,6 +69,19 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
       // تهيئة حالات الحضور - افتراض "حاضر" للجميع عند التحميل
       const initialMap: Record<number, AttendanceStatus> = {}
       fetchedStudents.forEach(s => { initialMap[s.id] = 'present' })
+
+      // استرجاع الحضور المحفوظ مسبقاً لليوم الحالي (إن وجد)
+      try {
+        const attendanceRes = await api.get<(AttendanceRecord & { studentId: number })[]>(
+          `/api/school/${schemaName}/attendance/classroom/${classroomId}`
+        )
+        attendanceRes.data
+          .filter(record => record.date === todayIso)
+          .forEach(record => { initialMap[record.studentId] = record.status })
+      } catch {
+        // لا يمنع هذا فشل تحميل الطلاب أنفسهم
+      }
+
       setAttendanceMap(initialMap)
 
     } catch {
@@ -125,8 +149,10 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
   const handleSaveAttendance = async () => {
     setSavingAttendance(true)
     try {
-      // هنا يتم لاحقاً ربط الطلب مع API الحضور الفعلي وإرسال attendanceMap
-      // await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/attendance`, { attendance: attendanceMap })
+      await api.post(`/api/school/${schemaName}/attendance/classroom/${classroomId}`, {
+        date: todayIso,
+        attendance: attendanceMap,
+      })
       toast.success('تم حفظ تحضير الطلاب بنجاح')
     } catch {
       toast.error('تعذر حفظ التحضير')
@@ -147,6 +173,10 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
       </div>
 
       <div style={blueHeader}>قائمة الطلاب والإجراءات</div>
+
+      <div style={{ textAlign: 'center', marginBottom: '16px', color: '#2D7D82', fontSize: '13px', fontWeight: 700 }}>
+        تحضير اليوم: {todayDayName} — {todayIso}
+      </div>
 
       <div style={{ marginBottom: '20px', position: 'relative' }}>
         <input 
