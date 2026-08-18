@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileText, BookOpen, X, Save } from 'lucide-react'
+import { X, Save } from 'lucide-react'
 import api from '../../../api/axios'
 import toast from 'react-hot-toast'
 
@@ -16,127 +16,138 @@ interface Subject {
   teacherId: number | null
 }
 
-interface ArchivedPlan {
-  id: number
-  type: 'lesson' | 'leave'
-  planId?: number
-  weekNumber: number
-  startDate: string
-  endDate: string
-  homework?: string
-  day?: string
-  period?: string
+interface ScheduleRow {
+  day: string
+  period: string
+  subject_name: string
 }
 
 interface LessonCatalogItem {
   id: number
   subject_name: string
   lesson_topic: string
+}
+
+interface WeekEntry {
+  day: string
+  period: string
+  subjectName: string
+  lessonTopic?: string
   homework?: string
 }
 
 interface RowDraft {
+  lessonTopic: string
   homework: string
-  day: string
-  period: string
 }
 
 const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
-const PERIODS = ['1', '2', '3', '4', '5', '6', '7']
+const WEEKS = Array.from({ length: 20 }, (_, i) => i + 1)
+
+const dayIndex = (day: string) => {
+  const index = DAYS.indexOf(day)
+  return index === -1 ? DAYS.length : index
+}
+
+const rowKey = (row: { day: string; period: string }) => `${row.day}__${row.period}`
 
 export default function TeacherPlan({ classroomId, classroomName, schemaName, teacherId }: Props) {
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
-
-  const [archivedPlans, setArchivedPlans] = useState<ArchivedPlan[]>([])
+  const [schedule, setSchedule] = useState<ScheduleRow[]>([])
   const [lessonCatalog, setLessonCatalog] = useState<LessonCatalogItem[]>([])
-  const [archivedLoading, setArchivedLoading] = useState(true)
-  const [rowDrafts, setRowDrafts] = useState<Record<number, RowDraft>>({})
-  const [savingRowId, setSavingRowId] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
+  const [weekLoading, setWeekLoading] = useState(false)
+  const [rowDrafts, setRowDrafts] = useState<Record<string, RowDraft>>({})
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const fetchMySubjects = async () => {
+    const load = async () => {
       try {
-        const res = await api.get<Subject[]>(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`)
+        const [subjectsRes, scheduleRes, catalogRes] = await Promise.all([
+          api.get<Subject[]>(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`),
+          api.get<ScheduleRow[]>(`/api/school/${schemaName}/classrooms/${classroomId}/schedule`),
+          api.get<LessonCatalogItem[]>('/api/platform/admin/study-plans/plans'),
+        ])
         // تصفية المواد المسندة لهذا المعلم فقط
-        const mySubjects = res.data.filter(s => s.teacherId === teacherId)
-        setSubjects(mySubjects)
+        setSubjects(subjectsRes.data.filter(s => s.teacherId === teacherId))
+        setSchedule(scheduleRes.data)
+        setLessonCatalog(catalogRes.data)
       } catch {
-        toast.error('تعذر تحميل المواد الدراسية')
+        toast.error('تعذر تحميل بيانات الخطة')
       } finally {
         setLoading(false)
       }
     }
-    fetchMySubjects()
+    load()
   }, [schemaName, classroomId, teacherId])
 
-  useEffect(() => {
-    const fetchArchived = async () => {
-      try {
-        const [archivedRes, catalogRes] = await Promise.all([
-          api.get<ArchivedPlan[]>(`/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`),
-          api.get<LessonCatalogItem[]>('/api/platform/admin/study-plans/plans'),
-        ])
-        setArchivedPlans(archivedRes.data)
-        setLessonCatalog(catalogRes.data)
-      } catch {
-        toast.error('تعذر تحميل الخطط المؤرشفة')
-      } finally {
-        setArchivedLoading(false)
-      }
-    }
-    fetchArchived()
-  }, [schemaName, classroomId])
-
-  // الدروس المؤرشفة لمواد هذا المعلم فقط
   const mySubjectNames = new Set(subjects.map(s => s.name))
 
-  const myArchivedLessons = archivedPlans
-    .filter(plan => plan.type === 'lesson')
-    .map(plan => ({
-      plan,
-      lesson: lessonCatalog.find(l => l.id === plan.planId),
-    }))
-    .filter((entry): entry is { plan: ArchivedPlan; lesson: LessonCatalogItem } =>
-      !!entry.lesson && mySubjectNames.has(entry.lesson.subject_name)
-    )
+  const myScheduleRows = schedule
+    .filter(row => row.subject_name && mySubjectNames.has(row.subject_name))
+    .sort((a, b) => {
+      const dayDiff = dayIndex(a.day) - dayIndex(b.day)
+      if (dayDiff !== 0) return dayDiff
+      return Number(a.period) - Number(b.period)
+    })
 
-  // الخطط المؤرشفة الخاصة بالمادة المفتوحة حالياً في نافذة إدارة الخطة
-  const subjectArchivedLessons = selectedSubject
-    ? myArchivedLessons.filter(({ lesson }) => lesson.subject_name === selectedSubject.name)
-    : []
-
-  const getDraft = (plan: ArchivedPlan, lesson: LessonCatalogItem): RowDraft =>
-    rowDrafts[plan.id] ?? {
-      homework: plan.homework ?? lesson.homework ?? '',
-      day: plan.day ?? '',
-      period: plan.period ?? '',
+  const openWeek = async (week: number) => {
+    setSelectedWeek(week)
+    setWeekLoading(true)
+    try {
+      const res = await api.get<WeekEntry[]>(`/api/school/${schemaName}/classrooms/${classroomId}/week-plans/${week}`)
+      const drafts: Record<string, RowDraft> = {}
+      res.data.forEach(entry => {
+        drafts[rowKey(entry)] = {
+          lessonTopic: entry.lessonTopic ?? '',
+          homework: entry.homework ?? '',
+        }
+      })
+      setRowDrafts(drafts)
+    } catch {
+      toast.error('تعذر تحميل خطة الأسبوع')
+      setRowDrafts({})
+    } finally {
+      setWeekLoading(false)
     }
+  }
 
-  const updateDraft = (planId: number, plan: ArchivedPlan, lesson: LessonCatalogItem, field: keyof RowDraft, value: string) => {
+  const closeWeek = () => {
+    setSelectedWeek(null)
+    setRowDrafts({})
+  }
+
+  const updateDraft = (row: ScheduleRow, field: keyof RowDraft, value: string) => {
+    const key = rowKey(row)
     setRowDrafts(current => ({
       ...current,
-      [planId]: {
-        ...(current[planId] ?? getDraft(plan, lesson)),
-        [field]: value,
-      },
+      [key]: { ...(current[key] ?? { lessonTopic: '', homework: '' }), [field]: value },
     }))
   }
 
-  const handleSaveRow = async (plan: ArchivedPlan, lesson: LessonCatalogItem) => {
-    setSavingRowId(plan.id)
+  const handleSaveWeek = async () => {
+    if (!selectedWeek) return
+    setSaving(true)
     try {
-      const draft = getDraft(plan, lesson)
-      await api.put(`/api/school/${schemaName}/classrooms/${classroomId}/archived-plans/${plan.id}`, draft)
-      setArchivedPlans(current =>
-        current.map(item => (item.id === plan.id ? { ...item, ...draft } : item))
-      )
-      toast.success('تم حفظ الخطة')
+      const entries = myScheduleRows.map(row => {
+        const draft = rowDrafts[rowKey(row)] ?? { lessonTopic: '', homework: '' }
+        return {
+          day: row.day,
+          period: row.period,
+          subjectName: row.subject_name,
+          lessonTopic: draft.lessonTopic,
+          homework: draft.homework,
+        }
+      })
+      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/week-plans/${selectedWeek}`, entries)
+      toast.success('تم حفظ التعديلات')
+      closeWeek()
     } catch {
-      toast.error('تعذر حفظ الخطة')
+      toast.error('تعذر حفظ التعديلات')
     } finally {
-      setSavingRowId(null)
+      setSaving(false)
     }
   }
 
@@ -148,31 +159,31 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
 
       {loading ? (
         <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
-      ) : (
-        <div style={{ display: 'grid', gap: '12px' }}>
-          {subjects.map(subject => (
-            <div key={subject.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#F9FAFB', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <BookOpen size={20} color="#7C3AED" />
-                </div>
-                <span style={{ fontWeight: 700, color: '#374151' }}>{subject.name}</span>
-              </div>
-              <button onClick={() => setSelectedSubject(subject)} style={{ backgroundColor: '#7C3AED', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <FileText size={14} /> إدارة الخطة
-              </button>
-            </div>
-          ))}
-          {subjects.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#9CA3AF' }}>
-              لا توجد مواد دراسية مسندة إليك في هذا الفصل.
-            </div>
-          )}
+      ) : myScheduleRows.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#9CA3AF' }}>
+          لا توجد حصص مسندة إليك في جدول هذا الفصل بعد.
         </div>
+      ) : (
+        <>
+          <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
+            الأسابيع
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px' }}>
+            {WEEKS.map(week => (
+              <button
+                key={week}
+                onClick={() => openWeek(week)}
+                style={{ padding: '12px 8px', border: '1px solid #E5E7EB', borderRadius: '10px', background: '#F9FAFB', color: '#374151', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+              >
+                الأسبوع {week}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
-      {/* Modal إدارة الخطة */}
-      {selectedSubject && (
+      {/* Modal خطة الأسبوع */}
+      {selectedWeek && (
         <div style={{
           position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -185,102 +196,74 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ margin: 0, color: '#374151', fontSize: '18px', fontWeight: 700 }}>
-                إدارة خطة مادة: {selectedSubject.name}
+                خطة الأسبوع {selectedWeek} — {classroomName}
               </h2>
-              <button onClick={() => setSelectedSubject(null)} style={{ border: 'none', background: '#F3F4F6', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button onClick={closeWeek} style={{ border: 'none', background: '#F3F4F6', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={18} color="#6B7280" />
               </button>
             </div>
 
-            <div style={{ background: '#F4F8FB', padding: '12px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #E5E7EB', color: '#2D7D82', fontWeight: 600, fontSize: '14px', textAlign: 'center' }}>
-              الخطة الدراسية — {classroomName}
-            </div>
+            {weekLoading ? (
+              <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#F9FAFB' }}>
+                      <th style={thStyle}>اليوم</th>
+                      <th style={thStyle}>الحصة</th>
+                      <th style={thStyle}>المادة</th>
+                      <th style={thStyle}>الدرس المقرر</th>
+                      <th style={thStyle}>الواجب</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myScheduleRows.map(row => {
+                      const key = rowKey(row)
+                      const draft = rowDrafts[key] ?? { lessonTopic: '', homework: '' }
+                      const datalistId = `lesson-topics-${key}`
 
-            {/* الخطط المؤرشفة لهذه المادة */}
-            <div>
-              <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
-                الخطط المؤرشفة
-              </h3>
+                      return (
+                        <tr key={key}>
+                          <td style={tdStyle}>{row.day}</td>
+                          <td style={tdStyle}>الحصة {row.period}</td>
+                          <td style={{ ...tdStyle, fontWeight: 700 }}>{row.subject_name}</td>
+                          <td style={tdStyle}>
+                            <input
+                              list={datalistId}
+                              value={draft.lessonTopic}
+                              onChange={e => updateDraft(row, 'lessonTopic', e.target.value)}
+                              placeholder="موضوع الدرس"
+                              style={inputStyle}
+                            />
+                            <datalist id={datalistId}>
+                              {lessonCatalog
+                                .filter(l => l.subject_name === row.subject_name)
+                                .map(l => <option key={l.id} value={l.lesson_topic} />)}
+                            </datalist>
+                          </td>
+                          <td style={tdStyle}>
+                            <input
+                              value={draft.homework}
+                              onChange={e => updateDraft(row, 'homework', e.target.value)}
+                              placeholder="الواجب المطلوب"
+                              style={inputStyle}
+                            />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-              {archivedLoading ? (
-                <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
-              ) : subjectArchivedLessons.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
-                  لا توجد خطط مؤرشفة لهذه المادة بعد.
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#F9FAFB' }}>
-                        <th style={thStyle}>الأسبوع</th>
-                        <th style={thStyle}>من</th>
-                        <th style={thStyle}>إلى</th>
-                        <th style={thStyle}>الدرس المقرر</th>
-                        <th style={thStyle}>اليوم</th>
-                        <th style={thStyle}>الحصة</th>
-                        <th style={thStyle}>الواجب</th>
-                        <th style={thStyle}>حفظ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {subjectArchivedLessons.map(({ plan, lesson }) => {
-                        const draft = getDraft(plan, lesson)
-
-                        return (
-                          <tr key={plan.id}>
-                            <td style={tdStyle}>الأسبوع {plan.weekNumber}</td>
-                            <td style={tdStyle}>{plan.startDate}</td>
-                            <td style={tdStyle}>{plan.endDate}</td>
-                            <td style={tdStyle}>{lesson.lesson_topic}</td>
-                            <td style={tdStyle}>
-                              <select
-                                value={draft.day}
-                                onChange={e => updateDraft(plan.id, plan, lesson, 'day', e.target.value)}
-                                style={selectStyle}
-                              >
-                                <option value="">اختر اليوم</option>
-                                {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                              </select>
-                            </td>
-                            <td style={tdStyle}>
-                              <select
-                                value={draft.period}
-                                onChange={e => updateDraft(plan.id, plan, lesson, 'period', e.target.value)}
-                                style={selectStyle}
-                              >
-                                <option value="">اختر الحصة</option>
-                                {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
-                              </select>
-                            </td>
-                            <td style={tdStyle}>
-                              <input
-                                value={draft.homework}
-                                onChange={e => updateDraft(plan.id, plan, lesson, 'homework', e.target.value)}
-                                placeholder="الواجب المطلوب"
-                                style={inputStyle}
-                              />
-                            </td>
-                            <td style={tdStyle}>
-                              <button
-                                onClick={() => handleSaveRow(plan, lesson)}
-                                disabled={savingRowId === plan.id}
-                                style={{ border: 'none', background: '#2D7D82', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}
-                              >
-                                <Save size={13} />
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '30px' }}>
-              <button onClick={() => setSelectedSubject(null)} style={{ padding: '10px 24px', backgroundColor: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', justifyContent: 'flex-end' }}>
+              <button onClick={handleSaveWeek} disabled={saving || weekLoading} style={{ padding: '10px 24px', backgroundColor: '#9EC5C7', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Save size={18} />
+                {saving ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}
+              </button>
+              <button onClick={closeWeek} style={{ padding: '10px 24px', backgroundColor: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 إغلاق
               </button>
             </div>
@@ -306,11 +289,4 @@ const inputStyle: React.CSSProperties = {
   borderRadius: '6px', padding: '8px',
   fontSize: '13px', outline: 'none',
   textAlign: 'right', boxSizing: 'border-box'
-}
-
-const selectStyle: React.CSSProperties = {
-  width: '100%', border: '1px solid #E5E7EB',
-  borderRadius: '6px', padding: '8px',
-  fontSize: '13px', outline: 'none',
-  backgroundColor: '#fff', cursor: 'pointer'
 }
