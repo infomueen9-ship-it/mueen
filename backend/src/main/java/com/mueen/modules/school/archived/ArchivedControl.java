@@ -42,7 +42,9 @@ public class ArchivedControl {
                 "week_number, " +
                 "date_from, " +
                 "date_to, " +
-                "homework " +
+                "homework, " +
+                "day, " +
+                "period " +
                 "FROM " + schemaName + ".classroom_plans " +
                 "WHERE classroom_id = ? " +
                 "ORDER BY date_from NULLS LAST, id";
@@ -96,6 +98,16 @@ public class ArchivedControl {
             item.put(
                     "homework",
                     row.get("homework")
+            );
+
+            item.put(
+                    "day",
+                    row.get("day")
+            );
+
+            item.put(
+                    "period",
+                    row.get("period")
             );
 
             result.add(item);
@@ -474,8 +486,24 @@ public class ArchivedControl {
      *   "homework": "حل ص20"
      * }
      */
-    @PutMapping("/{id}/homework")
-    public ResponseEntity<?> updateHomework(
+    /*
+     * =========================================================
+     * تعديل الواجب / اليوم / الحصة (خاص بالمعلم)
+     * =========================================================
+     *
+     * PUT:
+     * /api/school/{schemaName}/classrooms/{classroomId}/archived-plans/{id}
+     *
+     * Body:
+     *
+     * {
+     *   "homework": "حل ص20",
+     *   "day": "الأحد",
+     *   "period": "1"
+     * }
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateArchivedPlan(
             @PathVariable String schemaName,
             @PathVariable Long classroomId,
             @PathVariable Long id,
@@ -486,15 +514,27 @@ public class ArchivedControl {
                         body.get("homework")
                 );
 
+        String day =
+                getString(
+                        body.get("day")
+                );
+
+        String period =
+                getString(
+                        body.get("period")
+                );
+
         int updated =
                 jdbcTemplate.update(
                         "UPDATE " +
                         schemaName +
                         ".classroom_plans " +
-                        "SET homework = ? " +
+                        "SET homework = ?, day = ?, period = ? " +
                         "WHERE id = ? " +
                         "AND classroom_id = ?",
                         homework,
+                        day,
+                        period,
                         id,
                         classroomId
                 );
@@ -507,7 +547,7 @@ public class ArchivedControl {
         return ResponseEntity.ok(
                 Map.of(
                         "message",
-                        "تم تحديث الواجب بنجاح"
+                        "تم تحديث الخطة بنجاح"
                 )
         );
     }

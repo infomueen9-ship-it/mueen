@@ -94,7 +94,9 @@ jdbcTemplate.execute(
         "week_number INTEGER, " +
         "date_from DATE, " +
         "date_to DATE, " +
-        "homework TEXT" +
+        "homework TEXT, " +
+        "day VARCHAR(20), " +
+        "period VARCHAR(10)" +
     ")"
 );
 

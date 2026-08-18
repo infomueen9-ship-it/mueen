@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileText, BookOpen, X, Plus, Trash2, Save } from 'lucide-react'
+import { FileText, BookOpen, X, Save } from 'lucide-react'
 import api from '../../../api/axios'
 import toast from 'react-hot-toast'
 
@@ -16,15 +16,6 @@ interface Subject {
   teacherId: number | null
 }
 
-interface PlanEntry {
-  id?: number
-  day: string
-  period: string
-  subject: string
-  lesson: string
-  homework: string
-}
-
 interface ArchivedPlan {
   id: number
   type: 'lesson' | 'leave'
@@ -33,6 +24,8 @@ interface ArchivedPlan {
   startDate: string
   endDate: string
   homework?: string
+  day?: string
+  period?: string
 }
 
 interface LessonCatalogItem {
@@ -42,6 +35,12 @@ interface LessonCatalogItem {
   homework?: string
 }
 
+interface RowDraft {
+  homework: string
+  day: string
+  period: string
+}
+
 const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
 const PERIODS = ['1', '2', '3', '4', '5', '6', '7']
 
@@ -49,14 +48,12 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
-  const [planEntries, setPlanEntries] = useState<PlanEntry[]>([])
-  const [saving, setSaving] = useState(false)
 
   const [archivedPlans, setArchivedPlans] = useState<ArchivedPlan[]>([])
   const [lessonCatalog, setLessonCatalog] = useState<LessonCatalogItem[]>([])
   const [archivedLoading, setArchivedLoading] = useState(true)
-  const [homeworkDrafts, setHomeworkDrafts] = useState<Record<number, string>>({})
-  const [savingHomeworkId, setSavingHomeworkId] = useState<number | null>(null)
+  const [rowDrafts, setRowDrafts] = useState<Record<number, RowDraft>>({})
+  const [savingRowId, setSavingRowId] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchMySubjects = async () => {
@@ -110,59 +107,36 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
     ? myArchivedLessons.filter(({ lesson }) => lesson.subject_name === selectedSubject.name)
     : []
 
-  const handleSaveHomework = async (archivedId: number) => {
-    setSavingHomeworkId(archivedId)
+  const getDraft = (plan: ArchivedPlan): RowDraft =>
+    rowDrafts[plan.id] ?? {
+      homework: plan.homework ?? '',
+      day: plan.day ?? '',
+      period: plan.period ?? '',
+    }
+
+  const updateDraft = (planId: number, plan: ArchivedPlan, field: keyof RowDraft, value: string) => {
+    setRowDrafts(current => ({
+      ...current,
+      [planId]: {
+        ...(current[planId] ?? { homework: plan.homework ?? '', day: plan.day ?? '', period: plan.period ?? '' }),
+        [field]: value,
+      },
+    }))
+  }
+
+  const handleSaveRow = async (plan: ArchivedPlan) => {
+    setSavingRowId(plan.id)
     try {
-      const homework = homeworkDrafts[archivedId] ?? ''
-      await api.put(`/api/school/${schemaName}/classrooms/${classroomId}/archived-plans/${archivedId}/homework`, { homework })
+      const draft = getDraft(plan)
+      await api.put(`/api/school/${schemaName}/classrooms/${classroomId}/archived-plans/${plan.id}`, draft)
       setArchivedPlans(current =>
-        current.map(plan => (plan.id === archivedId ? { ...plan, homework } : plan))
+        current.map(item => (item.id === plan.id ? { ...item, ...draft } : item))
       )
-      toast.success('تم حفظ الواجب')
-    } catch {
-      toast.error('تعذر حفظ الواجب')
-    } finally {
-      setSavingHomeworkId(null)
-    }
-  }
-
-  const handleOpenPlan = async (subject: Subject) => {
-    setSelectedSubject(subject)
-    try {
-      // جلب الخطة الحالية للمادة من السيرفر
-      const res = await api.get<PlanEntry[]>(`/api/school/${schemaName}/classrooms/${classroomId}/subjects/${subject.id}/plan`)
-      setPlanEntries(res.data.length > 0 ? res.data : [{ day: 'الأحد', period: '1', subject: subject.name, lesson: '', homework: '' }])
-    } catch {
-      // في حال عدم وجود خطة سابقة، نبدأ بسطر فارغ
-      setPlanEntries([{ day: 'الأحد', period: '1', subject: subject.name, lesson: '', homework: '' }])
-    }
-  }
-
-  const handleAddRow = () => {
-    setPlanEntries([...planEntries, { day: 'الأحد', period: '1', subject: selectedSubject?.name || '', lesson: '', homework: '' }])
-  }
-
-  const handleRemoveRow = (idx: number) => {
-    setPlanEntries(planEntries.filter((_, i) => i !== idx))
-  }
-
-  const handleFieldChange = (idx: number, field: keyof PlanEntry, value: string) => {
-    const updated = [...planEntries]
-    updated[idx] = { ...updated[idx], [field]: value }
-    setPlanEntries(updated)
-  }
-
-  const handleSavePlan = async () => {
-    if (!selectedSubject) return
-    setSaving(true)
-    try {
-      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/subjects/${selectedSubject.id}/plan`, planEntries)
-      toast.success('تم حفظ الخطة بنجاح')
-      setSelectedSubject(null)
+      toast.success('تم حفظ الخطة')
     } catch {
       toast.error('تعذر حفظ الخطة')
     } finally {
-      setSaving(false)
+      setSavingRowId(null)
     }
   }
 
@@ -184,7 +158,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                 </div>
                 <span style={{ fontWeight: 700, color: '#374151' }}>{subject.name}</span>
               </div>
-              <button onClick={() => handleOpenPlan(subject)} style={{ backgroundColor: '#7C3AED', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button onClick={() => setSelectedSubject(subject)} style={{ backgroundColor: '#7C3AED', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <FileText size={14} /> إدارة الخطة
               </button>
             </div>
@@ -206,7 +180,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
         }}>
           <div style={{
             backgroundColor: '#fff', borderRadius: '16px', padding: '32px',
-            width: '95%', maxWidth: '1000px', direction: 'rtl',
+            width: '95%', maxWidth: '1100px', direction: 'rtl',
             maxHeight: '90vh', overflowY: 'auto',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -223,7 +197,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
             </div>
 
             {/* الخطط المؤرشفة لهذه المادة */}
-            <div style={{ marginBottom: '24px' }}>
+            <div>
               <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
                 الخطط المؤرشفة
               </h3>
@@ -236,24 +210,22 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#F9FAFB' }}>
                         <th style={thStyle}>الأسبوع</th>
                         <th style={thStyle}>من</th>
                         <th style={thStyle}>إلى</th>
                         <th style={thStyle}>الدرس المقرر</th>
+                        <th style={thStyle}>اليوم</th>
+                        <th style={thStyle}>الحصة</th>
                         <th style={thStyle}>الواجب</th>
                         <th style={thStyle}>حفظ</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subjectArchivedLessons.map(({ plan, lesson }) => {
-                        const draft =
-                          homeworkDrafts[plan.id] ??
-                          plan.homework ??
-                          lesson.homework ??
-                          ''
+                        const draft = getDraft(plan)
 
                         return (
                           <tr key={plan.id}>
@@ -262,19 +234,37 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                             <td style={tdStyle}>{plan.endDate}</td>
                             <td style={tdStyle}>{lesson.lesson_topic}</td>
                             <td style={tdStyle}>
+                              <select
+                                value={draft.day}
+                                onChange={e => updateDraft(plan.id, plan, 'day', e.target.value)}
+                                style={selectStyle}
+                              >
+                                <option value="">اختر اليوم</option>
+                                {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                              </select>
+                            </td>
+                            <td style={tdStyle}>
+                              <select
+                                value={draft.period}
+                                onChange={e => updateDraft(plan.id, plan, 'period', e.target.value)}
+                                style={selectStyle}
+                              >
+                                <option value="">اختر الحصة</option>
+                                {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
+                              </select>
+                            </td>
+                            <td style={tdStyle}>
                               <input
-                                value={draft}
-                                onChange={e =>
-                                  setHomeworkDrafts(current => ({ ...current, [plan.id]: e.target.value }))
-                                }
+                                value={draft.homework}
+                                onChange={e => updateDraft(plan.id, plan, 'homework', e.target.value)}
                                 placeholder="الواجب المطلوب"
                                 style={inputStyle}
                               />
                             </td>
                             <td style={tdStyle}>
                               <button
-                                onClick={() => handleSaveHomework(plan.id)}
-                                disabled={savingHomeworkId === plan.id}
+                                onClick={() => handleSaveRow(plan)}
+                                disabled={savingRowId === plan.id}
                                 style={{ border: 'none', background: '#2D7D82', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}
                               >
                                 <Save size={13} />
@@ -289,66 +279,9 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
               )}
             </div>
 
-            <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
-              الخطة اليدوية
-            </h3>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#F9FAFB' }}>
-                    <th style={thStyle}>اليوم</th>
-                    <th style={thStyle}>الحصة</th>
-                    <th style={thStyle}>المادة</th>
-                    <th style={thStyle}>الدرس المقرر</th>
-                    <th style={thStyle}>الواجب</th>
-                    <th style={thStyle}>إجراء</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planEntries.map((entry, idx) => (
-                    <tr key={idx}>
-                      <td style={tdStyle}>
-                        <select value={entry.day} onChange={(e) => handleFieldChange(idx, 'day', e.target.value)} style={selectStyle}>
-                          {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                      </td>
-                      <td style={tdStyle}>
-                        <select value={entry.period} onChange={(e) => handleFieldChange(idx, 'period', e.target.value)} style={selectStyle}>
-                          {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
-                      </td>
-                      <td style={tdStyle}>
-                        <input value={entry.subject} onChange={(e) => handleFieldChange(idx, 'subject', e.target.value)} style={inputStyle} />
-                      </td>
-                      <td style={tdStyle}>
-                        <input value={entry.lesson} onChange={(e) => handleFieldChange(idx, 'lesson', e.target.value)} placeholder="عنوان الدرس" style={inputStyle} />
-                      </td>
-                      <td style={tdStyle}>
-                        <input value={entry.homework} onChange={(e) => handleFieldChange(idx, 'homework', e.target.value)} placeholder="الواجب المطلوب" style={inputStyle} />
-                      </td>
-                      <td style={tdStyle}>
-                        <button onClick={() => handleRemoveRow(idx)} disabled={planEntries.length === 1} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444' }}>
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <button onClick={handleAddRow} style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: '#F3F4F6', border: '1px dashed #D1D5DB', borderRadius: '8px', color: '#6B7280', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-              <Plus size={14} /> إضافة سطر للخطة
-            </button>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', justifyContent: 'flex-end' }}>
-              <button onClick={handleSavePlan} disabled={saving} style={{ padding: '10px 24px', backgroundColor: '#9EC5C7', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Save size={18} />
-                {saving ? 'جارٍ الحفظ...' : 'حفظ الخطة'}
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '30px' }}>
               <button onClick={() => setSelectedSubject(null)} style={{ padding: '10px 24px', backgroundColor: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
-                إلغاء
+                إغلاق
               </button>
             </div>
           </div>
