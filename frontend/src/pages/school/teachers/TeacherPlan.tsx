@@ -45,9 +45,6 @@ interface LessonCatalogItem {
 const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
 const PERIODS = ['1', '2', '3', '4', '5', '6', '7']
 
-// معطّلة مؤقتاً بطلب من الإدارة
-const SHOW_MANUAL_PLAN = false
-
 export default function TeacherPlan({ classroomId, classroomName, schemaName, teacherId }: Props) {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -292,70 +289,64 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
               )}
             </div>
 
-            {SHOW_MANUAL_PLAN && (
-              <>
-                <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
-                  الخطة اليدوية
-                </h3>
+            <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
+              الخطة اليدوية
+            </h3>
 
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#F9FAFB' }}>
-                        <th style={thStyle}>اليوم</th>
-                        <th style={thStyle}>الحصة</th>
-                        <th style={thStyle}>المادة</th>
-                        <th style={thStyle}>الدرس المقرر</th>
-                        <th style={thStyle}>الواجب</th>
-                        <th style={thStyle}>إجراء</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {planEntries.map((entry, idx) => (
-                        <tr key={idx}>
-                          <td style={tdStyle}>
-                            <select value={entry.day} onChange={(e) => handleFieldChange(idx, 'day', e.target.value)} style={selectStyle}>
-                              {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                            </select>
-                          </td>
-                          <td style={tdStyle}>
-                            <select value={entry.period} onChange={(e) => handleFieldChange(idx, 'period', e.target.value)} style={selectStyle}>
-                              {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                          </td>
-                          <td style={tdStyle}>
-                            <input value={entry.subject} onChange={(e) => handleFieldChange(idx, 'subject', e.target.value)} style={inputStyle} />
-                          </td>
-                          <td style={tdStyle}>
-                            <input value={entry.lesson} onChange={(e) => handleFieldChange(idx, 'lesson', e.target.value)} placeholder="عنوان الدرس" style={inputStyle} />
-                          </td>
-                          <td style={tdStyle}>
-                            <input value={entry.homework} onChange={(e) => handleFieldChange(idx, 'homework', e.target.value)} placeholder="الواجب المطلوب" style={inputStyle} />
-                          </td>
-                          <td style={tdStyle}>
-                            <button onClick={() => handleRemoveRow(idx)} disabled={planEntries.length === 1} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444' }}>
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F9FAFB' }}>
+                    <th style={thStyle}>اليوم</th>
+                    <th style={thStyle}>الحصة</th>
+                    <th style={thStyle}>المادة</th>
+                    <th style={thStyle}>الدرس المقرر</th>
+                    <th style={thStyle}>الواجب</th>
+                    <th style={thStyle}>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planEntries.map((entry, idx) => (
+                    <tr key={idx}>
+                      <td style={tdStyle}>
+                        <select value={entry.day} onChange={(e) => handleFieldChange(idx, 'day', e.target.value)} style={selectStyle}>
+                          {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </td>
+                      <td style={tdStyle}>
+                        <select value={entry.period} onChange={(e) => handleFieldChange(idx, 'period', e.target.value)} style={selectStyle}>
+                          {PERIODS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </td>
+                      <td style={tdStyle}>
+                        <input value={entry.subject} onChange={(e) => handleFieldChange(idx, 'subject', e.target.value)} style={inputStyle} />
+                      </td>
+                      <td style={tdStyle}>
+                        <input value={entry.lesson} onChange={(e) => handleFieldChange(idx, 'lesson', e.target.value)} placeholder="عنوان الدرس" style={inputStyle} />
+                      </td>
+                      <td style={tdStyle}>
+                        <input value={entry.homework} onChange={(e) => handleFieldChange(idx, 'homework', e.target.value)} placeholder="الواجب المطلوب" style={inputStyle} />
+                      </td>
+                      <td style={tdStyle}>
+                        <button onClick={() => handleRemoveRow(idx)} disabled={planEntries.length === 1} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#EF4444' }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-                <button onClick={handleAddRow} style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: '#F3F4F6', border: '1px dashed #D1D5DB', borderRadius: '8px', color: '#6B7280', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-                  <Plus size={14} /> إضافة سطر للخطة
-                </button>
-              </>
-            )}
+            <button onClick={handleAddRow} style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: '#F3F4F6', border: '1px dashed #D1D5DB', borderRadius: '8px', color: '#6B7280', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+              <Plus size={14} /> إضافة سطر للخطة
+            </button>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px', justifyContent: 'flex-end' }}>
-              {SHOW_MANUAL_PLAN && (
-                <button onClick={handleSavePlan} disabled={saving} style={{ padding: '10px 24px', backgroundColor: '#9EC5C7', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Save size={18} />
-                  {saving ? 'جارٍ الحفظ...' : 'حفظ الخطة'}
-                </button>
-              )}
+              <button onClick={handleSavePlan} disabled={saving} style={{ padding: '10px 24px', backgroundColor: '#9EC5C7', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Save size={18} />
+                {saving ? 'جارٍ الحفظ...' : 'حفظ الخطة'}
+              </button>
               <button onClick={() => setSelectedSubject(null)} style={{ padding: '10px 24px', backgroundColor: '#F3F4F6', color: '#6B7280', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}>
                 إلغاء
               </button>
