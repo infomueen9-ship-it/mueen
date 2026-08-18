@@ -53,6 +53,9 @@ const dayIndex = (day: string) => {
   return index === -1 ? DAYS.length : index
 }
 
+// المادة "period" مخزّنة كنص كامل مثل "الحصة 3" (راجع PERIODS في ClassroomSchedule.tsx)
+const periodNumber = (period: string) => parseInt(period.replace(/\D/g, ''), 10) || 0
+
 const rowKey = (row: { day: string; period: string }) => `${row.day}__${row.period}`
 const weekRowKey = (row: { weekNumber: number; day: string; period: string }) => `${row.weekNumber}__${row.day}__${row.period}`
 
@@ -117,7 +120,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
     .sort((a, b) => {
       const dayDiff = dayIndex(a.day) - dayIndex(b.day)
       if (dayDiff !== 0) return dayDiff
-      return Number(a.period) - Number(b.period)
+      return periodNumber(a.period) - periodNumber(b.period)
     })
 
   const myAllWeekPlans = allWeekPlans
@@ -126,7 +129,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
       if (a.weekNumber !== b.weekNumber) return a.weekNumber - b.weekNumber
       const dayDiff = dayIndex(a.day) - dayIndex(b.day)
       if (dayDiff !== 0) return dayDiff
-      return Number(a.period) - Number(b.period)
+      return periodNumber(a.period) - periodNumber(b.period)
     })
 
   const handleSaveHomework = async (entry: AllWeekEntry) => {
@@ -277,7 +280,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                     <tr key={key}>
                       <td style={tdStyle}>الأسبوع {entry.weekNumber}</td>
                       <td style={tdStyle}>{entry.day}</td>
-                      <td style={tdStyle}>الحصة {entry.period}</td>
+                      <td style={tdStyle}>{entry.period}</td>
                       <td style={tdStyle}>{entry.subjectName}</td>
                       <td style={tdStyle}>{entry.lessonTopic || '—'}</td>
                       <td style={tdStyle}>
@@ -350,7 +353,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                       return (
                         <tr key={key}>
                           <td style={tdStyle}>{row.day}</td>
-                          <td style={tdStyle}>الحصة {row.period}</td>
+                          <td style={tdStyle}>{row.period}</td>
                           <td style={{ ...tdStyle, fontWeight: 700 }}>{row.subject_name}</td>
                           <td style={tdStyle}>
                             <input
