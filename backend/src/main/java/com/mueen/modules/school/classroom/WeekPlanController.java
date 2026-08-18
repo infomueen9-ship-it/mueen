@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/school/{schemaName}/classrooms/{classroomId}/week-plans/{weekNumber}")
+@RequestMapping("/api/school/{schemaName}/classrooms/{classroomId}/week-plans")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class WeekPlanController {
@@ -20,10 +20,48 @@ public class WeekPlanController {
 
     /*
      * =========================================================
-     * جلب خطة أسبوع معين لفصل
+     * جلب خطط كل الأسابيع لفصل (لعرض سجل الواجبات كاملاً)
      * =========================================================
      */
     @GetMapping
+    public ResponseEntity<?> getAllWeekPlans(
+            @PathVariable String schemaName,
+            @PathVariable Long classroomId) {
+        try {
+            ensureSchema(schemaName);
+
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT week_number, day, period, subject_name, lesson_topic, homework " +
+                    "FROM " + schemaName + ".classroom_week_plans " +
+                    "WHERE classroom_id = ? " +
+                    "ORDER BY week_number, day, period",
+                    classroomId
+            );
+
+            List<Map<String, Object>> result = rows.stream().map(row -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("weekNumber", row.get("week_number"));
+                map.put("day", row.get("day"));
+                map.put("period", row.get("period"));
+                map.put("subjectName", row.get("subject_name"));
+                map.put("lessonTopic", row.get("lesson_topic"));
+                map.put("homework", row.get("homework"));
+                return map;
+            }).toList();
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("message", "تعذر تحميل خطط الأسابيع"));
+        }
+    }
+
+    /*
+     * =========================================================
+     * جلب خطة أسبوع معين لفصل
+     * =========================================================
+     */
+    @GetMapping("/{weekNumber}")
     public ResponseEntity<?> getWeekPlan(
             @PathVariable String schemaName,
             @PathVariable Long classroomId,
@@ -63,7 +101,7 @@ public class WeekPlanController {
      * Body: [{ "day": "الأحد", "period": "1", "subjectName": "كيمياء",
      *          "lessonTopic": "...", "homework": "..." }, ...]
      */
-    @PostMapping
+    @PostMapping("/{weekNumber}")
     @Transactional
     public ResponseEntity<?> saveWeekPlan(
             @PathVariable String schemaName,
