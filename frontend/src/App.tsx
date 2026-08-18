@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import LoginPage from './pages/auth/LoginPage'
 import SchoolDashboard from './pages/school/SchoolDashboard'
 import SchoolLoginPage from './pages/school/SchoolLoginPage'
@@ -9,9 +9,16 @@ import StudentBehaviorReport from './pages/school/StudentBehaviorReport'
 
 function ProtectedRoute({ children, requiredType }: { children: React.ReactNode, requiredType?: string }) {
   const { token, type } = useAuthStore()
-  if (!token) return <Navigate to="/login" replace />
+  const { schoolCode } = useParams<{ schoolCode: string }>()
+
+  const loginPath =
+    requiredType === 'SCHOOL' && schoolCode
+      ? `/school/${schoolCode}/login`
+      : '/login'
+
+  if (!token) return <Navigate to={loginPath} replace />
   if (requiredType && type !== requiredType) {
-    return <Navigate to="/login" replace />
+    return <Navigate to={loginPath} replace />
   }
   return <>{children}</>
 }
