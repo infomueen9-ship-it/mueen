@@ -107,27 +107,27 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
     ? myArchivedLessons.filter(({ lesson }) => lesson.subject_name === selectedSubject.name)
     : []
 
-  const getDraft = (plan: ArchivedPlan): RowDraft =>
+  const getDraft = (plan: ArchivedPlan, lesson: LessonCatalogItem): RowDraft =>
     rowDrafts[plan.id] ?? {
-      homework: plan.homework ?? '',
+      homework: plan.homework ?? lesson.homework ?? '',
       day: plan.day ?? '',
       period: plan.period ?? '',
     }
 
-  const updateDraft = (planId: number, plan: ArchivedPlan, field: keyof RowDraft, value: string) => {
+  const updateDraft = (planId: number, plan: ArchivedPlan, lesson: LessonCatalogItem, field: keyof RowDraft, value: string) => {
     setRowDrafts(current => ({
       ...current,
       [planId]: {
-        ...(current[planId] ?? { homework: plan.homework ?? '', day: plan.day ?? '', period: plan.period ?? '' }),
+        ...(current[planId] ?? getDraft(plan, lesson)),
         [field]: value,
       },
     }))
   }
 
-  const handleSaveRow = async (plan: ArchivedPlan) => {
+  const handleSaveRow = async (plan: ArchivedPlan, lesson: LessonCatalogItem) => {
     setSavingRowId(plan.id)
     try {
-      const draft = getDraft(plan)
+      const draft = getDraft(plan, lesson)
       await api.put(`/api/school/${schemaName}/classrooms/${classroomId}/archived-plans/${plan.id}`, draft)
       setArchivedPlans(current =>
         current.map(item => (item.id === plan.id ? { ...item, ...draft } : item))
@@ -225,7 +225,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                     </thead>
                     <tbody>
                       {subjectArchivedLessons.map(({ plan, lesson }) => {
-                        const draft = getDraft(plan)
+                        const draft = getDraft(plan, lesson)
 
                         return (
                           <tr key={plan.id}>
@@ -236,7 +236,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                             <td style={tdStyle}>
                               <select
                                 value={draft.day}
-                                onChange={e => updateDraft(plan.id, plan, 'day', e.target.value)}
+                                onChange={e => updateDraft(plan.id, plan, lesson, 'day', e.target.value)}
                                 style={selectStyle}
                               >
                                 <option value="">اختر اليوم</option>
@@ -246,7 +246,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                             <td style={tdStyle}>
                               <select
                                 value={draft.period}
-                                onChange={e => updateDraft(plan.id, plan, 'period', e.target.value)}
+                                onChange={e => updateDraft(plan.id, plan, lesson, 'period', e.target.value)}
                                 style={selectStyle}
                               >
                                 <option value="">اختر الحصة</option>
@@ -256,14 +256,14 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                             <td style={tdStyle}>
                               <input
                                 value={draft.homework}
-                                onChange={e => updateDraft(plan.id, plan, 'homework', e.target.value)}
+                                onChange={e => updateDraft(plan.id, plan, lesson, 'homework', e.target.value)}
                                 placeholder="الواجب المطلوب"
                                 style={inputStyle}
                               />
                             </td>
                             <td style={tdStyle}>
                               <button
-                                onClick={() => handleSaveRow(plan)}
+                                onClick={() => handleSaveRow(plan, lesson)}
                                 disabled={savingRowId === plan.id}
                                 style={{ border: 'none', background: '#2D7D82', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}
                               >
