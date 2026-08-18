@@ -20,7 +20,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().logout()
-      window.location.href = '/login'
+
+      const schoolMatch = window.location.pathname.match(/^\/school\/([^/]+)/)
+      window.location.href = schoolMatch ? `/school/${schoolMatch[1]}/login` : '/login'
     }
 
     return Promise.reject(error)
