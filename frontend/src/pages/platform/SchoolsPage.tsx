@@ -14,11 +14,8 @@ interface Tenant {
   status: string
   createdAt: string
   schemaName: string
-}
-
-type SchoolCredential = {
-  username: string
-  password: string
+  principalUsername?: string
+  principalPassword?: string
 }
 
 const normalizeWhatsAppPhone = (phone: string) => {
@@ -39,23 +36,6 @@ const openWhatsAppMessage = (phone: string, message: string) => {
 }
 
 
-const loadSchoolCredentials = () => {
-  try {
-    const saved = localStorage.getItem('mueen-school-credentials')
-    return saved ? JSON.parse(saved) as Record<string, SchoolCredential> : {}
-  } catch {
-    return {}
-  }
-}
-
-const saveSchoolCredentials = (credentials: Record<string, SchoolCredential>) => {
-  try {
-    localStorage.setItem('mueen-school-credentials', JSON.stringify(credentials))
-  } catch {
-    // ignore
-  }
-}
-
 export default function SchoolsPage() {
   const [createdSchool, setCreatedSchool] = useState<{schemaName: string, schoolCode: string, phone: string} | null>(null)
   const [principalForm, setPrincipalForm] = useState({ fullName: '', username: '', password: '' })
@@ -63,7 +43,6 @@ export default function SchoolsPage() {
   const [savingPrincipal, setSavingPrincipal] = useState(false)
   const [schools, setSchools] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
-  const [schoolCredentials, setSchoolCredentials] = useState<Record<string, SchoolCredential>>(loadSchoolCredentials)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({
     schoolName: '', schoolNameAr: '', schoolCode: '',
@@ -141,7 +120,6 @@ export default function SchoolsPage() {
     {schools.map((school) => {
       const schoolCode = school.schemaName?.replace('school_', '') || ''
       const loginUrl = `${window.location.origin}/school/${schoolCode}/login`
-      const creds = schoolCredentials[school.schemaName]
       return (
         <tr key={school.id} className="hover:bg-gray-50">
           <td className="px-4 py-3 text-gray-400">{school.id}</td>
@@ -157,10 +135,10 @@ export default function SchoolsPage() {
             </span>
           </td>
           <td className="px-4 py-3 text-gray-600">
-            {creds?.username || '—'}
+            {school.principalUsername || '—'}
           </td>
           <td className="px-4 py-3 text-gray-600">
-            {creds?.password || '—'}
+            {school.principalPassword || '—'}
           </td>
           <td className="px-4 py-3">
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -178,7 +156,7 @@ export default function SchoolsPage() {
           <td className="px-4 py-3">
             <button
               onClick={() => {
-                const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة حقول.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${creds?.username || '—'}\n🔑 كلمة المرور: ${creds?.password || '—'}\n\nللاستفسار تواصلوا معنا.`
+                const msg = `مرحباً،\n\nتم إنشاء حساب مدرستكم على منصة حقول.\n\n🔗 رابط الدخول:\n${loginUrl}\n\n👤 اسم المستخدم: ${school.principalUsername || '—'}\n🔑 كلمة المرور: ${school.principalPassword || '—'}\n\nللاستفسار تواصلوا معنا.`
                 const phone = school.phone?.replace(/^0/, '966') || ''
                 window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
               }}
@@ -310,16 +288,9 @@ export default function SchoolsPage() {
                     })
                     toast.success('تم إنشاء حساب المدير بنجاح')
 
-                    // حفظ بيانات تسجيل الدخول
-                    const updatedCredentials = {
-                      ...schoolCredentials,
-                      [createdSchool.schemaName]: {
-                        username: principalForm.username,
-                        password: principalForm.password,
-                      }
-                    }
-                    setSchoolCredentials(updatedCredentials)
-                    saveSchoolCredentials(updatedCredentials)
+                    // إعادة تحميل المدارس لعرض بيانات المدير المحفوظة في الخادم
+                    const res = await api.get('/api/platform/tenants')
+                    setSchools(res.data)
 
                     // إرسال واتساب
                     const loginUrl = `${window.location.origin}/school/${createdSchool.schoolCode}/login`

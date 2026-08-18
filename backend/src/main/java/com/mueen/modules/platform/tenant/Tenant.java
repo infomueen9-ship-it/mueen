@@ -47,6 +47,12 @@ public class Tenant extends BaseEntity {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "principal_username")
+    private String principalUsername;
+
+    @Column(name = "principal_password")
+    private String principalPassword;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "gender_type", nullable = false)
     private GenderType genderType;
