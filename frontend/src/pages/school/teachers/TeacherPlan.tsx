@@ -36,10 +36,6 @@ interface WeekEntry {
   homework?: string
 }
 
-interface AllWeekEntry extends WeekEntry {
-  weekNumber: number
-}
-
 interface RowDraft {
   lessonTopic: string
   homework: string
@@ -57,7 +53,6 @@ const dayIndex = (day: string) => {
 const periodNumber = (period: string) => parseInt(period.replace(/\D/g, ''), 10) || 0
 
 const rowKey = (row: { day: string; period: string }) => `${row.day}__${row.period}`
-const weekRowKey = (row: { weekNumber: number; day: string; period: string }) => `${row.weekNumber}__${row.day}__${row.period}`
 
 export default function TeacherPlan({ classroomId, classroomName, schemaName, teacherId }: Props) {
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -69,11 +64,6 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   const [weekLoading, setWeekLoading] = useState(false)
   const [rowDrafts, setRowDrafts] = useState<Record<string, RowDraft>>({})
   const [saving, setSaving] = useState(false)
-
-  const [allWeekPlans, setAllWeekPlans] = useState<AllWeekEntry[]>([])
-  const [allWeekPlansLoading, setAllWeekPlansLoading] = useState(true)
-  const [homeworkDrafts, setHomeworkDrafts] = useState<Record<string, string>>({})
-  const [savingHomeworkKey, setSavingHomeworkKey] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -96,23 +86,6 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
     load()
   }, [schemaName, classroomId, teacherId])
 
-  const fetchAllWeekPlans = async () => {
-    setAllWeekPlansLoading(true)
-    try {
-      const res = await api.get<AllWeekEntry[]>(`/api/school/${schemaName}/classrooms/${classroomId}/week-plans`)
-      setAllWeekPlans(res.data)
-    } catch {
-      toast.error('تعذر تحميل سجل الواجبات')
-    } finally {
-      setAllWeekPlansLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchAllWeekPlans()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schemaName, classroomId])
-
   const mySubjectNames = new Set(subjects.map(s => s.name))
 
   const myScheduleRows = schedule
@@ -122,38 +95,6 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
       if (dayDiff !== 0) return dayDiff
       return periodNumber(a.period) - periodNumber(b.period)
     })
-
-  const myAllWeekPlans = allWeekPlans
-    .filter(entry => mySubjectNames.has(entry.subjectName))
-    .sort((a, b) => {
-      if (a.weekNumber !== b.weekNumber) return a.weekNumber - b.weekNumber
-      const dayDiff = dayIndex(a.day) - dayIndex(b.day)
-      if (dayDiff !== 0) return dayDiff
-      return periodNumber(a.period) - periodNumber(b.period)
-    })
-
-  const handleSaveHomework = async (entry: AllWeekEntry) => {
-    const key = weekRowKey(entry)
-    setSavingHomeworkKey(key)
-    try {
-      const homework = homeworkDrafts[key] ?? entry.homework ?? ''
-      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/week-plans/${entry.weekNumber}`, [{
-        day: entry.day,
-        period: entry.period,
-        subjectName: entry.subjectName,
-        lessonTopic: entry.lessonTopic,
-        homework,
-      }])
-      setAllWeekPlans(current =>
-        current.map(item => (weekRowKey(item) === key ? { ...item, homework } : item))
-      )
-      toast.success('تم حفظ الواجب')
-    } catch {
-      toast.error('تعذر حفظ الواجب')
-    } finally {
-      setSavingHomeworkKey(null)
-    }
-  }
 
   const openWeek = async (week: number) => {
     setSelectedWeek(week)
@@ -206,7 +147,6 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
       await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/week-plans/${selectedWeek}`, entries)
       toast.success('تم حفظ التعديلات')
       closeWeek()
-      fetchAllWeekPlans()
     } catch {
       toast.error('تعذر حفظ التعديلات')
     } finally {
@@ -244,70 +184,6 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
           </div>
         </>
       )}
-
-      {/* الواجبات */}
-      <div style={{ marginTop: '32px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#374151', fontSize: '15px', fontWeight: 700 }}>
-          الواجبات
-        </h3>
-
-        {allWeekPlansLoading ? (
-          <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
-        ) : myAllWeekPlans.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
-            لا توجد دروس مسجّلة بعد. أضف خطة أسبوع أولاً من الأعلى.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#F9FAFB' }}>
-                  <th style={thStyle}>الأسبوع</th>
-                  <th style={thStyle}>اليوم</th>
-                  <th style={thStyle}>الحصة</th>
-                  <th style={thStyle}>المادة</th>
-                  <th style={thStyle}>الدرس المقرر</th>
-                  <th style={thStyle}>الواجب</th>
-                  <th style={thStyle}>حفظ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myAllWeekPlans.map(entry => {
-                  const key = weekRowKey(entry)
-                  const draft = homeworkDrafts[key] ?? entry.homework ?? ''
-
-                  return (
-                    <tr key={key}>
-                      <td style={tdStyle}>الأسبوع {entry.weekNumber}</td>
-                      <td style={tdStyle}>{entry.day}</td>
-                      <td style={tdStyle}>{entry.period}</td>
-                      <td style={tdStyle}>{entry.subjectName}</td>
-                      <td style={tdStyle}>{entry.lessonTopic || '—'}</td>
-                      <td style={tdStyle}>
-                        <input
-                          value={draft}
-                          onChange={e => setHomeworkDrafts(current => ({ ...current, [key]: e.target.value }))}
-                          placeholder="الواجب المطلوب"
-                          style={inputStyle}
-                        />
-                      </td>
-                      <td style={tdStyle}>
-                        <button
-                          onClick={() => handleSaveHomework(entry)}
-                          disabled={savingHomeworkKey === key}
-                          style={{ border: 'none', background: '#2D7D82', color: '#fff', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}
-                        >
-                          <Save size={13} />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
       {/* Modal خطة الأسبوع */}
       {selectedWeek && (
