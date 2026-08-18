@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useNavigate } from 'react-router-dom'
 import SchoolsPage from './SchoolsPage'
 import StudyPlansPage from './StudyPlansPage'
+import logo from '../../assets/logo.png'
 
 export default function DashboardPage() {
   const { name, role, logout } = useAuthStore()
@@ -19,9 +20,9 @@ export default function DashboardPage() {
 
       {/* Sidebar */}
       <aside className="w-64 bg-white shadow-sm flex flex-col">
-        <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-[#1a73e8]">معين</h1>
-          <p className="text-xs text-gray-400 mt-1">لوحة تحكم المنصة</p>
+        <div className="p-6 border-b flex flex-col items-center">
+          <img src={logo} alt="شعار" className="w-full max-w-[140px] h-auto object-contain" />
+          <p className="text-xs text-gray-400 mt-2">لوحة تحكم المنصة</p>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
