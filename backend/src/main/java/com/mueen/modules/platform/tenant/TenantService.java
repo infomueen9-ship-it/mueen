@@ -53,7 +53,44 @@ public class TenantService {
     }
 
     public List<Tenant> getAllTenants() {
+        backfillPrincipalUsernames();
         return tenantRepository.findAll();
+    }
+
+    /*
+     * =========================================================
+     * تعبئة اسم مستخدم المدير للمدارس القديمة
+     * =========================================================
+     *
+     * principal_username لا يُملأ إلا عند إنشاء المدير عبر
+     * TenantUserController، فالمدارس التي أُنشئ مديروها قبل ذلك
+     * تبقى فارغة في هذا العمود رغم وجود الحساب فعلياً في
+     * جدول users الخاص بمخطط المدرسة.
+     */
+    private void backfillPrincipalUsernames() {
+        for (Tenant tenant : tenantRepository.findAll()) {
+
+            if (tenant.getPrincipalUsername() != null) {
+                continue;
+            }
+
+            try {
+                List<java.util.Map<String, Object>> rows = jdbcTemplate.queryForList(
+                        "SELECT username FROM " + tenant.getSchemaName() +
+                        ".users WHERE role = 'PRINCIPAL' ORDER BY id LIMIT 1"
+                );
+
+                if (!rows.isEmpty()) {
+                    jdbcTemplate.update(
+                            "UPDATE public.tenants SET principal_username = ? WHERE id = ?",
+                            rows.get(0).get("username"),
+                            tenant.getId()
+                    );
+                }
+            } catch (Exception e) {
+                // مدرسة بلا جدول users بعد، أو بلا مدير - تجاهل
+            }
+        }
     }
 
     public Tenant getTenantById(Long id) {
