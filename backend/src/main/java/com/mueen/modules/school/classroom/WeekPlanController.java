@@ -32,7 +32,7 @@ public class WeekPlanController {
             ensureSchema(schemaName);
 
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                    "SELECT day, period, subject_name, lesson_topic, homework " +
+                    "SELECT day, period, subject_name, lesson_topic, homework, notes " +
                     "FROM " + schemaName + ".classroom_week_plans " +
                     "WHERE classroom_id = ? AND week_number = ?",
                     classroomId, weekNumber
@@ -45,6 +45,7 @@ public class WeekPlanController {
                 map.put("subjectName", row.get("subject_name"));
                 map.put("lessonTopic", row.get("lesson_topic"));
                 map.put("homework", row.get("homework"));
+                map.put("notes", row.get("notes"));
                 return map;
             }).toList();
 
@@ -75,12 +76,13 @@ public class WeekPlanController {
 
             String sql =
                     "INSERT INTO " + schemaName + ".classroom_week_plans " +
-                    "(classroom_id, week_number, day, period, subject_name, lesson_topic, homework) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                    "(classroom_id, week_number, day, period, subject_name, lesson_topic, homework, notes) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
                     "ON CONFLICT (classroom_id, week_number, day, period) " +
                     "DO UPDATE SET subject_name = EXCLUDED.subject_name, " +
                     "lesson_topic = EXCLUDED.lesson_topic, " +
-                    "homework = EXCLUDED.homework";
+                    "homework = EXCLUDED.homework, " +
+                    "notes = EXCLUDED.notes";
 
             for (Map<String, Object> entry : entries) {
 
@@ -100,7 +102,8 @@ public class WeekPlanController {
                         period,
                         subjectName,
                         str(entry.get("lessonTopic")),
-                        str(entry.get("homework"))
+                        str(entry.get("homework")),
+                        str(entry.get("notes"))
                 );
             }
 
@@ -122,6 +125,7 @@ public class WeekPlanController {
                 "subject_name VARCHAR(100) NOT NULL, " +
                 "lesson_topic TEXT, " +
                 "homework TEXT, " +
+                "notes TEXT, " +
                 "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), " +
                 "UNIQUE(classroom_id, week_number, day, period))"
         );

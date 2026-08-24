@@ -26,6 +26,13 @@ interface LessonCatalogItem {
   id: number
   subject_name: string
   lesson_topic: string
+  homework?: string
+}
+
+interface WeekSetting {
+  weekNumber: number
+  startDate: string
+  endDate: string
 }
 
 interface WeekEntry {
@@ -34,12 +41,16 @@ interface WeekEntry {
   subjectName: string
   lessonTopic?: string
   homework?: string
+  notes?: string
 }
 
 interface RowDraft {
   lessonTopic: string
   homework: string
+  notes: string
 }
+
+const EMPTY_DRAFT: RowDraft = { lessonTopic: '', homework: '', notes: '' }
 
 const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس']
 const WEEKS = Array.from({ length: 20 }, (_, i) => i + 1)
@@ -58,6 +69,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [schedule, setSchedule] = useState<ScheduleRow[]>([])
   const [lessonCatalog, setLessonCatalog] = useState<LessonCatalogItem[]>([])
+  const [weekSettings, setWeekSettings] = useState<WeekSetting[]>([])
   const [loading, setLoading] = useState(true)
 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
@@ -68,15 +80,17 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   useEffect(() => {
     const load = async () => {
       try {
-        const [subjectsRes, scheduleRes, catalogRes] = await Promise.all([
+        const [subjectsRes, scheduleRes, catalogRes, weekSettingsRes] = await Promise.all([
           api.get<Subject[]>(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`),
           api.get<ScheduleRow[]>(`/api/school/${schemaName}/classrooms/${classroomId}/schedule`),
           api.get<LessonCatalogItem[]>('/api/platform/admin/study-plans/plans'),
+          api.get<WeekSetting[]>(`/api/school/${schemaName}/week-settings`),
         ])
         // تصفية المواد المسندة لهذا المعلم فقط
         setSubjects(subjectsRes.data.filter(s => s.teacherId === teacherId))
         setSchedule(scheduleRes.data)
         setLessonCatalog(catalogRes.data)
+        setWeekSettings(weekSettingsRes.data)
       } catch {
         toast.error('تعذر تحميل بيانات الخطة')
       } finally {
@@ -106,6 +120,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
         drafts[rowKey(entry)] = {
           lessonTopic: entry.lessonTopic ?? '',
           homework: entry.homework ?? '',
+          notes: entry.notes ?? '',
         }
       })
       setRowDrafts(drafts)
@@ -124,10 +139,21 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
 
   const updateDraft = (row: ScheduleRow, field: keyof RowDraft, value: string) => {
     const key = rowKey(row)
-    setRowDrafts(current => ({
-      ...current,
-      [key]: { ...(current[key] ?? { lessonTopic: '', homework: '' }), [field]: value },
-    }))
+    setRowDrafts(current => {
+      const draft = { ...(current[key] ?? EMPTY_DRAFT), [field]: value }
+
+      // عند اختيار موضوع درس من بنك الخطط، عبّئ الواجب المرتبط به تلقائياً
+      if (field === 'lessonTopic' && !draft.homework) {
+        const catalogLesson = lessonCatalog.find(
+          l => l.subject_name === row.subject_name && l.lesson_topic === value
+        )
+        if (catalogLesson?.homework) {
+          draft.homework = catalogLesson.homework
+        }
+      }
+
+      return { ...current, [key]: draft }
+    })
   }
 
   const handleSaveWeek = async () => {
@@ -135,13 +161,14 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
     setSaving(true)
     try {
       const entries = myScheduleRows.map(row => {
-        const draft = rowDrafts[rowKey(row)] ?? { lessonTopic: '', homework: '' }
+        const draft = rowDrafts[rowKey(row)] ?? EMPTY_DRAFT
         return {
           day: row.day,
           period: row.period,
           subjectName: row.subject_name,
           lessonTopic: draft.lessonTopic,
           homework: draft.homework,
+          notes: draft.notes,
         }
       })
       await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/week-plans/${selectedWeek}`, entries)
@@ -197,7 +224,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
             width: '95%', maxWidth: '1100px', direction: 'rtl',
             maxHeight: '90vh', overflowY: 'auto',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <h2 style={{ margin: 0, color: '#374151', fontSize: '18px', fontWeight: 700 }}>
                 خطة الأسبوع {selectedWeek} — {classroomName}
               </h2>
@@ -205,6 +232,17 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                 <X size={18} color="#6B7280" />
               </button>
             </div>
+
+            {(() => {
+              const weekSetting = weekSettings.find(w => w.weekNumber === selectedWeek)
+              return weekSetting ? (
+                <div style={{ textAlign: 'center', marginBottom: '20px', color: '#2D7D82', fontSize: '13px', fontWeight: 700 }}>
+                  من {weekSetting.startDate} إلى {weekSetting.endDate}
+                </div>
+              ) : (
+                <div style={{ marginBottom: '20px' }} />
+              )
+            })()}
 
             {weekLoading ? (
               <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
@@ -218,12 +256,13 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                       <th style={thStyle}>المادة</th>
                       <th style={thStyle}>الدرس المقرر</th>
                       <th style={thStyle}>الواجب</th>
+                      <th style={thStyle}>الملاحظات</th>
                     </tr>
                   </thead>
                   <tbody>
                     {myScheduleRows.map(row => {
                       const key = rowKey(row)
-                      const draft = rowDrafts[key] ?? { lessonTopic: '', homework: '' }
+                      const draft = rowDrafts[key] ?? EMPTY_DRAFT
                       const datalistId = `lesson-topics-${key}`
 
                       return (
@@ -250,6 +289,14 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                               value={draft.homework}
                               onChange={e => updateDraft(row, 'homework', e.target.value)}
                               placeholder="الواجب المطلوب"
+                              style={inputStyle}
+                            />
+                          </td>
+                          <td style={tdStyle}>
+                            <input
+                              value={draft.notes}
+                              onChange={e => updateDraft(row, 'notes', e.target.value)}
+                              placeholder="ملاحظات"
                               style={inputStyle}
                             />
                           </td>
