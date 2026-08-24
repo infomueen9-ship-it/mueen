@@ -656,7 +656,6 @@ export default function PrintPlanView({
                   <div
                     style={{
                       textAlign: 'center',
-                      flex: 1,
                     }}
                   >
                     <div
@@ -699,7 +698,6 @@ export default function PrintPlanView({
                   <div
                     style={{
                       textAlign: 'center',
-                      flex: 1,
                     }}
                   >
                     <div>
@@ -962,7 +960,8 @@ const backBtn: React.CSSProperties = {
 const letterhead: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
+  justifyContent: 'center',
+  gap: 24,
   border: '1px solid #9CA3AF',
   borderRadius: 10,
   padding: 16,
