@@ -671,7 +671,10 @@ export default function PrintPlanView({
                       style={letterheadBold}
                     >
                       {schoolNameAr ||
-                        classroomName}
+                        `مدرسة ${schemaName.replace(
+                          /^school_/,
+                          ''
+                        )}`}
                     </div>
                   </div>
 
@@ -724,6 +727,9 @@ export default function PrintPlanView({
                           selectedWeek.weekNumber
                         : '—'}
                       )
+                    </div>
+                    <div>
+                      الصف: {classroomName}
                     </div>
                   </div>
                 </div>
