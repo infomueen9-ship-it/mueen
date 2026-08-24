@@ -27,7 +27,7 @@ import {
 
 export default function SchoolDashboard() {
   const { schoolCode } = useParams<{ schoolCode: string }>()
-  const { name, logout } = useAuthStore()
+  const { name, logout, setName } = useAuthStore()
   const navigate = useNavigate()
   const actualSchemaName = `school_${schoolCode}`.toLowerCase();
 
@@ -43,6 +43,7 @@ export default function SchoolDashboard() {
     educationDepartment: '',
     schoolPhone: '',
     schoolMobile: '',
+    principalName: name || '',
   })
 
   const loadSettings = () => {
@@ -56,6 +57,7 @@ export default function SchoolDashboard() {
           educationDepartment: res.data.educationDepartment || '',
           schoolPhone: res.data.schoolPhone || '',
           schoolMobile: res.data.schoolMobile || '',
+          principalName: res.data.principalName || name || '',
         })
       })
       .catch(() => setSchoolName(`مدرسة ${schoolCode}`))
@@ -75,6 +77,9 @@ export default function SchoolDashboard() {
     try {
       await api.put(`/api/school/${actualSchemaName}/settings`, settingsForm)
       toast.success('تم حفظ الإعدادات بنجاح')
+      if (settingsForm.principalName.trim()) {
+        setName(settingsForm.principalName.trim())
+      }
       loadSettings()
       setIsEditingSettings(false)
     } catch {
@@ -191,7 +196,7 @@ export default function SchoolDashboard() {
                 <div style={{ display: 'grid', gap: '12px' }}>
                   <div style={modalInfoBox}>
                     <div style={iconLabelGroup}><User size={14} color="#9CA3AF" /> <span style={labelLight}>اسم المستخدم</span></div>
-                    <span style={valueStyle}>{name}</span>
+                    <span style={valueStyle}>{settingsForm.principalName || name}</span>
                   </div>
 
                   <div style={modalInfoBox}>
@@ -250,6 +255,15 @@ export default function SchoolDashboard() {
             ) : (
               <>
                 <div style={{ display: 'grid', gap: '14px' }}>
+                  <div>
+                    <label style={labelLight}>اسم المستخدم</label>
+                    <input
+                      value={settingsForm.principalName}
+                      onChange={e => setSettingsForm({ ...settingsForm, principalName: e.target.value })}
+                      style={settingsInputStyle}
+                      placeholder="اسم المستخدم"
+                    />
+                  </div>
                   <div>
                     <label style={labelLight}>اسم المدرسة</label>
                     <input

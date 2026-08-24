@@ -9,6 +9,7 @@ interface AuthState {
   teacherId: number | null
   isAuthenticated: boolean
   setAuth: (token: string, name: string, role: string, type?: string, teacherId?: number) => void
+  setName: (name: string) => void
   logout: () => void
 }
 
@@ -31,6 +32,8 @@ export const useAuthStore = create<AuthState>()(
           teacherId: teacherId ?? null,
           isAuthenticated: true,
         }),
+
+      setName: (name) => set({ name }),
 
       logout: () =>
         set({
