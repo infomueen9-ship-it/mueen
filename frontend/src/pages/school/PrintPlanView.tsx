@@ -673,6 +673,12 @@ export default function PrintPlanView({
                       {educationDepartment ||
                         'إدارة التعليم بمحافظة حفر الباطن'}
                     </div>
+                    <div
+                      style={letterheadBold}
+                    >
+                      {schoolNameAr ||
+                        classroomName}
+                    </div>
                   </div>
 
                   <div
