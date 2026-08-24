@@ -658,12 +658,6 @@ export default function PrintPlanView({
                       textAlign: 'center',
                     }}
                   >
-                    <div
-                      style={letterheadBold}
-                    >
-                      {schoolNameAr ||
-                        classroomName}
-                    </div>
                     <div>وزارة التعليم</div>
                     <div>
                       {generalDirectorate ||
