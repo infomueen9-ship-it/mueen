@@ -731,9 +731,6 @@ export default function PrintPlanView({
                         : '—'}
                       )
                     </div>
-                    <div>
-                      الصف: {classroomName}
-                    </div>
                   </div>
                 </div>
 
