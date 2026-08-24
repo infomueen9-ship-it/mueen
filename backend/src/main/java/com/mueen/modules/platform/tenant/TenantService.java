@@ -137,6 +137,8 @@ jdbcTemplate.execute(
     ")"
 );
 
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "students (id BIGSERIAL PRIMARY KEY, full_name VARCHAR(255) NOT NULL, guardian_phone VARCHAR(20) UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "guardians (id BIGSERIAL PRIMARY KEY, full_name VARCHAR(255) NOT NULL, national_id VARCHAR(20), relationship VARCHAR(30) NOT NULL, phone VARCHAR(20) NOT NULL, phone_whatsapp VARCHAR(20), email VARCHAR(255), is_primary BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
 
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + p + "student_guardians (id BIGSERIAL PRIMARY KEY, student_id BIGINT NOT NULL REFERENCES " + p + "students(id) ON DELETE CASCADE, guardian_id BIGINT NOT NULL REFERENCES " + p + "guardians(id) ON DELETE CASCADE, is_primary_contact BOOLEAN NOT NULL DEFAULT FALSE, can_pickup BOOLEAN NOT NULL DEFAULT TRUE, receive_sms BOOLEAN NOT NULL DEFAULT TRUE, receive_whatsapp BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
