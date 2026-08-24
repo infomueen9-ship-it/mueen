@@ -41,6 +41,8 @@ export default function SchoolDashboard() {
     schoolNameAr: '',
     generalDirectorate: '',
     educationDepartment: '',
+    schoolPhone: '',
+    schoolMobile: '',
   })
 
   const loadSettings = () => {
@@ -52,6 +54,8 @@ export default function SchoolDashboard() {
           schoolNameAr: res.data.schoolNameAr || '',
           generalDirectorate: res.data.generalDirectorate || '',
           educationDepartment: res.data.educationDepartment || '',
+          schoolPhone: res.data.schoolPhone || '',
+          schoolMobile: res.data.schoolMobile || '',
         })
       })
       .catch(() => setSchoolName(`مدرسة ${schoolCode}`))
@@ -192,12 +196,12 @@ export default function SchoolDashboard() {
 
                   <div style={modalInfoBox}>
                     <div style={iconLabelGroup}><Phone size={14} color="#9CA3AF" /> <span style={labelLight}>الهاتف</span></div>
-                    <span style={valueStyle}>011XXXXXXX</span>
+                    <span style={valueStyle}>{settingsForm.schoolPhone || '—'}</span>
                   </div>
 
                   <div style={modalInfoBox}>
                     <div style={iconLabelGroup}><Smartphone size={14} color="#9CA3AF" /> <span style={labelLight}>رقم الجوال</span></div>
-                    <span style={valueStyle}>05XXXXXXXX</span>
+                    <span style={valueStyle}>{settingsForm.schoolMobile || '—'}</span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -271,6 +275,24 @@ export default function SchoolDashboard() {
                       onChange={e => setSettingsForm({ ...settingsForm, educationDepartment: e.target.value })}
                       style={settingsInputStyle}
                       placeholder="إدارة التعليم بمحافظة حفر الباطن"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelLight}>الهاتف</label>
+                    <input
+                      value={settingsForm.schoolPhone}
+                      onChange={e => setSettingsForm({ ...settingsForm, schoolPhone: e.target.value })}
+                      style={settingsInputStyle}
+                      placeholder="011XXXXXXX"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelLight}>رقم الجوال</label>
+                    <input
+                      value={settingsForm.schoolMobile}
+                      onChange={e => setSettingsForm({ ...settingsForm, schoolMobile: e.target.value })}
+                      style={settingsInputStyle}
+                      placeholder="05XXXXXXXX"
                     />
                   </div>
                 </div>
