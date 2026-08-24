@@ -355,7 +355,8 @@ const modalOverlayStyle: React.CSSProperties = {
 
 const modalContentStyle: React.CSSProperties = {
   backgroundColor: '#FFFFFF', width: '95%', maxWidth: '450px', borderRadius: '24px', padding: '30px',
-  position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', direction: 'rtl'
+  position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', direction: 'rtl',
+  maxHeight: '90vh', overflowY: 'auto',
 }
 
 const closeModalButtonStyle: React.CSSProperties = {
