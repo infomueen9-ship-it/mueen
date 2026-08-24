@@ -22,6 +22,7 @@ type WeekPlanEntry = {
   subjectName: string
   lessonTopic?: string
   homework?: string
+  notes?: string
 }
 
 type ScheduleRow = {
@@ -53,9 +54,10 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   subject: 'المادة',
   lesson: 'الدرس المقرر',
   homework: 'الواجب',
+  notes: 'الملاحظات',
 }
 
-type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework'
+type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework' | 'notes'
 
 /* =========================================================
    التاريخ الهجري (رقمي)
@@ -131,6 +133,7 @@ export default function PrintPlanView({
       subject: true,
       lesson: true,
       homework: true,
+      notes: true,
     })
 
   const [visibleDays, setVisibleDays] =
@@ -554,13 +557,7 @@ export default function PrintPlanView({
               onClick={() =>
                 window.print()
               }
-              disabled={!selectedWeek}
-              style={{
-                ...printButton,
-                opacity: selectedWeek
-                  ? 1
-                  : 0.6,
-              }}
+              style={printButton}
             >
               طباعة
             </button>
@@ -573,19 +570,27 @@ export default function PrintPlanView({
             </button>
           </div>
 
-          {!weeks.length ? (
+          {!weeks.length && (
             <div
+              className="mueen-no-print"
               style={{
                 textAlign: 'center',
-                padding: 60,
-                color: '#9CA3AF',
+                padding: '10px 16px',
+                marginBottom: 16,
+                color: '#92400E',
+                background: '#FEF3C7',
+                borderRadius: 8,
+                fontSize: 13,
               }}
             >
               لم يتم إعداد تقويم الأسابيع
               الدراسية بعد. أضِف الأسابيع من
-              "إعدادات الخطة".
+              "إعدادات الخطة" — الفورم أدناه
+              فارغ حتى ذلك الحين.
             </div>
-          ) : weekPlanLoading ? (
+          )}
+
+          {weekPlanLoading ? (
             <div
               style={{
                 textAlign: 'center',
@@ -596,7 +601,6 @@ export default function PrintPlanView({
               جارٍ تحميل خطة الأسبوع...
             </div>
           ) : (
-            selectedWeek && (
               <div id="mueen-print-area">
 
                 {/* ===========================================
@@ -660,21 +664,27 @@ export default function PrintPlanView({
                   >
                     <div>
                       من:{' '}
-                      {hijriNumeric(
-                        selectedWeek.startDate
-                      )}{' '}
+                      {selectedWeek
+                        ? hijriNumeric(
+                            selectedWeek.startDate
+                          )
+                        : '—'}{' '}
                       إلى{' '}
-                      {hijriNumeric(
-                        selectedWeek.endDate
-                      )}
+                      {selectedWeek
+                        ? hijriNumeric(
+                            selectedWeek.endDate
+                          )
+                        : '—'}
                     </div>
                     <div>
                       الأسبوع (
-                      {WEEK_ORDINALS[
-                        selectedWeek
-                          .weekNumber
-                      ] ||
-                        selectedWeek.weekNumber}
+                      {selectedWeek
+                        ? WEEK_ORDINALS[
+                            selectedWeek
+                              .weekNumber
+                          ] ||
+                          selectedWeek.weekNumber
+                        : '—'}
                       )
                     </div>
                     <div>
@@ -799,6 +809,15 @@ export default function PrintPlanView({
                                       ''}
                                   </td>
                                 )}
+
+                                {visibleColumns.notes && (
+                                  <td
+                                    style={td}
+                                  >
+                                    {plan?.notes ||
+                                      ''}
+                                  </td>
+                                )}
                               </tr>
                             )
                           }
@@ -808,7 +827,6 @@ export default function PrintPlanView({
                   </tbody>
                 </table>
               </div>
-            )
           )}
         </>
       )}
