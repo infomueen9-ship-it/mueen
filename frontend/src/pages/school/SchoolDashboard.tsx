@@ -10,6 +10,7 @@ import BehaviorPage from './BehaviorPage'
 import AttendancePage from './AttendancePage'
 import MessagesPage from './MessagesPage'
 import WaitingMuPage from './WaitingMuPage'
+import PlanSettingsView from './PlanSettingsView'
 import {
   Calendar,
   Users,
@@ -17,6 +18,7 @@ import {
   MessageSquare,
   Clock,
   CheckCircle2,
+  Settings,
   X,
   Phone,
   User,
@@ -50,6 +52,7 @@ export default function SchoolDashboard() {
 
   const menuItems = [
     { key: 'schedules', label: 'ادارة الجدول', icon: <Calendar size={18} /> },
+    { key: 'planSettings', label: 'إعدادات الخطة', icon: <Settings size={18} /> },
     { key: 'teachers', label: 'المعلمين', icon: <Users size={18} /> },
     { key: 'behavior', label: 'السلوك', icon: <CheckCircle2 size={18} /> },
     { key: 'attendance', label: 'الحضور', icon: <ClipboardList size={18} /> },
@@ -119,6 +122,7 @@ export default function SchoolDashboard() {
         {/* Main Content Area */}
         <main style={mainContentStyle}>
           {activePage === 'schedules' && <SchedulesView schemaName={actualSchemaName} />}
+          {activePage === 'planSettings' && <PlanSettingsView schemaName={actualSchemaName} />}
           {activePage === 'teachers' && <TeachersPage schemaName={actualSchemaName} />}
           {activePage === 'behavior' && <BehaviorPage schemaName={actualSchemaName} />}
           {activePage === 'attendance' && <AttendancePage schemaName={actualSchemaName} />}

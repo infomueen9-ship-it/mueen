@@ -5,7 +5,6 @@ import api from '../../api/axios'
 import toast from 'react-hot-toast'
 import ClassroomSchedule from './ClassroomSchedule'
 import StudentsView from './StudentsView'
-import ArchivedPlansView from './ArchivedPlansView'
 import PrintPlanView from './PrintPlanView'
 
 interface Classroom {
@@ -28,10 +27,6 @@ export default function SchedulesView({
     useState<Classroom | null>(null)
 
   const [selectedStudentClassroom, setSelectedStudentClassroom] =
-    useState<Classroom | null>(null)
-
-  // الفصل الذي تم اختيار "الخطط المؤرشفة" له
-  const [archivedClassroom, setArchivedClassroom] =
     useState<Classroom | null>(null)
 
   // الفصل الذي تم اختيار "طباعة الخطة" له
@@ -331,18 +326,6 @@ export default function SchedulesView({
                       }
                     />
 
-                    {/* الخطط المؤرشفة */}
-
-                    <ActionBtn
-                      icon={
-                        <Table size={15} />
-                      }
-                      label="الخطط المؤرشفة"
-                      onClick={() =>
-                        setArchivedClassroom(cls)
-                      }
-                    />
-
                   </div>
                 </td>
               </tr>
@@ -364,126 +347,6 @@ export default function SchedulesView({
             )}
           </tbody>
         </table>
-      )}
-
-      {/* ===================================================== */}
-      {/* Archived Plans Modal */}
-      {/* ===================================================== */}
-
-      {archivedClassroom && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background:
-              'rgba(0, 0, 0, 0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 3000,
-            padding: '20px',
-            backdropFilter: 'blur(3px)',
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              width: '95%',
-              maxWidth: '1400px',
-              height: '90vh',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow:
-                '0 20px 60px rgba(0,0,0,.2)',
-            }}
-          >
-
-            {/* Modal Header */}
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent:
-                  'space-between',
-                alignItems: 'center',
-                padding: '15px 20px',
-                borderBottom:
-                  '1px solid #E5E7EB',
-                background: '#F9FAFB',
-                direction: 'rtl',
-              }}
-            >
-              <div>
-                <h3
-                  style={{
-                    margin: 0,
-                    color: '#374151',
-                    fontSize: '16px',
-                  }}
-                >
-                  الخطط المؤرشفة
-                </h3>
-
-                <div
-                  style={{
-                    marginTop: '4px',
-                    color: '#6B7280',
-                    fontSize: '12px',
-                  }}
-                >
-                  {archivedClassroom.name}
-                </div>
-              </div>
-
-              <button
-                onClick={() =>
-                  setArchivedClassroom(null)
-                }
-                style={{
-                  border: 'none',
-                  background: '#F3F4F6',
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6B7280',
-                  fontSize: '16px',
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Archived Plans Content */}
-
-            <div
-              style={{
-                flex: 1,
-                overflowY: 'auto',
-                padding: '20px',
-              }}
-            >
-              <ArchivedPlansView
-                schemaName={schemaName}
-                classroomId={
-                  archivedClassroom.id
-                }
-                classroomName={
-                  archivedClassroom.name
-                }
-                onBack={() =>
-                  setArchivedClassroom(null)
-                }
-              />
-            </div>
-
-          </div>
-        </div>
       )}
 
       {/* ===================================================== */}

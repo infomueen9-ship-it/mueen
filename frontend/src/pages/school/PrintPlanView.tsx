@@ -1,24 +1,20 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
 import moeLogo from '../../assets/moe-logo.png'
 
-type ArchivedPlan = {
-  id: number
-  type: 'lesson' | 'leave'
-  planId?: number
-  lessonTopic?: string
+type WeekSetting = {
   weekNumber: number
   startDate: string
   endDate: string
 }
 
-type LessonPlan = {
-  id: number
-  subject_name: string
-  lesson_topic: string
+type WeekPlanEntry = {
+  day: string
+  period: string
+  subjectName: string
+  lessonTopic?: string
   homework?: string
-  notes?: string
 }
 
 type ScheduleRow = {
@@ -50,10 +46,9 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   subject: 'المادة',
   lesson: 'الدرس المقرر',
   homework: 'الواجب',
-  notes: 'الملاحظات',
 }
 
-type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework' | 'notes'
+type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework'
 
 /* =========================================================
    التاريخ الهجري (رقمي)
@@ -102,11 +97,8 @@ export default function PrintPlanView({
   const [schoolNameAr, setSchoolNameAr] =
     useState('')
 
-  const [archivedPlans, setArchivedPlans] =
-    useState<ArchivedPlan[]>([])
-
-  const [lessonPlans, setLessonPlans] =
-    useState<LessonPlan[]>([])
+  const [weeks, setWeeks] =
+    useState<WeekSetting[]>([])
 
   const [schedule, setSchedule] =
     useState<ScheduleRow[]>([])
@@ -114,8 +106,14 @@ export default function PrintPlanView({
   const [loading, setLoading] =
     useState(true)
 
-  const [selectedWeekKey, setSelectedWeekKey] =
-    useState('')
+  const [selectedWeekNumber, setSelectedWeekNumber] =
+    useState<number | null>(null)
+
+  const [weekPlan, setWeekPlan] =
+    useState<WeekPlanEntry[]>([])
+
+  const [weekPlanLoading, setWeekPlanLoading] =
+    useState(false)
 
   const [visibleColumns, setVisibleColumns] =
     useState<Record<ColumnKey, boolean>>({
@@ -123,7 +121,6 @@ export default function PrintPlanView({
       subject: true,
       lesson: true,
       homework: true,
-      notes: true,
     })
 
   const [visibleDays, setVisibleDays] =
@@ -146,8 +143,7 @@ export default function PrintPlanView({
       try {
         const [
           settingsResponse,
-          archivedResponse,
-          lessonPlansResponse,
+          weeksResponse,
           scheduleResponse,
         ] = await Promise.all([
           api
@@ -156,12 +152,8 @@ export default function PrintPlanView({
             )
             .catch(() => null),
 
-          api.get(
-            `/api/school/${schemaName}/classrooms/${classroomId}/archived-plans`
-          ),
-
-          api.get<LessonPlan[]>(
-            '/api/platform/admin/study-plans/plans'
+          api.get<WeekSetting[]>(
+            `/api/school/${schemaName}/week-settings`
           ),
 
           api.get<ScheduleRow[]>(
@@ -176,21 +168,32 @@ export default function PrintPlanView({
             ?.school_name_ar || ''
         )
 
-        setArchivedPlans(
-          Array.isArray(
-            archivedResponse.data
-          )
-            ? archivedResponse.data
-            : []
-        )
+        const weeksData =
+          weeksResponse.data || []
 
-        setLessonPlans(
-          lessonPlansResponse.data || []
-        )
+        setWeeks(weeksData)
 
         setSchedule(
           scheduleResponse.data || []
         )
+
+        if (weeksData.length) {
+          const today =
+            new Date()
+              .toISOString()
+              .slice(0, 10)
+
+          const current =
+            weeksData.find(
+              week =>
+                week.startDate <= today &&
+                today <= week.endDate
+            ) || weeksData[weeksData.length - 1]
+
+          setSelectedWeekNumber(
+            current.weekNumber
+          )
+        }
       } catch {
         toast.error(
           'تعذر تحميل بيانات الخطة'
@@ -213,106 +216,59 @@ export default function PrintPlanView({
   ])
 
   /* =======================================================
-     تجميع الأسابيع المؤرشفة
+     تحميل خطة الأسبوع المختار
      ======================================================= */
 
-  const weeks = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        key: string
-        weekNumber: number
-        startDate: string
-        endDate: string
-        lessonsBySubject: Map<
-          string,
-          LessonPlan
-        >
-        leaves: string[]
-      }
-    >()
-
-    archivedPlans.forEach(plan => {
-      const key = `${plan.weekNumber}__${plan.startDate}__${plan.endDate}`
-
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          weekNumber: plan.weekNumber,
-          startDate: plan.startDate,
-          endDate: plan.endDate,
-          lessonsBySubject: new Map(),
-          leaves: [],
-        })
-      }
-
-      const entry = map.get(key)!
-
-      if (plan.type === 'lesson') {
-        const lesson =
-          lessonPlans.find(
-            item =>
-              item.id === plan.planId
-          )
-
-        if (lesson) {
-          entry.lessonsBySubject.set(
-            lesson.subject_name,
-            lesson
-          )
-        }
-      } else if (
-        plan.lessonTopic
-      ) {
-        entry.leaves.push(
-          plan.lessonTopic
-        )
-      }
-    })
-
-    return Array.from(
-      map.values()
-    ).sort((a, b) =>
-      a.startDate.localeCompare(
-        b.startDate
-      )
-    )
-  }, [
-    archivedPlans,
-    lessonPlans,
-  ])
-
   useEffect(() => {
-    if (selectedWeekKey || !weeks.length) {
+    if (!selectedWeekNumber) {
+      setWeekPlan([])
       return
     }
 
-    const today =
-      new Date()
-        .toISOString()
-        .slice(0, 10)
+    let cancelled = false
 
-    const current =
-      weeks.find(
-        week =>
-          week.startDate <= today &&
-          today <= week.endDate
-      ) || weeks[weeks.length - 1]
+    const loadWeekPlan = async () => {
+      setWeekPlanLoading(true)
 
-    setSelectedWeekKey(current.key)
+      try {
+        const response = await api.get<WeekPlanEntry[]>(
+          `/api/school/${schemaName}/classrooms/${classroomId}/week-plans/${selectedWeekNumber}`
+        )
+
+        if (!cancelled) {
+          setWeekPlan(response.data || [])
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error('تعذر تحميل خطة الأسبوع')
+          setWeekPlan([])
+        }
+      } finally {
+        if (!cancelled) {
+          setWeekPlanLoading(false)
+        }
+      }
+    }
+
+    loadWeekPlan()
+
+    return () => {
+      cancelled = true
+    }
   }, [
-    weeks,
-    selectedWeekKey,
+    schemaName,
+    classroomId,
+    selectedWeekNumber,
   ])
 
   const selectedWeek =
     weeks.find(
       week =>
-        week.key === selectedWeekKey
+        week.weekNumber === selectedWeekNumber
     )
 
   /* =======================================================
-     مادة الحصة حسب الجدول
+     مادة الحصة ومحتوى الخطة حسب الجدول
      ======================================================= */
 
   const subjectOf = (
@@ -329,6 +285,17 @@ export default function PrintPlanView({
 
     return row?.subject_name || ''
   }
+
+  const planOf = (
+    day: string,
+    period: number
+  ) =>
+    weekPlan.find(
+      entry =>
+        entry.day === day &&
+        entry.period ===
+          `الحصة ${period}`
+    )
 
   /* =======================================================
      تبديل عمود / يوم
@@ -509,10 +476,10 @@ export default function PrintPlanView({
               </label>
 
               <select
-                value={selectedWeekKey}
+                value={selectedWeekNumber ?? ''}
                 onChange={event =>
-                  setSelectedWeekKey(
-                    event.target.value
+                  setSelectedWeekNumber(
+                    Number(event.target.value)
                   )
                 }
                 style={{
@@ -524,8 +491,8 @@ export default function PrintPlanView({
               >
                 {weeks.map(week => (
                   <option
-                    key={week.key}
-                    value={week.key}
+                    key={week.weekNumber}
+                    value={week.weekNumber}
                   >
                     الأسبوع{' '}
                     {
@@ -585,8 +552,19 @@ export default function PrintPlanView({
                 color: '#9CA3AF',
               }}
             >
-              لا توجد خطط مؤرشفة لهذا الفصل
-              بعد.
+              لم يتم إعداد تقويم الأسابيع
+              الدراسية بعد. أضِف الأسابيع من
+              "إعدادات الخطة".
+            </div>
+          ) : weekPlanLoading ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: 60,
+                color: '#6B7280',
+              }}
+            >
+              جارٍ تحميل خطة الأسبوع...
             </div>
           ) : (
             selectedWeek && (
@@ -676,18 +654,6 @@ export default function PrintPlanView({
                   </div>
                 </div>
 
-                {selectedWeek.leaves.length >
-                  0 && (
-                  <div
-                    style={leaveNotice}
-                  >
-                    إجازة هذا الأسبوع:{' '}
-                    {selectedWeek.leaves.join(
-                      '، '
-                    )}
-                  </div>
-                )}
-
                 {/* ===========================================
                     الجدول
                    =========================================== */}
@@ -730,10 +696,11 @@ export default function PrintPlanView({
                                 period
                               )
 
-                            const lesson =
+                            const plan =
                               subjectName
-                                ? selectedWeek.lessonsBySubject.get(
-                                    subjectName
+                                ? planOf(
+                                    day,
+                                    period
                                   )
                                 : undefined
 
@@ -779,7 +746,7 @@ export default function PrintPlanView({
                                   <td
                                     style={td}
                                   >
-                                    {lesson?.lesson_topic ||
+                                    {plan?.lessonTopic ||
                                       ''}
                                   </td>
                                 )}
@@ -788,16 +755,7 @@ export default function PrintPlanView({
                                   <td
                                     style={td}
                                   >
-                                    {lesson?.homework ||
-                                      ''}
-                                  </td>
-                                )}
-
-                                {visibleColumns.notes && (
-                                  <td
-                                    style={td}
-                                  >
-                                    {lesson?.notes ||
+                                    {plan?.homework ||
                                       ''}
                                   </td>
                                 )}
@@ -890,16 +848,6 @@ const letterhead: React.CSSProperties = {
 
 const letterheadBold: React.CSSProperties = {
   fontWeight: 700,
-}
-
-const leaveNotice: React.CSSProperties = {
-  background: '#FEF3C7',
-  color: '#92400E',
-  borderRadius: 8,
-  padding: '8px 12px',
-  fontSize: 12,
-  marginBottom: 12,
-  textAlign: 'center',
 }
 
 const table: React.CSSProperties = {
