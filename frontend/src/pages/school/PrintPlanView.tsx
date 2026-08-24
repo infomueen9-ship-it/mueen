@@ -9,6 +9,13 @@ type WeekSetting = {
   endDate: string
 }
 
+type Leave = {
+  id: number
+  title: string
+  startDate: string
+  endDate: string
+}
+
 type WeekPlanEntry = {
   day: string
   period: string
@@ -100,6 +107,9 @@ export default function PrintPlanView({
   const [weeks, setWeeks] =
     useState<WeekSetting[]>([])
 
+  const [leaves, setLeaves] =
+    useState<Leave[]>([])
+
   const [schedule, setSchedule] =
     useState<ScheduleRow[]>([])
 
@@ -144,6 +154,7 @@ export default function PrintPlanView({
         const [
           settingsResponse,
           weeksResponse,
+          leavesResponse,
           scheduleResponse,
         ] = await Promise.all([
           api
@@ -154,6 +165,10 @@ export default function PrintPlanView({
 
           api.get<WeekSetting[]>(
             `/api/school/${schemaName}/week-settings`
+          ),
+
+          api.get<Leave[]>(
+            `/api/school/${schemaName}/leaves`
           ),
 
           api.get<ScheduleRow[]>(
@@ -172,6 +187,10 @@ export default function PrintPlanView({
           weeksResponse.data || []
 
         setWeeks(weeksData)
+
+        setLeaves(
+          leavesResponse.data || []
+        )
 
         setSchedule(
           scheduleResponse.data || []
@@ -266,6 +285,16 @@ export default function PrintPlanView({
       week =>
         week.weekNumber === selectedWeekNumber
     )
+
+  // الإجازات التي تتقاطع مع تاريخ الأسبوع المختار
+  const weekLeaves =
+    selectedWeek
+      ? leaves.filter(
+          leave =>
+            leave.startDate <= selectedWeek.endDate &&
+            leave.endDate >= selectedWeek.startDate
+        )
+      : []
 
   /* =======================================================
      مادة الحصة ومحتوى الخطة حسب الجدول
@@ -654,6 +683,17 @@ export default function PrintPlanView({
                   </div>
                 </div>
 
+                {weekLeaves.length > 0 && (
+                  <div
+                    style={leaveNotice}
+                  >
+                    إجازة هذا الأسبوع:{' '}
+                    {weekLeaves
+                      .map(leave => leave.title)
+                      .join('، ')}
+                  </div>
+                )}
+
                 {/* ===========================================
                     الجدول
                    =========================================== */}
@@ -848,6 +888,16 @@ const letterhead: React.CSSProperties = {
 
 const letterheadBold: React.CSSProperties = {
   fontWeight: 700,
+}
+
+const leaveNotice: React.CSSProperties = {
+  background: '#FEF3C7',
+  color: '#92400E',
+  borderRadius: 8,
+  padding: '8px 12px',
+  fontSize: 12,
+  marginBottom: 12,
+  textAlign: 'center',
 }
 
 const table: React.CSSProperties = {
