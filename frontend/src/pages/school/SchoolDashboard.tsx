@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../api/axios'
-//import toast from 'react-hot-toast'
+import toast from 'react-hot-toast'
 import logo from '../../assets/logo.png'
 import SchedulesView from './SchedulesView'
 import TeachersPage from './TeachersPage'
@@ -35,15 +35,50 @@ export default function SchoolDashboard() {
   const [activePage, setActivePage] = useState('schedules')
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false)
   const [schoolName, setSchoolName] = useState('جارِ التحميل...')
+  const [isEditingSettings, setIsEditingSettings] = useState(false)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [settingsForm, setSettingsForm] = useState({
+    schoolNameAr: '',
+    generalDirectorate: '',
+    educationDepartment: '',
+  })
 
-  useEffect(() => {
-    // جلب إعدادات المدرسة للحصول على الاسم الفعلي
+  const loadSettings = () => {
     api.get(`/api/school/${actualSchemaName}/settings`)
       .then(res => {
-        setSchoolName(res.data.school_name_ar || `مدرسة ${schoolCode}`)
+        const nameAr = res.data.schoolNameAr || `مدرسة ${schoolCode}`
+        setSchoolName(nameAr)
+        setSettingsForm({
+          schoolNameAr: res.data.schoolNameAr || '',
+          generalDirectorate: res.data.generalDirectorate || '',
+          educationDepartment: res.data.educationDepartment || '',
+        })
       })
       .catch(() => setSchoolName(`مدرسة ${schoolCode}`))
+  }
+
+  useEffect(() => {
+    loadSettings()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actualSchemaName, schoolCode])
+
+  const handleSaveSettings = async () => {
+    if (!settingsForm.schoolNameAr.trim()) {
+      toast.error('اسم المدرسة مطلوب')
+      return
+    }
+    setIsSavingSettings(true)
+    try {
+      await api.put(`/api/school/${actualSchemaName}/settings`, settingsForm)
+      toast.success('تم حفظ الإعدادات بنجاح')
+      loadSettings()
+      setIsEditingSettings(false)
+    } catch {
+      toast.error('تعذر حفظ الإعدادات')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
 
   const handleLogout = () => {
     logout()
@@ -135,7 +170,10 @@ export default function SchoolDashboard() {
       {isSchoolModalOpen && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
-            <button onClick={() => setIsSchoolModalOpen(false)} style={closeModalButtonStyle}>
+            <button
+              onClick={() => { setIsSchoolModalOpen(false); setIsEditingSettings(false) }}
+              style={closeModalButtonStyle}
+            >
               <X size={18} />
             </button>
 
@@ -144,54 +182,116 @@ export default function SchoolDashboard() {
               <h2 style={{ margin: 0, color: '#374151', fontSize: '20px' }}>{schoolName}</h2>
             </div>
 
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <div style={modalInfoBox}>
-                <div style={iconLabelGroup}><User size={14} color="#9CA3AF" /> <span style={labelLight}>اسم المستخدم</span></div>
-                <span style={valueStyle}>{name}</span>
-              </div>
-              
-              <div style={modalInfoBox}>
-                <div style={iconLabelGroup}><Phone size={14} color="#9CA3AF" /> <span style={labelLight}>الهاتف</span></div>
-                <span style={valueStyle}>011XXXXXXX</span>
-              </div>
+            {!isEditingSettings ? (
+              <>
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  <div style={modalInfoBox}>
+                    <div style={iconLabelGroup}><User size={14} color="#9CA3AF" /> <span style={labelLight}>اسم المستخدم</span></div>
+                    <span style={valueStyle}>{name}</span>
+                  </div>
 
-              <div style={modalInfoBox}>
-                <div style={iconLabelGroup}><Smartphone size={14} color="#9CA3AF" /> <span style={labelLight}>رقم الجوال</span></div>
-                <span style={valueStyle}>05XXXXXXXX</span>
-              </div>
+                  <div style={modalInfoBox}>
+                    <div style={iconLabelGroup}><Phone size={14} color="#9CA3AF" /> <span style={labelLight}>الهاتف</span></div>
+                    <span style={valueStyle}>011XXXXXXX</span>
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={modalInfoBox}>
-                  <span style={labelLight}>كود المدرسة</span>
-                  <span style={valueStyle}>{schoolCode}</span>
+                  <div style={modalInfoBox}>
+                    <div style={iconLabelGroup}><Smartphone size={14} color="#9CA3AF" /> <span style={labelLight}>رقم الجوال</span></div>
+                    <span style={valueStyle}>05XXXXXXXX</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={modalInfoBox}>
+                      <span style={labelLight}>كود المدرسة</span>
+                      <span style={valueStyle}>{schoolCode}</span>
+                    </div>
+                    <div style={modalInfoBox}>
+                      <span style={labelLight}>تاريخ الانتهاء</span>
+                      <span style={valueStyle}>2024/12/30</span>
+                    </div>
+                  </div>
+
+                  <div style={modalInfoBox}>
+                    <span style={labelLight}>الإدارة العامة للتعليم</span>
+                    <span style={valueStyle}>{settingsForm.generalDirectorate || '—'}</span>
+                  </div>
+
+                  <div style={modalInfoBox}>
+                    <span style={labelLight}>إدارة التعليم بالمحافظة</span>
+                    <span style={valueStyle}>{settingsForm.educationDepartment || '—'}</span>
+                  </div>
+
+                  <div style={statusBadgeStyle}>
+                    <span style={{ color: '#059669', fontSize: '13px', fontWeight: 600 }}>حالة الاشتراك</span>
+                    <span style={activeBadgeStyle}>نشط - بقية 21 يوم</span>
+                  </div>
                 </div>
-                <div style={modalInfoBox}>
-                  <span style={labelLight}>تاريخ الانتهاء</span>
-                  <span style={valueStyle}>2024/12/30</span>
+
+                {/* أزرار الإجراءات */}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
+                  <button
+                    onClick={() => setIsEditingSettings(true)}
+                    style={{ ...modalActionBtn, backgroundColor: '#9EC5C7', flex: 2 }}
+                  >
+                    تعديل البيانات
+                  </button>
+                  <button
+                    onClick={() => setIsSchoolModalOpen(false)}
+                    style={{ ...modalActionBtn, backgroundColor: '#F3F4F6', color: '#6B7280', flex: 1 }}
+                  >
+                    إغلاق
+                  </button>
                 </div>
-              </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gap: '14px' }}>
+                  <div>
+                    <label style={labelLight}>اسم المدرسة</label>
+                    <input
+                      value={settingsForm.schoolNameAr}
+                      onChange={e => setSettingsForm({ ...settingsForm, schoolNameAr: e.target.value })}
+                      style={settingsInputStyle}
+                      placeholder="اسم المدرسة"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelLight}>الإدارة العامة للتعليم بالمنطقة</label>
+                    <input
+                      value={settingsForm.generalDirectorate}
+                      onChange={e => setSettingsForm({ ...settingsForm, generalDirectorate: e.target.value })}
+                      style={settingsInputStyle}
+                      placeholder="الإدارة العامة للتعليم بالمنطقة الشرقية"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelLight}>إدارة التعليم بالمحافظة</label>
+                    <input
+                      value={settingsForm.educationDepartment}
+                      onChange={e => setSettingsForm({ ...settingsForm, educationDepartment: e.target.value })}
+                      style={settingsInputStyle}
+                      placeholder="إدارة التعليم بمحافظة حفر الباطن"
+                    />
+                  </div>
+                </div>
 
-              <div style={statusBadgeStyle}>
-                <span style={{ color: '#059669', fontSize: '13px', fontWeight: 600 }}>حالة الاشتراك</span>
-                <span style={activeBadgeStyle}>نشط - بقية 21 يوم</span>
-              </div>
-            </div>
-
-            {/* أزرار الإجراءات */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
-               <button 
-                onClick={() => console.log('Edit Profile')}
-                style={{ ...modalActionBtn, backgroundColor: '#9EC5C7', flex: 2 }}
-              >
-                تعديل البيانات
-              </button>
-              <button 
-                onClick={() => setIsSchoolModalOpen(false)}
-                style={{ ...modalActionBtn, backgroundColor: '#F3F4F6', color: '#6B7280', flex: 1 }}
-              >
-                إغلاق
-              </button>
-            </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                    style={{ ...modalActionBtn, backgroundColor: '#9EC5C7', flex: 2, opacity: isSavingSettings ? 0.6 : 1 }}
+                  >
+                    {isSavingSettings ? 'جارِ الحفظ...' : 'حفظ'}
+                  </button>
+                  <button
+                    onClick={() => { setIsEditingSettings(false); loadSettings() }}
+                    style={{ ...modalActionBtn, backgroundColor: '#F3F4F6', color: '#6B7280', flex: 1 }}
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -200,6 +300,11 @@ export default function SchoolDashboard() {
 }
 
 
+
+const settingsInputStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '8px',
+  fontSize: '14px', marginTop: '6px', boxSizing: 'border-box', fontFamily: 'inherit',
+}
 
 const sidebarStyle: React.CSSProperties = {
   width: '220px', backgroundColor: '#FFFFFF', borderLeft: '1px solid #E5E7EB',

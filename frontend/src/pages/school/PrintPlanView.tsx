@@ -106,6 +106,12 @@ export default function PrintPlanView({
   const [schoolNameAr, setSchoolNameAr] =
     useState('')
 
+  const [generalDirectorate, setGeneralDirectorate] =
+    useState('')
+
+  const [educationDepartment, setEducationDepartment] =
+    useState('')
+
   const [weeks, setWeeks] =
     useState<WeekSetting[]>([])
 
@@ -183,7 +189,17 @@ export default function PrintPlanView({
 
         setSchoolNameAr(
           settingsResponse?.data
-            ?.school_name_ar || ''
+            ?.schoolNameAr || ''
+        )
+
+        setGeneralDirectorate(
+          settingsResponse?.data
+            ?.generalDirectorate || ''
+        )
+
+        setEducationDepartment(
+          settingsResponse?.data
+            ?.educationDepartment || ''
         )
 
         const weeksData =
@@ -298,6 +314,35 @@ export default function PrintPlanView({
             leave.endDate >= selectedWeek.startDate
         )
       : []
+
+  // تاريخ يوم معين ضمن الأسبوع المختار
+  const dayDate = (
+    day: string
+  ): string | null => {
+    if (!selectedWeek) return null
+    const offset = DAYS.indexOf(day)
+    if (offset < 0) return null
+    const start = new Date(
+      selectedWeek.startDate + 'T00:00:00'
+    )
+    start.setDate(start.getDate() + offset)
+    return start
+      .toISOString()
+      .slice(0, 10)
+  }
+
+  // الإجازة التي تقع في يوم معين (إن وجدت)
+  const leaveOnDay = (
+    day: string
+  ): Leave | undefined => {
+    const date = dayDate(day)
+    if (!date) return undefined
+    return leaves.find(
+      leave =>
+        leave.startDate <= date &&
+        leave.endDate >= date
+    )
+  }
 
   /* =======================================================
      مادة الحصة ومحتوى الخطة حسب الجدول
@@ -610,29 +655,24 @@ export default function PrintPlanView({
                 <div style={letterhead}>
                   <div
                     style={{
-                      textAlign: 'right',
+                      textAlign: 'center',
                       flex: 1,
                     }}
                   >
                     <div
                       style={letterheadBold}
                     >
-                      المملكة العربية السعودية
+                      {schoolNameAr ||
+                        classroomName}
                     </div>
                     <div>وزارة التعليم</div>
                     <div>
-                      الإدارة العامة للتعليم
-                      بالمنطقة الشرقية
+                      {generalDirectorate ||
+                        'الإدارة العامة للتعليم بالمنطقة الشرقية'}
                     </div>
                     <div>
-                      إدارة التعليم بمحافظة
-                      حفر الباطن
-                    </div>
-                    <div
-                      style={letterheadBold}
-                    >
-                      {schoolNameAr ||
-                        classroomName}
+                      {educationDepartment ||
+                        'إدارة التعليم بمحافظة حفر الباطن'}
                     </div>
                   </div>
 
@@ -658,7 +698,7 @@ export default function PrintPlanView({
 
                   <div
                     style={{
-                      textAlign: 'left',
+                      textAlign: 'center',
                       flex: 1,
                     }}
                   >
@@ -733,7 +773,11 @@ export default function PrintPlanView({
                   </thead>
 
                   <tbody>
-                    {activeDays.map(day => (
+                    {activeDays.map(day => {
+                      const dayLeave =
+                        leaveOnDay(day)
+
+                      return (
                       <Fragment key={day}>
                         {PERIODS.map(
                           (
@@ -757,6 +801,14 @@ export default function PrintPlanView({
                             return (
                               <tr
                                 key={`${day}-${period}`}
+                                style={
+                                  dayLeave
+                                    ? {
+                                        background:
+                                          '#FEE2E2',
+                                      }
+                                    : undefined
+                                }
                               >
                                 {index ===
                                   0 && (
@@ -764,14 +816,29 @@ export default function PrintPlanView({
                                     style={{
                                       ...td,
                                       fontWeight: 700,
-                                      background:
-                                        '#F9FAFB',
+                                      background: dayLeave
+                                        ? '#FCA5A5'
+                                        : '#F9FAFB',
                                     }}
                                     rowSpan={
                                       PERIODS.length
                                     }
+                                    title={
+                                      dayLeave?.title
+                                    }
                                   >
                                     {day}
+                                    {dayLeave && (
+                                      <div
+                                        style={{
+                                          fontSize: 10,
+                                          fontWeight: 400,
+                                          marginTop: 2,
+                                        }}
+                                      >
+                                        {dayLeave.title}
+                                      </div>
+                                    )}
                                   </td>
                                 )}
 
@@ -823,7 +890,8 @@ export default function PrintPlanView({
                           }
                         )}
                       </Fragment>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

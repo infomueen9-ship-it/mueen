@@ -35,6 +35,13 @@ interface WeekSetting {
   endDate: string
 }
 
+interface Leave {
+  id: number
+  title: string
+  startDate: string
+  endDate: string
+}
+
 interface WeekEntry {
   day: string
   period: string
@@ -70,6 +77,7 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   const [schedule, setSchedule] = useState<ScheduleRow[]>([])
   const [lessonCatalog, setLessonCatalog] = useState<LessonCatalogItem[]>([])
   const [weekSettings, setWeekSettings] = useState<WeekSetting[]>([])
+  const [leaves, setLeaves] = useState<Leave[]>([])
   const [loading, setLoading] = useState(true)
 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
@@ -80,17 +88,19 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   useEffect(() => {
     const load = async () => {
       try {
-        const [subjectsRes, scheduleRes, catalogRes, weekSettingsRes] = await Promise.all([
+        const [subjectsRes, scheduleRes, catalogRes, weekSettingsRes, leavesRes] = await Promise.all([
           api.get<Subject[]>(`/api/school/${schemaName}/classrooms/${classroomId}/subjects`),
           api.get<ScheduleRow[]>(`/api/school/${schemaName}/classrooms/${classroomId}/schedule`),
           api.get<LessonCatalogItem[]>('/api/platform/admin/study-plans/plans'),
           api.get<WeekSetting[]>(`/api/school/${schemaName}/week-settings`),
+          api.get<Leave[]>(`/api/school/${schemaName}/leaves`),
         ])
         // تصفية المواد المسندة لهذا المعلم فقط
         setSubjects(subjectsRes.data.filter(s => s.teacherId === teacherId))
         setSchedule(scheduleRes.data)
         setLessonCatalog(catalogRes.data)
         setWeekSettings(weekSettingsRes.data)
+        setLeaves(leavesRes.data)
       } catch {
         toast.error('تعذر تحميل بيانات الخطة')
       } finally {
@@ -135,6 +145,25 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
   const closeWeek = () => {
     setSelectedWeek(null)
     setRowDrafts({})
+  }
+
+  const currentWeekSetting = weekSettings.find(w => w.weekNumber === selectedWeek)
+
+  // تاريخ يوم معين ضمن الأسبوع المفتوح حالياً
+  const dayDate = (day: string): string | null => {
+    if (!currentWeekSetting) return null
+    const offset = DAYS.indexOf(day)
+    if (offset === -1) return null
+    const start = new Date(currentWeekSetting.startDate + 'T00:00:00')
+    start.setDate(start.getDate() + offset)
+    return start.toISOString().slice(0, 10)
+  }
+
+  // الإجازة التي تقع في يوم معين (إن وجدت)
+  const leaveOnDay = (day: string): Leave | undefined => {
+    const date = dayDate(day)
+    if (!date) return undefined
+    return leaves.find(leave => leave.startDate <= date && leave.endDate >= date)
   }
 
   const updateDraft = (row: ScheduleRow, field: keyof RowDraft, value: string) => {
@@ -233,16 +262,13 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
               </button>
             </div>
 
-            {(() => {
-              const weekSetting = weekSettings.find(w => w.weekNumber === selectedWeek)
-              return weekSetting ? (
-                <div style={{ textAlign: 'center', marginBottom: '20px', color: '#2D7D82', fontSize: '13px', fontWeight: 700 }}>
-                  من {weekSetting.startDate} إلى {weekSetting.endDate}
-                </div>
-              ) : (
-                <div style={{ marginBottom: '20px' }} />
-              )
-            })()}
+            {currentWeekSetting ? (
+              <div style={{ textAlign: 'center', marginBottom: '20px', color: '#2D7D82', fontSize: '13px', fontWeight: 700 }}>
+                من {currentWeekSetting.startDate} إلى {currentWeekSetting.endDate}
+              </div>
+            ) : (
+              <div style={{ marginBottom: '20px' }} />
+            )}
 
             {weekLoading ? (
               <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
@@ -264,10 +290,18 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                       const key = rowKey(row)
                       const draft = rowDrafts[key] ?? EMPTY_DRAFT
                       const datalistId = `lesson-topics-${key}`
+                      const dayLeave = leaveOnDay(row.day)
 
                       return (
-                        <tr key={key}>
-                          <td style={tdStyle}>{row.day}</td>
+                        <tr key={key} style={dayLeave ? { background: '#FEE2E2' } : undefined}>
+                          <td style={tdStyle}>
+                            {row.day}
+                            {dayLeave && (
+                              <div style={{ fontSize: '11px', color: '#B91C1C', fontWeight: 600, marginTop: '2px' }}>
+                                {dayLeave.title}
+                              </div>
+                            )}
+                          </td>
                           <td style={tdStyle}>{row.period}</td>
                           <td style={{ ...tdStyle, fontWeight: 700 }}>{row.subject_name}</td>
                           <td style={tdStyle}>
@@ -275,8 +309,9 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                               list={datalistId}
                               value={draft.lessonTopic}
                               onChange={e => updateDraft(row, 'lessonTopic', e.target.value)}
-                              placeholder="موضوع الدرس"
-                              style={inputStyle}
+                              placeholder={dayLeave ? 'إجازة' : 'موضوع الدرس'}
+                              disabled={!!dayLeave}
+                              style={{ ...inputStyle, ...(dayLeave ? disabledInputStyle : {}) }}
                             />
                             <datalist id={datalistId}>
                               {lessonCatalog
@@ -289,7 +324,8 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                               value={draft.homework}
                               onChange={e => updateDraft(row, 'homework', e.target.value)}
                               placeholder="الواجب المطلوب"
-                              style={inputStyle}
+                              disabled={!!dayLeave}
+                              style={{ ...inputStyle, ...(dayLeave ? disabledInputStyle : {}) }}
                             />
                           </td>
                           <td style={tdStyle}>
@@ -297,7 +333,8 @@ export default function TeacherPlan({ classroomId, classroomName, schemaName, te
                               value={draft.notes}
                               onChange={e => updateDraft(row, 'notes', e.target.value)}
                               placeholder="ملاحظات"
-                              style={inputStyle}
+                              disabled={!!dayLeave}
+                              style={{ ...inputStyle, ...(dayLeave ? disabledInputStyle : {}) }}
                             />
                           </td>
                         </tr>
@@ -339,4 +376,8 @@ const inputStyle: React.CSSProperties = {
   borderRadius: '6px', padding: '8px',
   fontSize: '13px', outline: 'none',
   textAlign: 'right', boxSizing: 'border-box'
+}
+
+const disabledInputStyle: React.CSSProperties = {
+  backgroundColor: '#FEF2F2', color: '#9CA3AF', cursor: 'not-allowed',
 }
