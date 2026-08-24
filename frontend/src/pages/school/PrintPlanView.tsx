@@ -966,7 +966,7 @@ const backBtn: React.CSSProperties = {
 const letterhead: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
+  justifyContent: 'space-between',
   gap: 24,
   border: '1px solid #9CA3AF',
   borderRadius: 10,
