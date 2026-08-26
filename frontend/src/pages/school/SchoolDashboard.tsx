@@ -35,7 +35,6 @@ export default function SchoolDashboard() {
   const [activePage, setActivePage] = useState('schedules')
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false)
   const [schoolName, setSchoolName] = useState('جارِ التحميل...')
-  const [isEditingSettings, setIsEditingSettings] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [settingsForm, setSettingsForm] = useState({
     schoolNameAr: '',
@@ -79,7 +78,6 @@ export default function SchoolDashboard() {
         setName(settingsForm.principalName.trim())
       }
       loadSettings()
-      setIsEditingSettings(false)
     } catch {
       toast.error('تعذر حفظ الإعدادات')
     } finally {
@@ -178,7 +176,7 @@ export default function SchoolDashboard() {
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
             <button
-              onClick={() => { setIsSchoolModalOpen(false); setIsEditingSettings(false) }}
+              onClick={() => setIsSchoolModalOpen(false)}
               style={closeModalButtonStyle}
             >
               <X size={18} />
@@ -189,129 +187,85 @@ export default function SchoolDashboard() {
               <h2 style={{ margin: 0, color: '#374151', fontSize: '20px' }}>{schoolName}</h2>
             </div>
 
-            {!isEditingSettings ? (
-              <>
-                <div style={{ display: 'grid', gap: '12px' }}>
-                  <div style={modalInfoBox}>
-                    <div style={iconLabelGroup}><User size={14} color="#9CA3AF" /> <span style={labelLight}>اسم المستخدم</span></div>
-                    <span style={valueStyle}>{settingsForm.principalName || name}</span>
-                  </div>
+            <div style={{ display: 'grid', gap: '14px' }}>
+              <div>
+                <label style={labelLight}><User size={14} color="#9CA3AF" /> اسم المستخدم</label>
+                <input
+                  value={settingsForm.principalName}
+                  onChange={e => setSettingsForm({ ...settingsForm, principalName: e.target.value })}
+                  style={settingsInputStyle}
+                  placeholder="اسم المستخدم"
+                />
+              </div>
+              <div>
+                <label style={labelLight}>اسم المدرسة</label>
+                <input
+                  value={settingsForm.schoolNameAr}
+                  onChange={e => setSettingsForm({ ...settingsForm, schoolNameAr: e.target.value })}
+                  style={settingsInputStyle}
+                  placeholder="اسم المدرسة"
+                />
+              </div>
+              <div>
+                <label style={labelLight}><Phone size={14} color="#9CA3AF" /> الهاتف</label>
+                <input
+                  value={settingsForm.schoolPhone}
+                  onChange={e => setSettingsForm({ ...settingsForm, schoolPhone: e.target.value })}
+                  style={settingsInputStyle}
+                  placeholder="011XXXXXXX"
+                />
+              </div>
+              <div>
+                <label style={labelLight}><Smartphone size={14} color="#9CA3AF" /> رقم الجوال</label>
+                <input
+                  value={settingsForm.schoolMobile}
+                  onChange={e => setSettingsForm({ ...settingsForm, schoolMobile: e.target.value })}
+                  style={settingsInputStyle}
+                  placeholder="05XXXXXXXX"
+                />
+              </div>
+              <div>
+                <label style={labelLight}>الإدارة العامة للتعليم بالمنطقة</label>
+                <input
+                  value={settingsForm.generalDirectorate}
+                  onChange={e => setSettingsForm({ ...settingsForm, generalDirectorate: e.target.value })}
+                  style={settingsInputStyle}
+                  placeholder="الإدارة العامة للتعليم بالمنطقة الشرقية"
+                />
+              </div>
 
-                  <div style={modalInfoBox}>
-                    <div style={iconLabelGroup}><Phone size={14} color="#9CA3AF" /> <span style={labelLight}>الهاتف</span></div>
-                    <span style={valueStyle}>{settingsForm.schoolPhone || '—'}</span>
-                  </div>
-
-                  <div style={modalInfoBox}>
-                    <div style={iconLabelGroup}><Smartphone size={14} color="#9CA3AF" /> <span style={labelLight}>رقم الجوال</span></div>
-                    <span style={valueStyle}>{settingsForm.schoolMobile || '—'}</span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={modalInfoBox}>
-                      <span style={labelLight}>كود المدرسة</span>
-                      <span style={valueStyle}>{schoolCode}</span>
-                    </div>
-                    <div style={modalInfoBox}>
-                      <span style={labelLight}>تاريخ الانتهاء</span>
-                      <span style={valueStyle}>2024/12/30</span>
-                    </div>
-                  </div>
-
-                  <div style={modalInfoBox}>
-                    <span style={labelLight}>الإدارة العامة للتعليم</span>
-                    <span style={valueStyle}>{settingsForm.generalDirectorate || '—'}</span>
-                  </div>
-
-                  <div style={statusBadgeStyle}>
-                    <span style={{ color: '#059669', fontSize: '13px', fontWeight: 600 }}>حالة الاشتراك</span>
-                    <span style={activeBadgeStyle}>نشط - بقية 21 يوم</span>
-                  </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={modalInfoBox}>
+                  <span style={labelLight}>كود المدرسة</span>
+                  <span style={valueStyle}>{schoolCode}</span>
                 </div>
+                <div style={modalInfoBox}>
+                  <span style={labelLight}>تاريخ الانتهاء</span>
+                  <span style={valueStyle}>2024/12/30</span>
+                </div>
+              </div>
 
-                {/* أزرار الإجراءات */}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
-                  <button
-                    onClick={() => setIsEditingSettings(true)}
-                    style={{ ...modalActionBtn, backgroundColor: '#9EC5C7', flex: 2 }}
-                  >
-                    تعديل البيانات
-                  </button>
-                  <button
-                    onClick={() => setIsSchoolModalOpen(false)}
-                    style={{ ...modalActionBtn, backgroundColor: '#F3F4F6', color: '#6B7280', flex: 1 }}
-                  >
-                    إغلاق
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ display: 'grid', gap: '14px' }}>
-                  <div>
-                    <label style={labelLight}>اسم المستخدم</label>
-                    <input
-                      value={settingsForm.principalName}
-                      onChange={e => setSettingsForm({ ...settingsForm, principalName: e.target.value })}
-                      style={settingsInputStyle}
-                      placeholder="اسم المستخدم"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelLight}>اسم المدرسة</label>
-                    <input
-                      value={settingsForm.schoolNameAr}
-                      onChange={e => setSettingsForm({ ...settingsForm, schoolNameAr: e.target.value })}
-                      style={settingsInputStyle}
-                      placeholder="اسم المدرسة"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelLight}>الإدارة العامة للتعليم بالمنطقة</label>
-                    <input
-                      value={settingsForm.generalDirectorate}
-                      onChange={e => setSettingsForm({ ...settingsForm, generalDirectorate: e.target.value })}
-                      style={settingsInputStyle}
-                      placeholder="الإدارة العامة للتعليم بالمنطقة الشرقية"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelLight}>الهاتف</label>
-                    <input
-                      value={settingsForm.schoolPhone}
-                      onChange={e => setSettingsForm({ ...settingsForm, schoolPhone: e.target.value })}
-                      style={settingsInputStyle}
-                      placeholder="011XXXXXXX"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelLight}>رقم الجوال</label>
-                    <input
-                      value={settingsForm.schoolMobile}
-                      onChange={e => setSettingsForm({ ...settingsForm, schoolMobile: e.target.value })}
-                      style={settingsInputStyle}
-                      placeholder="05XXXXXXXX"
-                    />
-                  </div>
-                </div>
+              <div style={statusBadgeStyle}>
+                <span style={{ color: '#059669', fontSize: '13px', fontWeight: 600 }}>حالة الاشتراك</span>
+                <span style={activeBadgeStyle}>نشط - بقية 21 يوم</span>
+              </div>
+            </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
-                  <button
-                    onClick={handleSaveSettings}
-                    disabled={isSavingSettings}
-                    style={{ ...modalActionBtn, backgroundColor: '#9EC5C7', flex: 2, opacity: isSavingSettings ? 0.6 : 1 }}
-                  >
-                    {isSavingSettings ? 'جارِ الحفظ...' : 'حفظ'}
-                  </button>
-                  <button
-                    onClick={() => { setIsEditingSettings(false); loadSettings() }}
-                    style={{ ...modalActionBtn, backgroundColor: '#F3F4F6', color: '#6B7280', flex: 1 }}
-                  >
-                    إلغاء
-                  </button>
-                </div>
-              </>
-            )}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
+              <button
+                onClick={handleSaveSettings}
+                disabled={isSavingSettings}
+                style={{ ...modalActionBtn, backgroundColor: '#9EC5C7', flex: 2, opacity: isSavingSettings ? 0.6 : 1 }}
+              >
+                {isSavingSettings ? 'جارِ الحفظ...' : 'حفظ'}
+              </button>
+              <button
+                onClick={() => setIsSchoolModalOpen(false)}
+                style={{ ...modalActionBtn, backgroundColor: '#F3F4F6', color: '#6B7280', flex: 1 }}
+              >
+                إغلاق
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -393,10 +347,6 @@ const modalIconContainer: React.CSSProperties = {
 const modalInfoBox: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 15px',
   background: '#F9FAFB', borderRadius: '12px', border: '1px solid #F3F4F6', textAlign: 'right'
-}
-
-const iconLabelGroup: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: '6px'
 }
 
 const labelLight: React.CSSProperties = { color: '#9CA3AF', fontSize: '11px', fontWeight: 500 }
