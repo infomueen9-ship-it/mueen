@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   Settings,
   X,
-  Phone,
+  Lock,
   User,
   Smartphone
 } from 'lucide-react'
@@ -39,9 +39,9 @@ export default function SchoolDashboard() {
   const [settingsForm, setSettingsForm] = useState({
     schoolNameAr: '',
     generalDirectorate: '',
-    schoolPhone: '',
     schoolMobile: '',
     principalName: name || '',
+    password: '',
   })
 
   const loadSettings = () => {
@@ -52,9 +52,9 @@ export default function SchoolDashboard() {
         setSettingsForm({
           schoolNameAr: res.data.schoolNameAr || '',
           generalDirectorate: res.data.generalDirectorate || '',
-          schoolPhone: res.data.schoolPhone || '',
           schoolMobile: res.data.schoolMobile || '',
           principalName: res.data.principalName || name || '',
+          password: '',
         })
       })
       .catch(() => setSchoolName(`مدرسة ${schoolCode}`))
@@ -207,12 +207,13 @@ export default function SchoolDashboard() {
                 />
               </div>
               <div>
-                <label style={labelLight}><Phone size={14} color="#9CA3AF" /> الهاتف</label>
+                <label style={labelLight}><Lock size={14} color="#9CA3AF" /> كلمة المرور</label>
                 <input
-                  value={settingsForm.schoolPhone}
-                  onChange={e => setSettingsForm({ ...settingsForm, schoolPhone: e.target.value })}
+                  type="password"
+                  value={settingsForm.password}
+                  onChange={e => setSettingsForm({ ...settingsForm, password: e.target.value })}
                   style={settingsInputStyle}
-                  placeholder="011XXXXXXX"
+                  placeholder="اتركه فارغاً إن لم ترغب بتغييره"
                 />
               </div>
               <div>

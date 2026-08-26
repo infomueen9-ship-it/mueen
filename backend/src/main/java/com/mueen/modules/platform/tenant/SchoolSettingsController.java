@@ -3,6 +3,7 @@ package com.mueen.modules.platform.tenant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -14,6 +15,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SchoolSettingsController {
     private final JdbcTemplate jdbcTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     @GetMapping
     public ResponseEntity<?> getSchoolSettings(@PathVariable String schemaName) {
@@ -59,6 +61,7 @@ public class SchoolSettingsController {
             String schoolPhone = getString(body.get("schoolPhone"));
             String schoolMobile = getString(body.get("schoolMobile"));
             String principalName = getString(body.get("principalName"));
+            String password = getString(body.get("password"));
 
             if (schoolNameAr == null) {
                 return ResponseEntity.badRequest().body(Map.of("message", "اسم المدرسة مطلوب"));
@@ -87,6 +90,13 @@ public class SchoolSettingsController {
                 jdbcTemplate.update(
                     "UPDATE " + schemaName + ".users SET full_name = ? WHERE role = 'PRINCIPAL'",
                     principalName
+                );
+            }
+
+            if (password != null) {
+                jdbcTemplate.update(
+                    "UPDATE " + schemaName + ".users SET password_hash = ? WHERE role = 'PRINCIPAL'",
+                    passwordEncoder.encode(password)
                 );
             }
 
