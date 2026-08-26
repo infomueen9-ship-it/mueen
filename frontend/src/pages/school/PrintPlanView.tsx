@@ -296,32 +296,35 @@ export default function PrintPlanView({
      ======================================================= */
 
   useEffect(() => {
-    const PAGE_WIDTH_PX = 748
-    const PAGE_HEIGHT_PX = 1077
-
     const fitToPage = () => {
       const area = document.getElementById(
         'mueen-print-area'
       )
-      if (!area) return
-
-      ;(area.style as any).zoom = 1
-
-      const scale = Math.min(
-        PAGE_WIDTH_PX / area.scrollWidth,
-        PAGE_HEIGHT_PX / area.scrollHeight,
-        1
+      const content = document.getElementById(
+        'mueen-print-content'
       )
+      if (!area || !content) return
 
-      ;(area.style as any).zoom = scale
+      content.style.transform = 'none'
+
+      const scaleX =
+        area.clientWidth /
+        content.scrollWidth
+      const scaleY =
+        area.clientHeight /
+        content.scrollHeight
+
+      content.style.transformOrigin =
+        'top right'
+      content.style.transform = `scale(${scaleX}, ${scaleY})`
     }
 
-    const resetZoom = () => {
-      const area = document.getElementById(
-        'mueen-print-area'
+    const resetScale = () => {
+      const content = document.getElementById(
+        'mueen-print-content'
       )
-      if (area) {
-        (area.style as any).zoom = 1
+      if (content) {
+        content.style.transform = 'none'
       }
     }
 
@@ -331,7 +334,7 @@ export default function PrintPlanView({
     )
     window.addEventListener(
       'afterprint',
-      resetZoom
+      resetScale
     )
 
     return () => {
@@ -341,7 +344,7 @@ export default function PrintPlanView({
       )
       window.removeEventListener(
         'afterprint',
-        resetZoom
+        resetScale
       )
     }
   }, [])
@@ -717,6 +720,7 @@ export default function PrintPlanView({
             </div>
           ) : (
               <div id="mueen-print-area">
+              <div id="mueen-print-content">
 
                 {/* ===========================================
                     الترويسة
@@ -964,6 +968,7 @@ export default function PrintPlanView({
                     })}
                   </tbody>
                 </table>
+              </div>
               </div>
           )}
         </>
