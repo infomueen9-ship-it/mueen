@@ -40,7 +40,6 @@ export default function SchoolDashboard() {
   const [settingsForm, setSettingsForm] = useState({
     schoolNameAr: '',
     generalDirectorate: '',
-    educationDepartment: '',
     schoolPhone: '',
     schoolMobile: '',
     principalName: name || '',
@@ -54,7 +53,6 @@ export default function SchoolDashboard() {
         setSettingsForm({
           schoolNameAr: res.data.schoolNameAr || '',
           generalDirectorate: res.data.generalDirectorate || '',
-          educationDepartment: res.data.educationDepartment || '',
           schoolPhone: res.data.schoolPhone || '',
           schoolMobile: res.data.schoolMobile || '',
           principalName: res.data.principalName || name || '',
@@ -225,11 +223,6 @@ export default function SchoolDashboard() {
                     <span style={valueStyle}>{settingsForm.generalDirectorate || '—'}</span>
                   </div>
 
-                  <div style={modalInfoBox}>
-                    <span style={labelLight}>إدارة التعليم بالمحافظة</span>
-                    <span style={valueStyle}>{settingsForm.educationDepartment || '—'}</span>
-                  </div>
-
                   <div style={statusBadgeStyle}>
                     <span style={{ color: '#059669', fontSize: '13px', fontWeight: 600 }}>حالة الاشتراك</span>
                     <span style={activeBadgeStyle}>نشط - بقية 21 يوم</span>
@@ -280,15 +273,6 @@ export default function SchoolDashboard() {
                       onChange={e => setSettingsForm({ ...settingsForm, generalDirectorate: e.target.value })}
                       style={settingsInputStyle}
                       placeholder="الإدارة العامة للتعليم بالمنطقة الشرقية"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelLight}>إدارة التعليم بالمحافظة</label>
-                    <input
-                      value={settingsForm.educationDepartment}
-                      onChange={e => setSettingsForm({ ...settingsForm, educationDepartment: e.target.value })}
-                      style={settingsInputStyle}
-                      placeholder="إدارة التعليم بمحافظة حفر الباطن"
                     />
                   </div>
                   <div>

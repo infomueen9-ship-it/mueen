@@ -109,9 +109,6 @@ export default function PrintPlanView({
   const [generalDirectorate, setGeneralDirectorate] =
     useState('')
 
-  const [educationDepartment, setEducationDepartment] =
-    useState('')
-
   const [weeks, setWeeks] =
     useState<WeekSetting[]>([])
 
@@ -195,11 +192,6 @@ export default function PrintPlanView({
         setGeneralDirectorate(
           settingsResponse?.data
             ?.generalDirectorate || ''
-        )
-
-        setEducationDepartment(
-          settingsResponse?.data
-            ?.educationDepartment || ''
         )
 
         const weeksData =
@@ -426,6 +418,10 @@ export default function PrintPlanView({
     >
       <style>
         {`
+          @page {
+            size: A4;
+            margin: 6mm;
+          }
           @media print {
             body * {
               visibility: hidden;
@@ -438,10 +434,29 @@ export default function PrintPlanView({
               position: absolute;
               inset: 0;
               width: 100%;
-              padding: 12px;
+              padding: 4px;
             }
             .mueen-no-print {
               display: none !important;
+            }
+            .mueen-letterhead {
+              padding: 6px !important;
+              margin-bottom: 6px !important;
+              font-size: 9px !important;
+              line-height: 1.3 !important;
+            }
+            .mueen-letterhead img {
+              width: 60px !important;
+            }
+            #mueen-print-area table {
+              font-size: 8px !important;
+            }
+            #mueen-print-area th,
+            #mueen-print-area td {
+              padding: 2px 3px !important;
+            }
+            #mueen-print-area tr {
+              page-break-inside: avoid;
             }
           }
         `}
@@ -652,7 +667,10 @@ export default function PrintPlanView({
                     الترويسة
                    =========================================== */}
 
-                <div style={letterhead}>
+                <div
+                  className="mueen-letterhead"
+                  style={letterhead}
+                >
                   <div
                     style={{
                       textAlign: 'center',
@@ -662,10 +680,6 @@ export default function PrintPlanView({
                     <div>
                       {generalDirectorate ||
                         'الإدارة العامة للتعليم بالمنطقة الشرقية'}
-                    </div>
-                    <div>
-                      {educationDepartment ||
-                        'إدارة التعليم بمحافظة حفر الباطن'}
                     </div>
                     <div
                       style={letterheadBold}
