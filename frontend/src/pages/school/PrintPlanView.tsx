@@ -291,70 +291,6 @@ export default function PrintPlanView({
     selectedWeekNumber,
   ])
 
-  /* =======================================================
-     تصغير الخطة تلقائياً لتناسب حجم الورقة عند الطباعة
-     ======================================================= */
-
-  useEffect(() => {
-    const fitToPage = () => {
-      const area = document.getElementById(
-        'mueen-print-area'
-      )
-      const content = document.getElementById(
-        'mueen-print-content'
-      )
-      if (!area || !content) return
-
-      content.style.transform = 'none'
-
-      const scaleX =
-        area.clientWidth /
-        content.scrollWidth
-      const scaleY =
-        area.clientHeight /
-        content.scrollHeight
-
-      const scale = Math.min(
-        scaleX,
-        scaleY,
-        1
-      )
-
-      content.style.transformOrigin =
-        'top right'
-      content.style.transform = `scale(${scale})`
-    }
-
-    const resetScale = () => {
-      const content = document.getElementById(
-        'mueen-print-content'
-      )
-      if (content) {
-        content.style.transform = 'none'
-      }
-    }
-
-    window.addEventListener(
-      'beforeprint',
-      fitToPage
-    )
-    window.addEventListener(
-      'afterprint',
-      resetScale
-    )
-
-    return () => {
-      window.removeEventListener(
-        'beforeprint',
-        fitToPage
-      )
-      window.removeEventListener(
-        'afterprint',
-        resetScale
-      )
-    }
-  }, [])
-
   const selectedWeek =
     weeks.find(
       week =>
@@ -501,6 +437,10 @@ export default function PrintPlanView({
               width: 198mm;
               height: 285mm;
               overflow: hidden;
+            }
+            #mueen-print-content {
+              transform: scale(1.45);
+              transform-origin: top right;
             }
             .mueen-no-print {
               display: none !important;
