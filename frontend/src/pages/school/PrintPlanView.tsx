@@ -490,9 +490,11 @@ export default function PrintPlanView({
             }
             #mueen-print-area {
               position: absolute;
-              inset: 0;
-              width: 100%;
-              padding: 4px;
+              top: 0;
+              left: 0;
+              width: 198mm;
+              height: 285mm;
+              overflow: hidden;
             }
             .mueen-no-print {
               display: none !important;
