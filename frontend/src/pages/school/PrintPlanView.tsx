@@ -314,9 +314,15 @@ export default function PrintPlanView({
         area.clientHeight /
         content.scrollHeight
 
+      const scale = Math.min(
+        scaleX,
+        scaleY,
+        1
+      )
+
       content.style.transformOrigin =
         'top right'
-      content.style.transform = `scale(${scaleX}, ${scaleY})`
+      content.style.transform = `scale(${scale})`
     }
 
     const resetScale = () => {
