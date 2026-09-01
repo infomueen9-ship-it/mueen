@@ -446,6 +446,20 @@ export default function PrintPlanView({
             .mueen-no-print {
               display: none !important;
             }
+
+            /* تحييد المودال المحيط بمنطقة الطباعة حتى لا
+               يقصّ المحتوى بارتفاعه/عرضه الثابتين على الشاشة */
+            .mueen-print-modal-overlay {
+              position: static !important;
+              inset: auto !important;
+              padding: 0 !important;
+            }
+            .mueen-print-modal-box {
+              width: auto !important;
+              max-width: none !important;
+              height: auto !important;
+              overflow: visible !important;
+            }
           }
         `}
       </style>
