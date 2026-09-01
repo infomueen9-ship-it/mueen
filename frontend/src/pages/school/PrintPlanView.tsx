@@ -291,50 +291,6 @@ export default function PrintPlanView({
     selectedWeekNumber,
   ])
 
-  /* =======================================================
-     أنماط الطباعة (تُحقن مباشرة في <head>)
-     ======================================================= */
-
-  useEffect(() => {
-    const style = document.createElement(
-      'style'
-    )
-    style.id = 'mueen-print-styles'
-    style.innerHTML = `
-      @media print {
-        body * { visibility: hidden; }
-        #mueen-print-area, #mueen-print-area * { visibility: visible; }
-        #mueen-print-area {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          direction: rtl;
-          font-family: 'Cairo', sans-serif;
-        }
-        .mueen-no-print { display: none !important; }
-        thead { display: table-header-group; }
-
-        /* منع قطع اليوم الواحد بين صفحتين */
-        tbody tr:first-child { page-break-before: auto; }
-        .mueen-day-group { page-break-inside: avoid; }
-
-        table { page-break-inside: auto; }
-        tr { page-break-inside: avoid; }
-      }
-    `
-    document.head.appendChild(
-      style
-    )
-    return () => {
-      document
-        .getElementById(
-          'mueen-print-styles'
-        )
-        ?.remove()
-    }
-  }, [])
-
 
   const selectedWeek =
     weeks.find(
@@ -461,6 +417,29 @@ export default function PrintPlanView({
         background: '#fff',
       }}
     >
+      <style>
+        {`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            #mueen-print-area,
+            #mueen-print-area * {
+              visibility: visible;
+            }
+            #mueen-print-area {
+              position: absolute;
+              inset: 0;
+              width: 100%;
+              padding: 12px;
+            }
+            .mueen-no-print {
+              display: none !important;
+            }
+          }
+        `}
+      </style>
+
       {loading ? (
         <div
           style={{
@@ -661,7 +640,6 @@ export default function PrintPlanView({
             </div>
           ) : (
               <div id="mueen-print-area">
-              <div id="mueen-print-content">
 
                 {/* ===========================================
                     الترويسة
@@ -816,7 +794,6 @@ export default function PrintPlanView({
                             return (
                               <tr
                                 key={`${day}-${period}`}
-                                className="mueen-day-group"
                                 style={
                                   dayLeave
                                     ? {
@@ -910,7 +887,6 @@ export default function PrintPlanView({
                     })}
                   </tbody>
                 </table>
-              </div>
               </div>
           )}
         </>
@@ -1007,26 +983,20 @@ const leaveNotice: React.CSSProperties = {
 const table: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
-  fontSize: 11,
+  fontSize: 12,
 }
 
 const th: React.CSSProperties = {
   border: '1px solid #9CA3AF',
-  padding: '8px 6px',
+  padding: 8,
   background: '#F3F4F6',
   color: '#1F2937',
   fontWeight: 700,
-  fontSize: 11,
-  textAlign: 'center',
 }
 
 const td: React.CSSProperties = {
   border: '1px solid #9CA3AF',
-  padding: '6px 8px',
+  padding: 8,
   textAlign: 'center',
   color: '#374151',
-  fontSize: 11,
-  wordBreak: 'break-word',
-  verticalAlign: 'middle',
-  lineHeight: 1.4,
 }
