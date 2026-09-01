@@ -57,6 +57,16 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   notes: 'الملاحظات',
 }
 
+const DAY_COLUMN_WIDTH = '10%'
+
+const COLUMN_WIDTHS: Record<ColumnKey, string> = {
+  period: '7%',
+  subject: '14%',
+  lesson: '21%',
+  homework: '24%',
+  notes: '24%',
+}
+
 type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework' | 'notes'
 
 /* =========================================================
@@ -764,6 +774,28 @@ export default function PrintPlanView({
                    =========================================== */}
 
                 <table style={table}>
+                  <colgroup>
+                    <col
+                      style={{
+                        width:
+                          DAY_COLUMN_WIDTH,
+                      }}
+                    />
+                    {activeColumns.map(
+                      key => (
+                        <col
+                          key={key}
+                          style={{
+                            width:
+                              COLUMN_WIDTHS[
+                                key
+                              ],
+                          }}
+                        />
+                      )
+                    )}
+                  </colgroup>
+
                   <thead>
                     <tr>
                       <th style={th}>
@@ -1006,6 +1038,7 @@ const table: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
   fontSize: 12,
+  tableLayout: 'fixed',
 }
 
 const th: React.CSSProperties = {
@@ -1021,4 +1054,5 @@ const td: React.CSSProperties = {
   padding: 8,
   textAlign: 'center',
   color: '#374151',
+  wordBreak: 'break-word',
 }
