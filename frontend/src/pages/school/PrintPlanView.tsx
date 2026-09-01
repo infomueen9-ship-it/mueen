@@ -419,7 +419,7 @@ export default function PrintPlanView({
       <style>
         {`
           @page {
-            size: A4;
+            size: A4 landscape;
             margin: 6mm;
           }
           @media print {
@@ -434,9 +434,8 @@ export default function PrintPlanView({
               position: absolute;
               top: 0;
               left: 0;
-              width: 198mm;
-              height: 285mm;
-              overflow: hidden;
+              width: 285mm;
+              height: 198mm;
             }
             #mueen-print-content {
               transform: scale(1.45);
