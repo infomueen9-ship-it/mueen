@@ -291,6 +291,51 @@ export default function PrintPlanView({
     selectedWeekNumber,
   ])
 
+  /* =======================================================
+     أنماط الطباعة (تُحقن مباشرة في <head>)
+     ======================================================= */
+
+  useEffect(() => {
+    const style = document.createElement(
+      'style'
+    )
+    style.id = 'mueen-print-styles'
+    style.innerHTML = `
+      @media print {
+        body * { visibility: hidden; }
+        #mueen-print-area, #mueen-print-area * { visibility: visible; }
+        #mueen-print-area {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          direction: rtl;
+        }
+        .mueen-no-print { display: none !important; }
+
+        /* الترويسة تتكرر في كل صفحة */
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+
+        /* منع قطع الصفوف */
+        tr { page-break-inside: avoid; }
+
+        /* السماح بتعدد الصفحات */
+        table { page-break-inside: auto; }
+      }
+    `
+    document.head.appendChild(
+      style
+    )
+    return () => {
+      document
+        .getElementById(
+          'mueen-print-styles'
+        )
+        ?.remove()
+    }
+  }, [])
+
 
   const selectedWeek =
     weeks.find(
@@ -417,53 +462,6 @@ export default function PrintPlanView({
         background: '#fff',
       }}
     >
-      <style>
-        {`
-          @page {
-            size: A4;
-            margin: 6mm;
-          }
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            #mueen-print-area,
-            #mueen-print-area * {
-              visibility: visible;
-            }
-            #mueen-print-area {
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 198mm;
-              height: 285mm;
-            }
-            .mueen-no-print {
-              display: none !important;
-            }
-            .mueen-letterhead {
-              padding: 14px !important;
-              margin-bottom: 14px !important;
-              font-size: 15px !important;
-              line-height: 1.7 !important;
-            }
-            .mueen-letterhead img {
-              width: 90px !important;
-            }
-            #mueen-print-area table {
-              font-size: 14px !important;
-            }
-            #mueen-print-area th,
-            #mueen-print-area td {
-              padding: 6px 8px !important;
-            }
-            #mueen-print-area tr {
-              page-break-inside: avoid;
-            }
-          }
-        `}
-      </style>
-
       {loading ? (
         <div
           style={{
