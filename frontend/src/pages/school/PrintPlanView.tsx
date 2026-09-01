@@ -441,36 +441,14 @@ export default function PrintPlanView({
               visibility: visible;
             }
             #mueen-print-area {
+              position: absolute;
+              inset: 0;
               width: 100%;
               padding: 4px;
             }
             .mueen-no-print {
               display: none !important;
             }
-
-            /* تحييد المودال المحيط بمنطقة الطباعة حتى لا
-               يقصّ المحتوى بارتفاعه/عرضه الثابتين على الشاشة */
-            .mueen-print-modal-overlay {
-              display: block !important;
-              position: static !important;
-              inset: auto !important;
-              padding: 0 !important;
-            }
-            .mueen-print-modal-box {
-              display: block !important;
-              width: 100% !important;
-              max-width: none !important;
-              height: auto !important;
-              overflow: visible !important;
-              border-radius: 0 !important;
-              box-shadow: none !important;
-            }
-            .mueen-print-modal-content {
-              flex: none !important;
-              overflow: visible !important;
-              height: auto !important;
-            }
-
             .mueen-letterhead {
               padding: 14px !important;
               margin-bottom: 14px !important;
