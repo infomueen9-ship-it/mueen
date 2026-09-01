@@ -57,16 +57,6 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   notes: 'الملاحظات',
 }
 
-const DAY_COLUMN_WIDTH = '10%'
-
-const COLUMN_WIDTHS: Record<ColumnKey, string> = {
-  period: '7%',
-  subject: '14%',
-  lesson: '21%',
-  homework: '24%',
-  notes: '24%',
-}
-
 type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework' | 'notes'
 
 /* =========================================================
@@ -466,32 +456,6 @@ export default function PrintPlanView({
             .mueen-letterhead img {
               width: 90px !important;
             }
-            #mueen-print-area table {
-              width: 100% !important;
-              font-size: 14px !important;
-              border-collapse: collapse;
-              table-layout: fixed;
-              page-break-inside: auto;
-              break-inside: auto;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            #mueen-print-area thead {
-              display: table-header-group;
-            }
-            #mueen-print-area tbody {
-              display: table-row-group;
-            }
-            #mueen-print-area tr {
-              page-break-inside: avoid;
-              break-inside: avoid;
-            }
-            #mueen-print-area th,
-            #mueen-print-area td {
-              padding: 6px 8px !important;
-              word-break: break-word;
-              overflow-wrap: anywhere;
-            }
           }
         `}
       </style>
@@ -797,32 +761,10 @@ export default function PrintPlanView({
                     الجدول
                    =========================================== */}
 
-                <table style={table}>
-                  <colgroup>
-                    <col
-                      style={{
-                        width:
-                          DAY_COLUMN_WIDTH,
-                      }}
-                    />
-                    {activeColumns.map(
-                      key => (
-                        <col
-                          key={key}
-                          style={{
-                            width:
-                              COLUMN_WIDTHS[
-                                key
-                              ],
-                          }}
-                        />
-                      )
-                    )}
-                  </colgroup>
-
+                <table>
                   <thead>
                     <tr>
-                      <th style={th}>
+                      <th>
                         اليوم
                       </th>
 
@@ -830,7 +772,6 @@ export default function PrintPlanView({
                         key => (
                           <th
                             key={key}
-                            style={th}
                           >
                             {
                               COLUMN_LABELS[
@@ -885,7 +826,6 @@ export default function PrintPlanView({
                                   0 && (
                                   <td
                                     style={{
-                                      ...td,
                                       fontWeight: 700,
                                       background: dayLeave
                                         ? '#FCA5A5'
@@ -914,44 +854,34 @@ export default function PrintPlanView({
                                 )}
 
                                 {visibleColumns.period && (
-                                  <td
-                                    style={td}
-                                  >
+                                  <td>
                                     {period}
                                   </td>
                                 )}
 
                                 {visibleColumns.subject && (
-                                  <td
-                                    style={td}
-                                  >
+                                  <td>
                                     {subjectName ||
                                       ''}
                                   </td>
                                 )}
 
                                 {visibleColumns.lesson && (
-                                  <td
-                                    style={td}
-                                  >
+                                  <td>
                                     {plan?.lessonTopic ||
                                       ''}
                                   </td>
                                 )}
 
                                 {visibleColumns.homework && (
-                                  <td
-                                    style={td}
-                                  >
+                                  <td>
                                     {plan?.homework ||
                                       ''}
                                   </td>
                                 )}
 
                                 {visibleColumns.notes && (
-                                  <td
-                                    style={td}
-                                  >
+                                  <td>
                                     {plan?.notes ||
                                       ''}
                                   </td>
@@ -1056,27 +986,4 @@ const leaveNotice: React.CSSProperties = {
   fontSize: 12,
   marginBottom: 12,
   textAlign: 'center',
-}
-
-const table: React.CSSProperties = {
-  width: '100%',
-  borderCollapse: 'collapse',
-  fontSize: 12,
-  tableLayout: 'fixed',
-}
-
-const th: React.CSSProperties = {
-  border: '1px solid #9CA3AF',
-  padding: 8,
-  background: '#F3F4F6',
-  color: '#1F2937',
-  fontWeight: 700,
-}
-
-const td: React.CSSProperties = {
-  border: '1px solid #9CA3AF',
-  padding: 8,
-  textAlign: 'center',
-  color: '#374151',
-  wordBreak: 'break-word',
 }
