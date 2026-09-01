@@ -430,9 +430,17 @@ export default function PrintPlanView({
         {`
           @page {
             size: A4;
-            margin: 6mm;
+            margin: 8mm 6mm 10mm;
           }
           @media print {
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+              height: auto !important;
+              background: #fff !important;
+              overflow: visible !important;
+            }
             body * {
               visibility: hidden;
             }
@@ -441,21 +449,24 @@ export default function PrintPlanView({
               visibility: visible;
             }
             #mueen-print-area {
+              position: static !important;
+              display: block;
               width: 100%;
-              padding: 4px;
+              max-width: 100%;
+              padding: 0;
+              margin: 0;
+              overflow: visible;
             }
             .mueen-no-print {
               display: none !important;
             }
 
-            /* تحييد المودال المحيط بمنطقة الطباعة حتى لا
-               يقصّ المحتوى بارتفاعه الثابت 90vh على الشاشة،
-               وهو ما يمنع تعدد الصفحات */
             .mueen-print-modal-overlay {
               display: block !important;
               position: static !important;
               inset: auto !important;
               padding: 0 !important;
+              background: #fff !important;
             }
             .mueen-print-modal-box {
               width: 100% !important;
@@ -471,32 +482,49 @@ export default function PrintPlanView({
               height: auto !important;
             }
             .mueen-letterhead {
+              display: grid !important;
+              grid-template-columns: 1fr auto 1fr;
+              align-items: center;
               padding: 14px !important;
               margin-bottom: 14px !important;
               font-size: 15px !important;
               line-height: 1.7 !important;
+              border: 1px solid #9ca3af !important;
+              border-radius: 10px !important;
             }
             .mueen-letterhead img {
               width: 90px !important;
             }
-            #mueen-print-area table,
-            #mueen-print-area th,
-            #mueen-print-area td {
+            #mueen-print-area table {
+              width: 100% !important;
+              max-width: 100% !important;
               font-size: 12px !important;
+              border-collapse: collapse;
+              table-layout: fixed;
+              page-break-inside: auto;
+              break-inside: auto;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            #mueen-print-area thead {
+              display: table-header-group;
+            }
+            #mueen-print-area tbody {
+              display: table-row-group;
             }
             #mueen-print-area th,
             #mueen-print-area td {
-              padding: 2px 3px !important;
+              font-size: 12px !important;
+              padding: 4px 5px !important;
+              word-break: break-word;
+              overflow-wrap: anywhere;
+            }
+            #mueen-print-area th {
+              background: #f3f4f6 !important;
             }
             #mueen-print-area tr {
               page-break-inside: avoid;
               break-inside: avoid;
-            }
-            #mueen-print-area table {
-              page-break-inside: auto;
-            }
-            #mueen-print-area thead {
-              display: table-header-group;
             }
           }
         `}
