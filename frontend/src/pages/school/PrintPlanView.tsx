@@ -441,8 +441,6 @@ export default function PrintPlanView({
               visibility: visible;
             }
             #mueen-print-area {
-              position: absolute;
-              inset: 0;
               width: 100%;
               padding: 4px;
             }
