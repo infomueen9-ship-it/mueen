@@ -420,6 +420,7 @@ export default function PrintPlanView({
 
   return (
     <div
+      className="mueen-print-wrapper"
       style={{
         direction: 'rtl',
         padding: 24,
@@ -430,7 +431,7 @@ export default function PrintPlanView({
         {`
           @page {
             size: A4;
-            margin: 12mm;
+            margin: 0;
           }
           @media print {
             body * {
@@ -439,6 +440,9 @@ export default function PrintPlanView({
             #mueen-print-area,
             #mueen-print-area * {
               visibility: visible;
+            }
+            .mueen-print-wrapper {
+              padding: 0 !important;
             }
             #mueen-print-area {
               width: 100%;
