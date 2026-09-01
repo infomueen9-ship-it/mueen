@@ -291,6 +291,64 @@ export default function PrintPlanView({
     selectedWeekNumber,
   ])
 
+  /* =======================================================
+     تمديد الخطة تلقائياً لتملأ الصفحة دون مسافة فارغة
+     ======================================================= */
+
+  useEffect(() => {
+    const fillPage = () => {
+      const area = document.getElementById(
+        'mueen-print-area'
+      )
+      const content = document.getElementById(
+        'mueen-print-content'
+      )
+      if (!area || !content) return
+
+      content.style.transform = 'none'
+
+      const scaleX =
+        area.clientWidth /
+        content.scrollWidth
+      const scaleY =
+        area.clientHeight /
+        content.scrollHeight
+
+      content.style.transformOrigin =
+        'top right'
+      content.style.transform = `scale(${scaleX}, ${scaleY})`
+    }
+
+    const resetScale = () => {
+      const content = document.getElementById(
+        'mueen-print-content'
+      )
+      if (content) {
+        content.style.transform = 'none'
+      }
+    }
+
+    window.addEventListener(
+      'beforeprint',
+      fillPage
+    )
+    window.addEventListener(
+      'afterprint',
+      resetScale
+    )
+
+    return () => {
+      window.removeEventListener(
+        'beforeprint',
+        fillPage
+      )
+      window.removeEventListener(
+        'afterprint',
+        resetScale
+      )
+    }
+  }, [])
+
   const selectedWeek =
     weeks.find(
       week =>
