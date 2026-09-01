@@ -452,6 +452,7 @@ export default function PrintPlanView({
                يقصّ المحتوى بارتفاعه الثابت 90vh على الشاشة،
                وهو ما يمنع تعدد الصفحات */
             .mueen-print-modal-overlay {
+              display: block !important;
               position: static !important;
               inset: auto !important;
               padding: 0 !important;
@@ -1076,6 +1077,7 @@ const th: React.CSSProperties = {
   background: '#F3F4F6',
   color: '#1F2937',
   fontWeight: 700,
+  wordBreak: 'break-word',
 }
 
 const td: React.CSSProperties = {
