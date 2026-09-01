@@ -355,7 +355,6 @@ export default function SchedulesView({
 
       {printClassroom && (
         <div
-          className="mueen-print-modal-overlay"
           style={{
             position: 'fixed',
             inset: 0,
@@ -370,7 +369,6 @@ export default function SchedulesView({
           }}
         >
           <div
-            className="mueen-print-modal-box"
             style={{
               background: '#fff',
               width: '95%',
