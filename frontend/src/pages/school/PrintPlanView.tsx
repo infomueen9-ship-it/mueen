@@ -440,20 +440,20 @@ export default function PrintPlanView({
               display: none !important;
             }
             .mueen-letterhead {
-              padding: 6px !important;
-              margin-bottom: 6px !important;
-              font-size: 9px !important;
-              line-height: 1.3 !important;
+              padding: 14px !important;
+              margin-bottom: 14px !important;
+              font-size: 15px !important;
+              line-height: 1.7 !important;
             }
             .mueen-letterhead img {
-              width: 60px !important;
+              width: 90px !important;
             }
             #mueen-print-area table {
-              font-size: 8px !important;
+              font-size: 14px !important;
             }
             #mueen-print-area th,
             #mueen-print-area td {
-              padding: 2px 3px !important;
+              padding: 6px 8px !important;
             }
             #mueen-print-area tr {
               page-break-inside: avoid;
