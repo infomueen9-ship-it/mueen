@@ -57,6 +57,16 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   notes: 'الملاحظات',
 }
 
+const DAY_COLUMN_WIDTH = '10%'
+
+const COLUMN_WIDTHS: Record<ColumnKey, string> = {
+  period: '7%',
+  subject: '14%',
+  lesson: '21%',
+  homework: '24%',
+  notes: '24%',
+}
+
 type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework' | 'notes'
 
 /* =========================================================
@@ -440,13 +450,13 @@ export default function PrintPlanView({
               display: none !important;
             }
             .mueen-letterhead {
-              padding: 6px !important;
-              margin-bottom: 6px !important;
-              font-size: 12px !important;
-              line-height: 1.3 !important;
+              padding: 14px !important;
+              margin-bottom: 14px !important;
+              font-size: 15px !important;
+              line-height: 1.7 !important;
             }
             .mueen-letterhead img {
-              width: 60px !important;
+              width: 90px !important;
             }
             #mueen-print-area table,
             #mueen-print-area th,
@@ -766,6 +776,28 @@ export default function PrintPlanView({
                    =========================================== */}
 
                 <table style={table}>
+                  <colgroup>
+                    <col
+                      style={{
+                        width:
+                          DAY_COLUMN_WIDTH,
+                      }}
+                    />
+                    {activeColumns.map(
+                      key => (
+                        <col
+                          key={key}
+                          style={{
+                            width:
+                              COLUMN_WIDTHS[
+                                key
+                              ],
+                          }}
+                        />
+                      )
+                    )}
+                  </colgroup>
+
                   <thead>
                     <tr>
                       <th style={th}>
@@ -1008,6 +1040,7 @@ const table: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
   fontSize: 12,
+  tableLayout: 'fixed',
 }
 
 const th: React.CSSProperties = {
@@ -1023,4 +1056,5 @@ const td: React.CSSProperties = {
   padding: 8,
   textAlign: 'center',
   color: '#374151',
+  wordBreak: 'break-word',
 }
