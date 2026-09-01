@@ -775,102 +775,6 @@ export default function PrintPlanView({
               <div id="mueen-print-area">
 
                 {/* ===========================================
-                    الترويسة
-                   =========================================== */}
-
-                <div
-                  className="mueen-letterhead"
-                  style={letterhead}
-                >
-                  <div
-                    style={{
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div>وزارة التعليم</div>
-                    <div>
-                      {generalDirectorate ||
-                        'الإدارة العامة للتعليم بالمنطقة الشرقية'}
-                    </div>
-                    <div
-                      style={letterheadBold}
-                    >
-                      {schoolNameAr ||
-                        `مدرسة ${schemaName.replace(
-                          /^school_/,
-                          ''
-                        )}`}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      flex: '0 0 auto',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '0 20px',
-                    }}
-                  >
-                    <img
-                      src={moeLogo}
-                      alt="وزارة التعليم"
-                      style={{
-                        width: 110,
-                        height: 'auto',
-                        objectFit: 'contain',
-                      }}
-                    />
-                  </div>
-
-                  <div
-                    style={{
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div>
-                      من:{' '}
-                      {selectedWeek
-                        ? hijriNumeric(
-                            selectedWeek.startDate
-                          )
-                        : '—'}{' '}
-                      إلى{' '}
-                      {selectedWeek
-                        ? hijriNumeric(
-                            selectedWeek.endDate
-                          )
-                        : '—'}
-                    </div>
-                    <div>
-                      الأسبوع (
-                      {selectedWeek
-                        ? WEEK_ORDINALS[
-                            selectedWeek
-                              .weekNumber
-                          ] ||
-                          selectedWeek.weekNumber
-                        : '—'}
-                      )
-                    </div>
-                    <div>
-                      الصف: {classroomName}
-                    </div>
-                  </div>
-                </div>
-
-                {weekLeaves.length > 0 && (
-                  <div
-                    style={leaveNotice}
-                  >
-                    إجازة هذا الأسبوع:{' '}
-                    {weekLeaves
-                      .map(leave => leave.title)
-                      .join('، ')}
-                  </div>
-                )}
-
-                {/* ===========================================
                     الجدول
                    =========================================== */}
 
@@ -898,6 +802,126 @@ export default function PrintPlanView({
                   </colgroup>
 
                   <thead>
+                    {/* الترويسة — داخل thead لتتكرر في كل صفحة عند الطباعة */}
+                    <tr>
+                      <td
+                        colSpan={
+                          1 +
+                          activeColumns.length
+                        }
+                        style={{
+                          border: 'none',
+                          padding: 0,
+                        }}
+                      >
+                        <div
+                          className="mueen-letterhead"
+                          style={letterhead}
+                        >
+                          <div
+                            style={{
+                              textAlign:
+                                'center',
+                            }}
+                          >
+                            <div>وزارة التعليم</div>
+                            <div>
+                              {generalDirectorate ||
+                                'الإدارة العامة للتعليم بالمنطقة الشرقية'}
+                            </div>
+                            <div
+                              style={letterheadBold}
+                            >
+                              {schoolNameAr ||
+                                `مدرسة ${schemaName.replace(
+                                  /^school_/,
+                                  ''
+                                )}`}
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              flex: '0 0 auto',
+                              display: 'flex',
+                              alignItems:
+                                'center',
+                              justifyContent:
+                                'center',
+                              padding:
+                                '0 20px',
+                            }}
+                          >
+                            <img
+                              src={moeLogo}
+                              alt="وزارة التعليم"
+                              style={{
+                                width: 110,
+                                height: 'auto',
+                                objectFit:
+                                  'contain',
+                              }}
+                            />
+                          </div>
+
+                          <div
+                            style={{
+                              textAlign:
+                                'center',
+                            }}
+                          >
+                            <div>
+                              من:{' '}
+                              {selectedWeek
+                                ? hijriNumeric(
+                                    selectedWeek.startDate
+                                  )
+                                : '—'}{' '}
+                              إلى{' '}
+                              {selectedWeek
+                                ? hijriNumeric(
+                                    selectedWeek.endDate
+                                  )
+                                : '—'}
+                            </div>
+                            <div>
+                              الأسبوع (
+                              {selectedWeek
+                                ? WEEK_ORDINALS[
+                                    selectedWeek
+                                      .weekNumber
+                                  ] ||
+                                  selectedWeek.weekNumber
+                                : '—'}
+                              )
+                            </div>
+                            <div>
+                              الصف:{' '}
+                              {classroomName}
+                            </div>
+                          </div>
+                        </div>
+
+                        {weekLeaves.length >
+                          0 && (
+                          <div
+                            style={
+                              leaveNotice
+                            }
+                          >
+                            إجازة هذا
+                            الأسبوع:{' '}
+                            {weekLeaves
+                              .map(
+                                leave =>
+                                  leave.title
+                              )
+                              .join('، ')}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+
                     <tr>
                       <th style={th}>
                         اليوم
