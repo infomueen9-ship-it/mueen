@@ -297,26 +297,39 @@ export default function PrintPlanView({
 
   useEffect(() => {
     const fillPage = () => {
-      const area = document.getElementById(
-        'mueen-print-area'
-      )
-      const content = document.getElementById(
-        'mueen-print-content'
-      )
-      if (!area || !content) return
+      // مهلة صغيرة لضمان اكتمال تطبيق أنماط
+      // @media print (الخط المصغّر وغيره) قبل القياس
+      requestAnimationFrame(() => {
+        const area = document.getElementById(
+          'mueen-print-area'
+        )
+        const content = document.getElementById(
+          'mueen-print-content'
+        )
+        if (!area || !content) return
 
-      content.style.transform = 'none'
+        content.style.transform = 'none'
 
-      const scaleX =
-        area.clientWidth /
-        content.scrollWidth
-      const scaleY =
-        area.clientHeight /
-        content.scrollHeight
+        const scaleX =
+          area.clientWidth /
+          content.scrollWidth
+        const scaleY =
+          area.clientHeight /
+          content.scrollHeight
 
-      content.style.transformOrigin =
-        'top right'
-      content.style.transform = `scale(${scaleX}, ${scaleY})`
+        if (
+          !isFinite(scaleX) ||
+          !isFinite(scaleY) ||
+          scaleX <= 0 ||
+          scaleY <= 0
+        ) {
+          return
+        }
+
+        content.style.transformOrigin =
+          'top right'
+        content.style.transform = `scale(${scaleX}, ${scaleY})`
+      })
     }
 
     const resetScale = () => {
@@ -337,6 +350,25 @@ export default function PrintPlanView({
       resetScale
     )
 
+    // بعض المتصفحات لا تُطلق beforeprint/afterprint
+    // بشكل موثوق، فنستخدم matchMedia كطبقة احتياطية
+    const printQuery = window.matchMedia(
+      'print'
+    )
+    const handleMediaChange = (
+      e: MediaQueryListEvent
+    ) => {
+      if (e.matches) {
+        fillPage()
+      } else {
+        resetScale()
+      }
+    }
+    printQuery.addEventListener?.(
+      'change',
+      handleMediaChange
+    )
+
     return () => {
       window.removeEventListener(
         'beforeprint',
@@ -345,6 +377,10 @@ export default function PrintPlanView({
       window.removeEventListener(
         'afterprint',
         resetScale
+      )
+      printQuery.removeEventListener?.(
+        'change',
+        handleMediaChange
       )
     }
   }, [])
