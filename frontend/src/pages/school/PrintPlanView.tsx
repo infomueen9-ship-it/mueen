@@ -442,14 +442,16 @@ export default function PrintPlanView({
             .mueen-letterhead {
               padding: 6px !important;
               margin-bottom: 6px !important;
-              font-size: 9px !important;
+              font-size: 12px !important;
               line-height: 1.3 !important;
             }
             .mueen-letterhead img {
               width: 60px !important;
             }
-            #mueen-print-area table {
-              font-size: 8px !important;
+            #mueen-print-area table,
+            #mueen-print-area th,
+            #mueen-print-area td {
+              font-size: 12px !important;
             }
             #mueen-print-area th,
             #mueen-print-area td {
