@@ -441,13 +441,33 @@ export default function PrintPlanView({
               visibility: visible;
             }
             #mueen-print-area {
-              position: absolute;
-              inset: 0;
               width: 100%;
               padding: 4px;
             }
             .mueen-no-print {
               display: none !important;
+            }
+
+            /* تحييد المودال المحيط بمنطقة الطباعة حتى لا
+               يقصّ المحتوى بارتفاعه الثابت 90vh على الشاشة،
+               وهو ما يمنع تعدد الصفحات */
+            .mueen-print-modal-overlay {
+              position: static !important;
+              inset: auto !important;
+              padding: 0 !important;
+            }
+            .mueen-print-modal-box {
+              width: 100% !important;
+              max-width: none !important;
+              height: auto !important;
+              overflow: visible !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
+            }
+            .mueen-print-modal-content {
+              flex: none !important;
+              overflow: visible !important;
+              height: auto !important;
             }
             .mueen-letterhead {
               padding: 14px !important;
@@ -469,6 +489,13 @@ export default function PrintPlanView({
             }
             #mueen-print-area tr {
               page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            #mueen-print-area table {
+              page-break-inside: auto;
+            }
+            #mueen-print-area thead {
+              display: table-header-group;
             }
           }
         `}
