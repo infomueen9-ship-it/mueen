@@ -305,23 +305,22 @@ export default function PrintPlanView({
         body * { visibility: hidden; }
         #mueen-print-area, #mueen-print-area * { visibility: visible; }
         #mueen-print-area {
-          position: fixed;
+          position: absolute;
           top: 0;
           left: 0;
           width: 100%;
           direction: rtl;
+          font-family: 'Cairo', sans-serif;
         }
         .mueen-no-print { display: none !important; }
-
-        /* الترويسة تتكرر في كل صفحة */
         thead { display: table-header-group; }
-        tfoot { display: table-footer-group; }
 
-        /* منع قطع الصفوف */
-        tr { page-break-inside: avoid; }
+        /* منع قطع اليوم الواحد بين صفحتين */
+        tbody tr:first-child { page-break-before: auto; }
+        .mueen-day-group { page-break-inside: avoid; }
 
-        /* السماح بتعدد الصفحات */
         table { page-break-inside: auto; }
+        tr { page-break-inside: avoid; }
       }
     `
     document.head.appendChild(
@@ -817,6 +816,7 @@ export default function PrintPlanView({
                             return (
                               <tr
                                 key={`${day}-${period}`}
+                                className="mueen-day-group"
                                 style={
                                   dayLeave
                                     ? {
