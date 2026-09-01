@@ -420,14 +420,9 @@ export default function PrintPlanView({
         {`
           @page {
             size: A4;
-            margin: 8mm 6mm 10mm;
+            margin: 6mm;
           }
           @media print {
-            html, body {
-              width: 100%;
-              height: auto;
-              background: #fff !important;
-            }
             body * {
               visibility: hidden;
             }
@@ -436,13 +431,10 @@ export default function PrintPlanView({
               visibility: visible;
             }
             #mueen-print-area {
-              position: static !important;
-              display: block;
+              position: absolute;
+              inset: 0;
               width: 100%;
-              max-width: 100%;
-              padding: 0;
-              margin: 0;
-              overflow: visible;
+              padding: 4px;
             }
             .mueen-no-print {
               display: none !important;
@@ -455,6 +447,16 @@ export default function PrintPlanView({
             }
             .mueen-letterhead img {
               width: 90px !important;
+            }
+            #mueen-print-area table {
+              font-size: 14px !important;
+            }
+            #mueen-print-area th,
+            #mueen-print-area td {
+              padding: 6px 8px !important;
+            }
+            #mueen-print-area tr {
+              page-break-inside: avoid;
             }
           }
         `}
