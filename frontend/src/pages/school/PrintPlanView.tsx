@@ -57,6 +57,16 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   notes: 'الملاحظات',
 }
 
+const DAY_COLUMN_WIDTH = '10%'
+
+const COLUMN_WIDTHS: Record<ColumnKey, string> = {
+  period: '7%',
+  subject: '14%',
+  lesson: '21%',
+  homework: '24%',
+  notes: '24%',
+}
+
 type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework' | 'notes'
 
 /* =========================================================
@@ -417,120 +427,57 @@ export default function PrintPlanView({
       }}
     >
       <style>
-  {`
-    @page {
-      size: A4 portrait;
-      margin: 6mm;
-    }
+        {`
+          @page {
+            size: A4;
+            margin: 12mm;
+          }
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            #mueen-print-area,
+            #mueen-print-area * {
+              visibility: visible;
+            }
+            #mueen-print-area {
+              width: 100%;
+              margin: 0;
+              padding: 0;
+            }
+            .mueen-no-print {
+              display: none !important;
+            }
 
-    @media print {
-      html,
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-        background: #fff !important;
-      }
+            .mueen-letterhead {
+              font-size: 12px !important;
+              padding: 10px !important;
+              margin-bottom: 12px !important;
+              line-height: 1.6 !important;
+              break-inside: avoid;
+            }
+            .mueen-letterhead img {
+              width: 75px !important;
+            }
 
-      body * {
-        visibility: hidden !important;
-      }
-
-      #mueen-print-area,
-      #mueen-print-area * {
-        visibility: visible !important;
-      }
-
-      #mueen-print-area {
-        position: static !important;
-        width: 100% !important;
-        max-width: 100% !important;
-
-        /* التعديل المهم */
-        height: auto !important;
-        min-height: 0 !important;
-
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-      }
-
-      .mueen-no-print {
-        display: none !important;
-      }
-
-      .mueen-letterhead {
-        display: flex !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        padding: 8px !important;
-        margin-bottom: 8px !important;
-        font-size: 10px !important;
-        line-height: 1.5 !important;
-        border: 1px solid #888 !important;
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
-
-      .mueen-letterhead img {
-        width: 65px !important;
-        height: auto !important;
-      }
-
-      #mueen-print-area table {
-        width: 100% !important;
-        max-width: 100% !important;
-        table-layout: fixed !important;
-        border-collapse: collapse !important;
-        font-size: 8px !important;
-
-        /* السماح للجدول بالامتداد لصفحات متعددة */
-        page-break-inside: auto !important;
-        break-inside: auto !important;
-      }
-
-      #mueen-print-area th,
-      #mueen-print-area td {
-        padding: 3px 2px !important;
-        font-size: 8px !important;
-        line-height: 1.3 !important;
-        overflow-wrap: break-word !important;
-        word-break: break-word !important;
-      }
-
-      /* تكرار رأس الجدول في كل صفحة */
-      #mueen-print-area thead {
-        display: table-header-group !important;
-      }
-
-      #mueen-print-area tbody {
-        display: table-row-group !important;
-      }
-
-      #mueen-print-area tr {
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
-
-      #mueen-print-area td[rowspan] {
-        vertical-align: middle !important;
-      }
-
-      #mueen-print-area img {
-        max-width: 100% !important;
-      }
-
-      .mueen-print-page {
-        width: 100% !important;
-        box-sizing: border-box !important;
-
-        /* لا نحدد ارتفاع A4 يدويًا */
-        height: auto !important;
-        min-height: 0 !important;
-      }
-    }
-  `}
-</style>
+            #mueen-print-area table {
+              width: 100%;
+              font-size: 12px !important;
+            }
+            #mueen-print-area thead {
+              display: table-header-group;
+            }
+            #mueen-print-area th,
+            #mueen-print-area td {
+              padding: 6px 8px !important;
+            }
+            #mueen-print-area tr {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+          }
+        `}
+      </style>
 
       {loading ? (
         <div
@@ -731,7 +678,7 @@ export default function PrintPlanView({
               جارٍ تحميل خطة الأسبوع...
             </div>
           ) : (
-              <div id="mueen-print-area" className="mueen-print-page">
+              <div id="mueen-print-area">
 
                 {/* ===========================================
                     الترويسة
@@ -833,10 +780,32 @@ export default function PrintPlanView({
                     الجدول
                    =========================================== */}
 
-                <table>
+                <table style={table}>
+                  <colgroup>
+                    <col
+                      style={{
+                        width:
+                          DAY_COLUMN_WIDTH,
+                      }}
+                    />
+                    {activeColumns.map(
+                      key => (
+                        <col
+                          key={key}
+                          style={{
+                            width:
+                              COLUMN_WIDTHS[
+                                key
+                              ],
+                          }}
+                        />
+                      )
+                    )}
+                  </colgroup>
+
                   <thead>
                     <tr>
-                      <th>
+                      <th style={th}>
                         اليوم
                       </th>
 
@@ -844,6 +813,7 @@ export default function PrintPlanView({
                         key => (
                           <th
                             key={key}
+                            style={th}
                           >
                             {
                               COLUMN_LABELS[
@@ -898,6 +868,7 @@ export default function PrintPlanView({
                                   0 && (
                                   <td
                                     style={{
+                                      ...td,
                                       fontWeight: 700,
                                       background: dayLeave
                                         ? '#FCA5A5'
@@ -926,34 +897,44 @@ export default function PrintPlanView({
                                 )}
 
                                 {visibleColumns.period && (
-                                  <td>
+                                  <td
+                                    style={td}
+                                  >
                                     {period}
                                   </td>
                                 )}
 
                                 {visibleColumns.subject && (
-                                  <td>
+                                  <td
+                                    style={td}
+                                  >
                                     {subjectName ||
                                       ''}
                                   </td>
                                 )}
 
                                 {visibleColumns.lesson && (
-                                  <td>
+                                  <td
+                                    style={td}
+                                  >
                                     {plan?.lessonTopic ||
                                       ''}
                                   </td>
                                 )}
 
                                 {visibleColumns.homework && (
-                                  <td>
+                                  <td
+                                    style={td}
+                                  >
                                     {plan?.homework ||
                                       ''}
                                   </td>
                                 )}
 
                                 {visibleColumns.notes && (
-                                  <td>
+                                  <td
+                                    style={td}
+                                  >
                                     {plan?.notes ||
                                       ''}
                                   </td>
@@ -1058,4 +1039,27 @@ const leaveNotice: React.CSSProperties = {
   fontSize: 12,
   marginBottom: 12,
   textAlign: 'center',
+}
+
+const table: React.CSSProperties = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  fontSize: 12,
+  tableLayout: 'fixed',
+}
+
+const th: React.CSSProperties = {
+  border: '1px solid #9CA3AF',
+  padding: 8,
+  background: '#F3F4F6',
+  color: '#1F2937',
+  fontWeight: 700,
+}
+
+const td: React.CSSProperties = {
+  border: '1px solid #9CA3AF',
+  padding: 8,
+  textAlign: 'center',
+  color: '#374151',
+  wordBreak: 'break-word',
 }
