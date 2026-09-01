@@ -57,6 +57,14 @@ const COLUMN_LABELS: Record<ColumnKey, string> = {
   notes: 'الملاحظات',
 }
 
+const COLUMN_WIDTHS: Record<ColumnKey, string> = {
+  period: '6%',
+  subject: '12%',
+  lesson: '20%',
+  homework: '27%',
+  notes: '27%',
+}
+
 type ColumnKey = 'period' | 'subject' | 'lesson' | 'homework' | 'notes'
 
 /* =========================================================
@@ -767,6 +775,23 @@ export default function PrintPlanView({
                    =========================================== */}
 
                 <table style={table}>
+                  <colgroup>
+                    <col style={{ width: '8%' }} />
+                    {activeColumns.map(
+                      key => (
+                        <col
+                          key={key}
+                          style={{
+                            width:
+                              COLUMN_WIDTHS[
+                                key
+                              ],
+                          }}
+                        />
+                      )
+                    )}
+                  </colgroup>
+
                   <thead>
                     <tr>
                       <th style={th}>
@@ -1009,20 +1034,28 @@ const leaveNotice: React.CSSProperties = {
 const table: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
-  fontSize: 12,
+  fontSize: 11,
+  tableLayout: 'fixed',
 }
 
 const th: React.CSSProperties = {
   border: '1px solid #9CA3AF',
-  padding: 8,
+  padding: '8px 6px',
   background: '#F3F4F6',
   color: '#1F2937',
   fontWeight: 700,
+  fontSize: 11,
+  textAlign: 'center',
 }
 
 const td: React.CSSProperties = {
   border: '1px solid #9CA3AF',
-  padding: 8,
+  padding: '6px 8px',
   textAlign: 'center',
   color: '#374151',
+  fontSize: 11,
+  wordBreak: 'break-word',
+  maxWidth: 150,
+  verticalAlign: 'middle',
+  lineHeight: 1.4,
 }
