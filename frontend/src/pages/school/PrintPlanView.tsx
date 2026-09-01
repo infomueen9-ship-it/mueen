@@ -430,12 +430,16 @@ export default function PrintPlanView({
       <style>
         {`
           @media print {
-            /* إخفاء كل شيء ما عدا منطقة الطباعة نفسها
-               وأصولها (المودال المحيط بها) ومحتواها */
-            body *:not(#mueen-print-area):not(#mueen-print-area *):not(:has(#mueen-print-area)) {
-              display: none !important;
+            body * {
+              visibility: hidden;
+            }
+            #mueen-print-area,
+            #mueen-print-area * {
+              visibility: visible;
             }
             #mueen-print-area {
+              position: absolute;
+              inset: 0;
               width: 100%;
               padding: 12px;
             }
@@ -444,22 +448,17 @@ export default function PrintPlanView({
             }
 
             /* تحييد المودال المحيط بمنطقة الطباعة حتى لا
-               يقصّ المحتوى أو يمنع تعدد الصفحات */
+               يقصّ المحتوى بارتفاعه/عرضه الثابتين على الشاشة */
             .mueen-print-modal-overlay {
               position: static !important;
               inset: auto !important;
-              background: none !important;
               padding: 0 !important;
-              display: block !important;
             }
             .mueen-print-modal-box {
               width: auto !important;
               max-width: none !important;
               height: auto !important;
               overflow: visible !important;
-              border-radius: 0 !important;
-              box-shadow: none !important;
-              display: block !important;
             }
 
             thead {
