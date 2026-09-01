@@ -457,10 +457,18 @@ export default function PrintPlanView({
               padding: 0 !important;
             }
             .mueen-print-modal-box {
+              display: block !important;
               width: 100% !important;
               max-width: none !important;
               height: auto !important;
               overflow: visible !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
+            }
+            .mueen-print-modal-content {
+              flex: none !important;
+              overflow: visible !important;
+              height: auto !important;
             }
 
             .mueen-letterhead {

@@ -388,6 +388,7 @@ export default function SchedulesView({
             {/* Modal Header */}
 
             <div
+              className="mueen-no-print"
               style={{
                 display: 'flex',
                 justifyContent:
@@ -448,6 +449,7 @@ export default function SchedulesView({
             {/* Print Plan Content */}
 
             <div
+              className="mueen-print-modal-content"
               style={{
                 flex: 1,
                 overflowY: 'auto',
