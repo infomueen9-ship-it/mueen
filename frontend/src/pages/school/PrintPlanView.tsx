@@ -429,98 +429,110 @@ export default function PrintPlanView({
       <style>
   {`
     @page {
-      size: A4 portrait;
-      margin: 6mm;
-    }
+  size: A4 portrait;
+  margin: 6mm;
+}
 
-    @media print {
-      html,
-      body {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 100% !important;
-        background: #fff !important;
-      }
+@media print {
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
 
-      body * {
-        visibility: hidden !important;
-      }
+  body {
+    display: block !important;
+  }
 
-      #mueen-print-area,
-      #mueen-print-area * {
-        visibility: visible !important;
-      }
+  body * {
+    visibility: hidden !important;
+  }
 
-      #mueen-print-area {
-        position: static !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-      }
+  #mueen-print-area,
+  #mueen-print-area * {
+    visibility: visible !important;
+  }
 
-      .mueen-no-print {
-        display: none !important;
-      }
+  #mueen-print-area {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
 
-      .mueen-letterhead {
-        display: flex !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        padding: 8px !important;
-        margin-bottom: 8px !important;
-        font-size: 10px !important;
-        line-height: 1.5 !important;
-        border: 1px solid #888 !important;
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
+  .mueen-print-page {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
 
-      .mueen-letterhead img {
-        width: 65px !important;
-        height: auto !important;
-      }
+  .mueen-no-print {
+    display: none !important;
+  }
 
-      #mueen-print-area table {
-        width: 100% !important;
-        max-width: 100% !important;
-        table-layout: fixed !important;
-        border-collapse: collapse !important;
-        font-size: 8px !important;
-      }
+  .mueen-letterhead {
+    display: flex !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 8px !important;
+    margin-bottom: 8px !important;
+    font-size: 10px !important;
+    line-height: 1.5 !important;
+    border: 1px solid #888 !important;
 
-      #mueen-print-area th,
-      #mueen-print-area td {
-        padding: 3px 2px !important;
-        font-size: 8px !important;
-        line-height: 1.3 !important;
-        overflow-wrap: break-word !important;
-        word-break: break-word !important;
-      }
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
 
-      #mueen-print-area thead {
-        display: table-header-group !important;
-      }
+  .mueen-letterhead img {
+    width: 65px !important;
+    height: auto !important;
+  }
 
-      #mueen-print-area tr {
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
+  #mueen-print-area table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    font-size: 8px !important;
+  }
 
-      #mueen-print-area td[rowspan] {
-        vertical-align: middle !important;
-      }
+  #mueen-print-area th,
+  #mueen-print-area td {
+    padding: 3px 2px !important;
+    font-size: 8px !important;
+    line-height: 1.3 !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+  }
 
-      #mueen-print-area img {
-        max-width: 100% !important;
-      }
+  #mueen-print-area thead {
+    display: table-header-group !important;
+  }
 
-      .mueen-print-page {
-        width: 100% !important;
-        box-sizing: border-box !important;
-      }
-    }
+  #mueen-print-area tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  #mueen-print-area td[rowspan] {
+    vertical-align: middle !important;
+  }
+
+  #mueen-print-area img {
+    max-width: 100% !important;
+  }
+}
   `}
 </style>
 
