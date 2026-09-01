@@ -453,6 +453,28 @@ export default function PrintPlanView({
               display: none !important;
             }
 
+            /* تحييد المودال المحيط بمنطقة الطباعة حتى لا
+               يقصّ المحتوى بارتفاعه الثابت 90vh على الشاشة،
+               وهو ما يمنع تعدد الصفحات */
+            .mueen-print-modal-overlay {
+              position: static !important;
+              inset: auto !important;
+              padding: 0 !important;
+            }
+            .mueen-print-modal-box {
+              width: 100% !important;
+              max-width: none !important;
+              height: auto !important;
+              overflow: visible !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
+            }
+            .mueen-print-modal-content {
+              flex: none !important;
+              overflow: visible !important;
+              height: auto !important;
+            }
+
             .mueen-letterhead {
               font-size: 12px !important;
               padding: 10px !important;

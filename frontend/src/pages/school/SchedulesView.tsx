@@ -355,6 +355,7 @@ export default function SchedulesView({
 
       {printClassroom && (
         <div
+          className="mueen-print-modal-overlay"
           style={{
             position: 'fixed',
             inset: 0,
@@ -369,6 +370,7 @@ export default function SchedulesView({
           }}
         >
           <div
+            className="mueen-print-modal-box"
             style={{
               background: '#fff',
               width: '95%',
@@ -386,6 +388,7 @@ export default function SchedulesView({
             {/* Modal Header */}
 
             <div
+              className="mueen-no-print"
               style={{
                 display: 'flex',
                 justifyContent:
@@ -446,6 +449,7 @@ export default function SchedulesView({
             {/* Print Plan Content */}
 
             <div
+              className="mueen-print-modal-content"
               style={{
                 flex: 1,
                 overflowY: 'auto',
