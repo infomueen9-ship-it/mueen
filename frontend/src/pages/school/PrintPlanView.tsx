@@ -417,50 +417,120 @@ export default function PrintPlanView({
       }}
     >
       <style>
-        {`
-          @page {
-            size: A4;
-            margin: 6mm;
-          }
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            #mueen-print-area,
-            #mueen-print-area * {
-              visibility: visible;
-            }
-            #mueen-print-area {
-              position: absolute;
-              inset: 0;
-              width: 100%;
-              padding: 4px;
-            }
-            .mueen-no-print {
-              display: none !important;
-            }
-            .mueen-letterhead {
-              padding: 14px !important;
-              margin-bottom: 14px !important;
-              font-size: 15px !important;
-              line-height: 1.7 !important;
-            }
-            .mueen-letterhead img {
-              width: 90px !important;
-            }
-            #mueen-print-area table {
-              font-size: 14px !important;
-            }
-            #mueen-print-area th,
-            #mueen-print-area td {
-              padding: 6px 8px !important;
-            }
-            #mueen-print-area tr {
-              page-break-inside: avoid;
-            }
-          }
-        `}
-      </style>
+  {`
+    @page {
+      size: A4 portrait;
+      margin: 6mm;
+    }
+
+    @media print {
+      html,
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        background: #fff !important;
+      }
+
+      body * {
+        visibility: hidden !important;
+      }
+
+      #mueen-print-area,
+      #mueen-print-area * {
+        visibility: visible !important;
+      }
+
+      #mueen-print-area {
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+
+        /* التعديل المهم */
+        height: auto !important;
+        min-height: 0 !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      }
+
+      .mueen-no-print {
+        display: none !important;
+      }
+
+      .mueen-letterhead {
+        display: flex !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 8px !important;
+        margin-bottom: 8px !important;
+        font-size: 10px !important;
+        line-height: 1.5 !important;
+        border: 1px solid #888 !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .mueen-letterhead img {
+        width: 65px !important;
+        height: auto !important;
+      }
+
+      #mueen-print-area table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        font-size: 8px !important;
+
+        /* السماح للجدول بالامتداد لصفحات متعددة */
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+      }
+
+      #mueen-print-area th,
+      #mueen-print-area td {
+        padding: 3px 2px !important;
+        font-size: 8px !important;
+        line-height: 1.3 !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+      }
+
+      /* تكرار رأس الجدول في كل صفحة */
+      #mueen-print-area thead {
+        display: table-header-group !important;
+      }
+
+      #mueen-print-area tbody {
+        display: table-row-group !important;
+      }
+
+      #mueen-print-area tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      #mueen-print-area td[rowspan] {
+        vertical-align: middle !important;
+      }
+
+      #mueen-print-area img {
+        max-width: 100% !important;
+      }
+
+      .mueen-print-page {
+        width: 100% !important;
+        box-sizing: border-box !important;
+
+        /* لا نحدد ارتفاع A4 يدويًا */
+        height: auto !important;
+        min-height: 0 !important;
+      }
+    }
+  `}
+</style>
 
       {loading ? (
         <div
@@ -661,7 +731,7 @@ export default function PrintPlanView({
               جارٍ تحميل خطة الأسبوع...
             </div>
           ) : (
-              <div id="mueen-print-area">
+              <div id="mueen-print-area" className="mueen-print-page">
 
                 {/* ===========================================
                     الترويسة
