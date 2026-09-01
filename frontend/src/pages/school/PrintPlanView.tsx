@@ -291,99 +291,6 @@ export default function PrintPlanView({
     selectedWeekNumber,
   ])
 
-  /* =======================================================
-     تمديد الخطة تلقائياً لتملأ الصفحة دون مسافة فارغة
-     ======================================================= */
-
-  useEffect(() => {
-    const fillPage = () => {
-      // مهلة صغيرة لضمان اكتمال تطبيق أنماط
-      // @media print (الخط المصغّر وغيره) قبل القياس
-      requestAnimationFrame(() => {
-        const area = document.getElementById(
-          'mueen-print-area'
-        )
-        const content = document.getElementById(
-          'mueen-print-content'
-        )
-        if (!area || !content) return
-
-        content.style.transform = 'none'
-
-        const scaleX =
-          area.clientWidth /
-          content.scrollWidth
-        const scaleY =
-          area.clientHeight /
-          content.scrollHeight
-
-        if (
-          !isFinite(scaleX) ||
-          !isFinite(scaleY) ||
-          scaleX <= 0 ||
-          scaleY <= 0
-        ) {
-          return
-        }
-
-        content.style.transformOrigin =
-          'top right'
-        content.style.transform = `scale(${scaleX}, ${scaleY})`
-      })
-    }
-
-    const resetScale = () => {
-      const content = document.getElementById(
-        'mueen-print-content'
-      )
-      if (content) {
-        content.style.transform = 'none'
-      }
-    }
-
-    window.addEventListener(
-      'beforeprint',
-      fillPage
-    )
-    window.addEventListener(
-      'afterprint',
-      resetScale
-    )
-
-    // بعض المتصفحات لا تُطلق beforeprint/afterprint
-    // بشكل موثوق، فنستخدم matchMedia كطبقة احتياطية
-    const printQuery = window.matchMedia(
-      'print'
-    )
-    const handleMediaChange = (
-      e: MediaQueryListEvent
-    ) => {
-      if (e.matches) {
-        fillPage()
-      } else {
-        resetScale()
-      }
-    }
-    printQuery.addEventListener?.(
-      'change',
-      handleMediaChange
-    )
-
-    return () => {
-      window.removeEventListener(
-        'beforeprint',
-        fillPage
-      )
-      window.removeEventListener(
-        'afterprint',
-        resetScale
-      )
-      printQuery.removeEventListener?.(
-        'change',
-        handleMediaChange
-      )
-    }
-  }, [])
 
   const selectedWeek =
     weeks.find(
@@ -535,20 +442,20 @@ export default function PrintPlanView({
               display: none !important;
             }
             .mueen-letterhead {
-              padding: 6px !important;
-              margin-bottom: 6px !important;
-              font-size: 9px !important;
-              line-height: 1.3 !important;
+              padding: 14px !important;
+              margin-bottom: 14px !important;
+              font-size: 15px !important;
+              line-height: 1.7 !important;
             }
             .mueen-letterhead img {
-              width: 60px !important;
+              width: 90px !important;
             }
             #mueen-print-area table {
-              font-size: 8px !important;
+              font-size: 14px !important;
             }
             #mueen-print-area th,
             #mueen-print-area td {
-              padding: 2px 3px !important;
+              padding: 6px 8px !important;
             }
             #mueen-print-area tr {
               page-break-inside: avoid;
