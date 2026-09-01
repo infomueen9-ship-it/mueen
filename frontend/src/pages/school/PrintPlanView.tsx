@@ -402,6 +402,128 @@ export default function PrintPlanView({
     )
   }
 
+  /* =======================================================
+     الطباعة عبر نافذة مستقلة
+
+     المكوّن يُعرض داخل مودال ثابت (position: fixed)، ومحاولة
+     طباعته في مكانه تتطلب إبطال قصّ المودال بـ CSS معقّد
+     وهشّ. بدلاً من ذلك ننسخ منطقة الطباعة إلى مستند نظيف
+     بمقاس A4 ونطبعه هناك.
+     ======================================================= */
+
+  const handlePrint = () => {
+    const area = document.getElementById(
+      'mueen-print-area'
+    )
+
+    if (!area) {
+      window.print()
+      return
+    }
+
+    const printWindow = window.open(
+      '',
+      '_blank',
+      'width=1024,height=768'
+    )
+
+    if (!printWindow) {
+      // النوافذ المنبثقة محظورة — نطبع الصفحة كما هي
+      window.print()
+      return
+    }
+
+    const title = `خطة ${classroomName}`
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8" />
+<title>${title}</title>
+<style>
+  @page { size: A4; margin: 10mm 8mm; }
+  * { box-sizing: border-box; }
+  body {
+    direction: rtl;
+    margin: 0;
+    padding: 0;
+    color: #1f2937;
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .mueen-letterhead {
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid #9ca3af;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.8;
+    text-align: center;
+  }
+  .mueen-letterhead > div { flex: initial !important; }
+  .mueen-letterhead img { width: 90px !important; height: auto !important; }
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    font-size: 12px;
+  }
+  th, td {
+    border: 1px solid #9ca3af;
+    padding: 5px 6px;
+    text-align: center;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  th { background: #f3f4f6; font-weight: 700; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; break-inside: avoid; }
+</style>
+</head>
+<body>${area.innerHTML}</body>
+</html>`)
+
+    printWindow.document.close()
+
+    const triggerPrint = () => {
+      printWindow.focus()
+      printWindow.print()
+      printWindow.close()
+    }
+
+    const images = Array.from(
+      printWindow.document.images
+    )
+
+    if (!images.length) {
+      setTimeout(triggerPrint, 150)
+      return
+    }
+
+    let pending = images.length
+
+    const settle = () => {
+      pending -= 1
+      if (pending <= 0) {
+        setTimeout(triggerPrint, 100)
+      }
+    }
+
+    images.forEach(img => {
+      if (img.complete) {
+        settle()
+      } else {
+        img.onload = settle
+        img.onerror = settle
+      }
+    })
+  }
+
   const activeDays =
     DAYS.filter(
       day => visibleDays[day]
@@ -428,103 +550,26 @@ export default function PrintPlanView({
     >
       <style>
         {`
-          @page {
-            size: A4;
-            margin: 8mm 6mm 10mm;
-          }
+          /* المعاينة تُطبع عبر نافذة مستقلة (handlePrint)،
+             فلا حاجة لمحاربة قصّ المودال هنا. هذا احتياط فقط
+             في حال ضغط المستخدم Ctrl+P مباشرةً. */
           @media print {
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-              height: auto !important;
-              background: #fff !important;
-              overflow: visible !important;
-            }
-            body * {
-              visibility: hidden;
-            }
-            #mueen-print-area,
-            #mueen-print-area * {
-              visibility: visible;
-            }
-            #mueen-print-area {
-              position: static !important;
-              display: block;
-              width: 100%;
-              max-width: 100%;
-              padding: 0;
-              margin: 0;
-              overflow: visible;
-            }
             .mueen-no-print {
               display: none !important;
             }
-
-            .mueen-print-modal-overlay {
-              display: block !important;
+            .mueen-print-modal-overlay,
+            .mueen-print-modal-box,
+            .mueen-print-modal-content {
               position: static !important;
               inset: auto !important;
-              padding: 0 !important;
-              background: #fff !important;
-            }
-            .mueen-print-modal-box {
               width: 100% !important;
               max-width: none !important;
               height: auto !important;
               overflow: visible !important;
+              background: #fff !important;
               border-radius: 0 !important;
               box-shadow: none !important;
-            }
-            .mueen-print-modal-content {
-              flex: none !important;
-              overflow: visible !important;
-              height: auto !important;
-            }
-            .mueen-letterhead {
-              display: grid !important;
-              grid-template-columns: 1fr auto 1fr;
-              align-items: center;
-              padding: 14px !important;
-              margin-bottom: 14px !important;
-              font-size: 15px !important;
-              line-height: 1.7 !important;
-              border: 1px solid #9ca3af !important;
-              border-radius: 10px !important;
-            }
-            .mueen-letterhead img {
-              width: 90px !important;
-            }
-            #mueen-print-area table {
-              width: 100% !important;
-              max-width: 100% !important;
-              font-size: 12px !important;
-              border-collapse: collapse;
-              table-layout: fixed;
-              page-break-inside: auto;
-              break-inside: auto;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            #mueen-print-area thead {
-              display: table-header-group;
-            }
-            #mueen-print-area tbody {
-              display: table-row-group;
-            }
-            #mueen-print-area th,
-            #mueen-print-area td {
-              font-size: 12px !important;
-              padding: 4px 5px !important;
-              word-break: break-word;
-              overflow-wrap: anywhere;
-            }
-            #mueen-print-area th {
-              background: #f3f4f6 !important;
-            }
-            #mueen-print-area tr {
-              page-break-inside: avoid;
-              break-inside: avoid;
+              backdrop-filter: none !important;
             }
           }
         `}
@@ -682,9 +727,7 @@ export default function PrintPlanView({
             }}
           >
             <button
-              onClick={() =>
-                window.print()
-              }
+              onClick={handlePrint}
               style={printButton}
             >
               طباعة
