@@ -475,7 +475,7 @@ export default function PrintPlanView({
   }
   th, td {
     border: 1px solid #9ca3af;
-    padding: 0;
+    padding: 1px;
     text-align: center;
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -1168,7 +1168,7 @@ const table: React.CSSProperties = {
 
 const th: React.CSSProperties = {
   border: '1px solid #9CA3AF',
-  padding: 0,
+  padding: 1,
   background: '#F3F4F6',
   color: '#1F2937',
   fontWeight: 700,
@@ -1177,7 +1177,7 @@ const th: React.CSSProperties = {
 
 const td: React.CSSProperties = {
   border: '1px solid #9CA3AF',
-  padding: 0,
+  padding: 1,
   textAlign: 'center',
   color: '#374151',
   wordBreak: 'break-word',
