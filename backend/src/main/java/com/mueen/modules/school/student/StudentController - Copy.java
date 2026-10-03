@@ -149,11 +149,14 @@ public class StudentController {
     private void ensureStudentSchema(String schemaName) {
         try {
             // إنشاء جدول الطلاب
+
+          
             jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + schemaName + ".students (" +
                     "id BIGSERIAL PRIMARY KEY, " +
                     "full_name VARCHAR(255) NOT NULL, " +
                     "guardian_phone VARCHAR(20) UNIQUE, " +
                     "created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+                    
 
             // إنشاء جدول الربط بالفصول
             jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS " + schemaName + ".student_enrollments (" +

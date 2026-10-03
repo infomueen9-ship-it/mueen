@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -101,13 +102,36 @@ public ResponseEntity<?> getTeachers(@PathVariable String schemaName) {
     }
 
     @DeleteMapping("/{teacherId}")
+    @Transactional
     public ResponseEntity<?> deleteTeacher(
             @PathVariable String schemaName,
             @PathVariable Long teacherId) {
 
+        // فك ارتباط المعلم من المواد وجداول الانتظار/المناوبة
+        // قبل الحذف، حتى لا يمنع قيد المفتاح الأجنبي عملية الحذف
         jdbcTemplate.update(
+            "UPDATE " + schemaName + ".classroom_subjects SET teacher_id = NULL WHERE teacher_id = ?",
+            teacherId
+        );
+
+        jdbcTemplate.update(
+            "UPDATE " + schemaName + ".substitute_schedules SET teacher_id = NULL WHERE teacher_id = ?",
+            teacherId
+        );
+
+        jdbcTemplate.update(
+            "UPDATE " + schemaName + ".duty_schedules SET teacher_id = NULL WHERE teacher_id = ?",
+            teacherId
+        );
+
+        int deleted = jdbcTemplate.update(
             "DELETE FROM " + schemaName + ".teachers WHERE id = ?", teacherId
         );
+
+        if (deleted == 0) {
+            return ResponseEntity.notFound().build();
+        }
+
         return ResponseEntity.ok(Map.of("message", "Teacher deleted"));
     }
     @PutMapping("/{teacherId}")
