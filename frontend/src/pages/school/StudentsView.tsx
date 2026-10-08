@@ -64,288 +64,279 @@ export default function StudentsView({ classroomId, classroomName, schemaName, o
   }
 
 const handleSave = async () => {
-  const valid = forms.filter(f => f.fullName.trim())
+    const valid = forms.filter(f => f.fullName.trim())
+    if (!valid.length) { toast.error('أدخل اسم طالب على الأقل'); return }
 
-  if (!valid.length) {
-    toast.error('أدخل اسم طالب على الأقل')
-    return
-  }
-
-  const prepared = valid.map(form => ({
-    ...form,
-    guardianPhone: normalizePhone(form.guardianPhone),
-  }))
-
-  const invalidPhone = prepared.find(f => f.guardianPhone && !isValidPhone(f.guardianPhone))
-  if (invalidPhone) {
-    toast.error(`رقم الجوال للطالب ${invalidPhone.fullName} يجب أن يبدأ بـ 05 أو يحتوي على 966 أو +966`)
-    return
-  }
-
-  setSaving(true)
-  try {
-    await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch`, prepared)
-    toast.success('تم إضافة الطلاب')
-    setShowAddModal(false)
-    setForms([{ fullName: '', guardianPhone: '' }])
-    fetchStudents()
-  } catch (err) {
-    const error = err as AxiosError<{ message?: string }>
-    const msg = error.response?.data?.message
-    toast.error(msg || 'تعذر إضافة الطلاب')
-  } finally {
-    setSaving(false)
-  }
-}
-
-const normalizePhone = (value: string) => {
-  const raw = (value ?? '').trim()
-  if (!raw) return ''
-
-  const digits = raw.replace(/\D/g, '')
-  if (!digits) return ''
-
-  if (digits.startsWith('966')) {
-    const local = digits.slice(3)
-    if (local.length >= 9) return `0${local.slice(0, 9)}`
-    return `0${local}`.slice(0, 10)
-  }
-
-  if (digits.startsWith('05')) return digits.slice(0, 10)
-  if (digits.length === 9 && digits.startsWith('5')) return `0${digits}`
-  return digits.slice(0, 10)
-}
-
-const isValidPhone = (value: string) => {
-  const normalized = normalizePhone(value)
-  return normalized.length === 10 && normalized.startsWith('05')
-}
-
-const handleExcelImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-
-  if (!file) return
-  if (!/\.(xlsx|xls)$/i.test(file.name)) {
-    toast.error('الملف يجب أن يكون Excel بصيغة xlsx أو xls')
-    return
-  }
-
-  setImportingExcel(true)
-  try {
-    const buffer = await file.arrayBuffer()
-    const workbook = XLSX.read(buffer, { type: 'array' })
-    const sheetName = workbook.SheetNames[0]
-
-    if (!sheetName) {
-      toast.error('ملف Excel لا يحتوي على أوراق')
-      return
-    }
-
-    const worksheet = workbook.Sheets[sheetName]
-    const rawRows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
-      header: 1,
-      defval: '',
-      blankrows: false,
-    })
-
-    const rows = rawRows.filter(row => row.some(cell => String(cell ?? '').trim()))
-    const headers = rows[0] ?? []
-    const nameColumn = findColumnIndex(headers, ['fullName', 'Full Name', 'name', 'studentName', 'اسم الطالب', 'اسم الطالبة', 'الاسم', 'الطالب'])
-    const phoneColumn = findColumnIndex(headers, ['guardianPhone', 'Guardian Phone', 'phone', 'mobile', 'رقم ولي الأمر', 'رقم جوال ولي الأمر', 'الجوال', 'رقم الجوال'])
-    const hasHeader = nameColumn !== -1 || phoneColumn !== -1
-    const dataRows = hasHeader ? rows.slice(1) : rows
-    const resolvedNameColumn = nameColumn !== -1 ? nameColumn : 0
-    const resolvedPhoneColumn = phoneColumn !== -1 ? phoneColumn : 1
-
-    const imported = dataRows
-      .map(row => ({
-        fullName: getCellValue(row, resolvedNameColumn),
-        guardianPhone: normalizePhone(getCellValue(row, resolvedPhoneColumn)),
-      }))
-      .filter(student => student.fullName)
-
-    if (!imported.length) {
-      toast.error('لم يتم العثور على أسماء طلاب في الملف')
-      return
-    }
-
-    const invalidPhone = imported.find(student => student.guardianPhone && !isValidPhone(student.guardianPhone))
+    const invalidPhone = valid.find(f => f.guardianPhone && !f.guardianPhone.startsWith('05'))
     if (invalidPhone) {
-      toast.error(`رقم الجوال للطالب ${invalidPhone.fullName} يجب أن يبدأ بـ 05 أو يحتوي على 966 أو +966`)
+      toast.error(`رقم الجوال للطالب ${invalidPhone.fullName} يجب أن يبدأ بـ 05`)
       return
     }
 
-    const invalidPhoneLength = imported.find(student => student.guardianPhone && student.guardianPhone.length !== 10)
-    if (invalidPhoneLength) {
-      toast.error(`رقم الجوال للطالب ${invalidPhoneLength.fullName} يجب أن يكون 10 أرقام`)
-      return
+    setSaving(true)
+    try {
+      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch`, valid)
+      toast.success('تم إضافة الطلاب')
+      setShowAddModal(false)
+      setForms([{ fullName: '', guardianPhone: '' }])
+      fetchStudents()
+    } catch (err) {
+      const error = err as AxiosError<{ message?: string }>
+      const msg = error.response?.data?.message
+      toast.error(msg || 'تعذر إضافة الطلاب')
+    } finally {
+      setSaving(false)
     }
-
-    const phones = imported.map(student => student.guardianPhone).filter(Boolean)
-    const duplicatePhone = phones.find((phone, index) => phones.indexOf(phone) !== index)
-    if (duplicatePhone) {
-      toast.error(`يوجد رقم جوال مكرر في الملف: ${duplicatePhone}`)
-      return
-    }
-
-    await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch`, imported)
-    toast.success(`تم استيراد ${imported.length} طالب من Excel`)
-    fetchStudents()
-  } catch (err) {
-    const error = err as AxiosError<{ message?: string }>
-    toast.error(error.response?.data?.message || 'تعذر استيراد ملف Excel')
-  } finally {
-    setImportingExcel(false)
   }
-}
 
-const handleDelete = async (student: Student) => {
-  try {
-    await api.delete(`/api/school/${schemaName}/classrooms/${classroomId}/students/${student.id}`)
-    setStudents(students.filter(s => s.id !== student.id))
-    toast.success('تم حذف الطالب')
-  } catch {
-    toast.error('تعذر حذف الطالب')
+  const normalizePhone = (value: string) => {
+    const digits = value.replace(/\D/g, '')
+    if (digits.length === 9 && digits.startsWith('5')) return `0${digits}`
+    return digits.slice(0, 10)
   }
-}
 
-return (
-  <div style={{ padding: '0px' }}>
-    <div style={{
-      backgroundColor: '#fff', borderRadius: '16px', padding: '20px',
-      width: '100%', direction: 'rtl',
-      maxHeight: 'none', overflowY: 'visible',
-    }}>
+  const normalizeHeader = (value: unknown) =>
+    String(value ?? '')
+      .replace(/\s/g, '')
+      .replace(/[ـ_:\-.]/g, '')
+      .toLowerCase()
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0, color: '#374151', fontSize: '18px', fontWeight: 700 }}>
-          طلاب {classroomName}
-        </h2>
-        <button onClick={onClose} style={{
-          border: 'none', background: '#F3F4F6', borderRadius: '50%',
-          width: '36px', height: '36px', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <X size={18} color="#6B7280" />
-        </button>
-      </div>
+  const findColumnIndex = (headers: unknown[], aliases: string[]) => {
+    const normalizedAliases = aliases.map(normalizeHeader)
+    return headers.findIndex(header => normalizedAliases.includes(normalizeHeader(header)))
+  }
 
-      {/* Blue Header */}
+  const getCellValue = (row: unknown[], index: number) => {
+    if (index < 0) return ''
+    const value = row[index]
+    return value === undefined || value === null ? '' : String(value).trim()
+  }
+
+  const handleExcelImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+    if (!/\.(xlsx|xls)$/i.test(file.name)) {
+      toast.error('الملف يجب أن يكون Excel بصيغة xlsx أو xls')
+      return
+    }
+
+    setImportingExcel(true)
+    try {
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+
+      if (!sheetName) {
+        toast.error('ملف Excel لا يحتوي على أوراق')
+        return
+      }
+
+      const worksheet = workbook.Sheets[sheetName]
+      const rawRows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+        header: 1,
+        defval: '',
+        blankrows: false,
+      })
+
+      const rows = rawRows.filter(row => row.some(cell => String(cell ?? '').trim()))
+      const headers = rows[0] ?? []
+      const nameColumn = findColumnIndex(headers, ['fullName', 'Full Name', 'name', 'studentName', 'اسم الطالب', 'اسم الطالبة', 'الاسم', 'الطالب'])
+      const phoneColumn = findColumnIndex(headers, ['guardianPhone', 'Guardian Phone', 'phone', 'mobile', 'رقم ولي الأمر', 'رقم جوال ولي الأمر', 'الجوال', 'رقم الجوال'])
+      const hasHeader = nameColumn !== -1 || phoneColumn !== -1
+      const dataRows = hasHeader ? rows.slice(1) : rows
+      const resolvedNameColumn = nameColumn !== -1 ? nameColumn : 0
+      const resolvedPhoneColumn = phoneColumn !== -1 ? phoneColumn : 1
+
+      const imported = dataRows
+        .map(row => ({
+          fullName: getCellValue(row, resolvedNameColumn),
+          guardianPhone: normalizePhone(getCellValue(row, resolvedPhoneColumn)),
+        }))
+        .filter(student => student.fullName)
+
+      if (!imported.length) {
+        toast.error('لم يتم العثور على أسماء طلاب في الملف')
+        return
+      }
+
+      const invalidPhone = imported.find(student => student.guardianPhone && !student.guardianPhone.startsWith('05'))
+      if (invalidPhone) {
+        toast.error(`رقم الجوال للطالب ${invalidPhone.fullName} يجب أن يبدأ بـ 05`)
+        return
+      }
+
+      const invalidPhoneLength = imported.find(student => student.guardianPhone && student.guardianPhone.length !== 10)
+      if (invalidPhoneLength) {
+        toast.error(`رقم الجوال للطالب ${invalidPhoneLength.fullName} يجب أن يكون 10 أرقام`)
+        return
+      }
+
+      const phones = imported.map(student => student.guardianPhone).filter(Boolean)
+      const duplicatePhone = phones.find((phone, index) => phones.indexOf(phone) !== index)
+      if (duplicatePhone) {
+        toast.error(`يوجد رقم جوال مكرر في الملف: ${duplicatePhone}`)
+        return
+      }
+
+      await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/students/batch`, imported)
+      toast.success(`تم استيراد ${imported.length} طالب من Excel`)
+      fetchStudents()
+    } catch (err) {
+      const error = err as AxiosError<{ message?: string }>
+      toast.error(error.response?.data?.message || 'تعذر استيراد ملف Excel')
+    } finally {
+      setImportingExcel(false)
+    }
+  }
+
+  const handleDelete = async (student: Student) => {
+    try {
+      await api.delete(`/api/school/${schemaName}/classrooms/${classroomId}/students/${student.id}`)
+      setStudents(students.filter(s => s.id !== student.id))
+      toast.success('تم حذف الطالب')
+    } catch {
+      toast.error('تعذر حذف الطالب')
+    }
+  }
+
+  return (
+    <div style={{ padding: '0px' }}>
       <div style={{
-        background: '#9EC5C7', color: '#fff', padding: '14px',
-        borderRadius: '12px', textAlign: 'center', fontWeight: 600,
-        fontSize: '16px', marginBottom: '20px',
+        backgroundColor: '#fff', borderRadius: '16px', padding: '20px',
+        width: '100%', direction: 'rtl',
+        maxHeight: 'none', overflowY: 'visible',
       }}>
-        قائمة طلاب — {classroomName}
-      </div>
 
-      {/* Add Button */}
-      {!readOnly && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-          <label
-            htmlFor="students-excel-input"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '10px 20px', backgroundColor: '#374151',
-              color: '#fff', border: 'none', borderRadius: '10px',
-              cursor: importingExcel ? 'not-allowed' : 'pointer',
-              fontWeight: 600, fontSize: '14px', opacity: importingExcel ? 0.7 : 1,
-            }}
-          >
-            <Upload size={16} />
-            {importingExcel ? 'جاري الاستيراد...' : 'استيراد من Excel'}
-          </label>
-          <input
-            id="students-excel-input"
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleExcelImport}
-            disabled={importingExcel}
-            style={{ display: 'none' }}
-          />
-          {/* Manual Add Button */}
-          <button
-            onClick={() => setShowAddModal(true)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '10px 20px', backgroundColor: '#9EC5C7',
-              color: '#fff', border: 'none', borderRadius: '10px',
-              cursor: 'pointer', fontWeight: 600, fontSize: '14px', marginRight: '10px'
-            }}
-          >
-            <UserPlus size={16} />
-            إضافة طلاب يدوياً
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, color: '#374151', fontSize: '18px', fontWeight: 700 }}>
+            طلاب {classroomName}
+          </h2>
+          <button onClick={onClose} style={{
+            border: 'none', background: '#F3F4F6', borderRadius: '50%',
+            width: '36px', height: '36px', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <X size={18} color="#6B7280" />
           </button>
         </div>
-      )}
 
-      {/* Table */}
-      {loading ? (
-        <p style={{ textAlign: 'center', color: '#9CA3AF', padding: '32px' }}>جارٍ التحميل...</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', direction: 'rtl' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#F9FAFB' }}>
-              <th style={thStyle}>#</th>
-              <th style={thStyle}>اسم الطالب</th>
-              <th style={thStyle}>رقم جوال ولي الأمر</th>
-              {!readOnly && <th style={thStyle}>إجراءات</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {students.map((student, idx) => (
-              <tr key={student.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
-                <td style={tdStyle}>{idx + 1}</td>
-                <td style={tdStyle}>{student.fullName}</td>
-                <td style={tdStyle}>{student.guardianPhone || '—'}</td>
-                {!readOnly && (
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                      <button
-                        onClick={() => setConfirmDelete(student)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                          padding: '6px 10px', border: '1px solid #FEE2E2',
-                          borderRadius: '8px', background: '#FEF2F2',
-                          cursor: 'pointer', fontSize: '12px', color: '#EF4444',
-                        }}
-                      >
-                        <Trash2 size={13} />
-                        حذف
-                      </button>
-                      <button
-                        onClick={() => {
-                          const url = `${window.location.origin}/school/${schemaName.replace('school_', '')}/schedule/${classroomId}`
-                          navigator.clipboard.writeText(url)
-                          toast.success('تم نسخ رابط الخطة')
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                          padding: '6px 10px', border: '1px solid #E8F4F5',
-                          borderRadius: '8px', background: '#E8F4F5',
-                          cursor: 'pointer', fontSize: '12px', color: '#2D7D82',
-                        }}
-                      >
-                        🔗 مشاركة الخطة
-                      </button>
-                    </div>
+        {/* Blue Header */}
+        <div style={{
+          background: '#9EC5C7', color: '#fff', padding: '14px',
+          borderRadius: '12px', textAlign: 'center', fontWeight: 600,
+          fontSize: '16px', marginBottom: '20px',
+        }}>
+          قائمة طلاب — {classroomName}
+        </div>
+
+        {/* Add Button */}
+        {!readOnly && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <label
+              htmlFor="students-excel-input"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 20px', backgroundColor: '#374151',
+                color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: importingExcel ? 'not-allowed' : 'pointer',
+                fontWeight: 600, fontSize: '14px', opacity: importingExcel ? 0.7 : 1,
+              }}
+            >
+              <Upload size={16} />
+              {importingExcel ? 'جاري الاستيراد...' : 'استيراد من Excel'}
+            </label>
+            <input
+              id="students-excel-input"
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleExcelImport}
+              disabled={importingExcel}
+              style={{ display: 'none' }}
+            />
+            {/* Manual Add Button */}
+            <button
+              onClick={() => setShowAddModal(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 20px', backgroundColor: '#9EC5C7',
+                color: '#fff', border: 'none', borderRadius: '10px',
+                cursor: 'pointer', fontWeight: 600, fontSize: '14px', marginRight: '10px'
+              }}
+            >
+              <UserPlus size={16} />
+              إضافة طلاب يدوياً
+            </button>
+          </div>
+        )}
+
+        {/* Table */}
+        {loading ? (
+          <p style={{ textAlign: 'center', color: '#9CA3AF', padding: '32px' }}>جارٍ التحميل...</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', direction: 'rtl' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#F9FAFB' }}>
+                <th style={thStyle}>#</th>
+                <th style={thStyle}>اسم الطالب</th>
+                <th style={thStyle}>رقم جوال ولي الأمر</th>
+                {!readOnly && <th style={thStyle}>إجراءات</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((student, idx) => (
+                <tr key={student.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  <td style={tdStyle}>{idx + 1}</td>
+                  <td style={tdStyle}>{student.fullName}</td>
+                  <td style={tdStyle}>{student.guardianPhone || '—'}</td>
+                  {!readOnly && (
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => setConfirmDelete(student)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '6px 10px', border: '1px solid #FEE2E2',
+                            borderRadius: '8px', background: '#FEF2F2',
+                            cursor: 'pointer', fontSize: '12px', color: '#EF4444',
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          حذف
+                        </button>
+                        <button
+                          onClick={() => {
+                            const url = `${window.location.origin}/school/${schemaName.replace('school_', '')}/schedule/${classroomId}`
+                            navigator.clipboard.writeText(url)
+                            toast.success('تم نسخ رابط الخطة')
+                          }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            padding: '6px 10px', border: '1px solid #E8F4F5',
+                            borderRadius: '8px', background: '#E8F4F5',
+                            cursor: 'pointer', fontSize: '12px', color: '#2D7D82',
+                          }}
+                        >
+                          🔗 مشاركة الخطة
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {students.length === 0 && (
+                <tr>
+                  <td colSpan={readOnly ? 3 : 4} style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF' }}>
+                    لا يوجد طلاب بعد
                   </td>
-                )}
-              </tr>
-            ))}
-            {students.length === 0 && (
-              <tr>
-                <td colSpan={readOnly ? 3 : 4} style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF' }}>
-                  لا يوجد طلاب بعد
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      )}
-    </div>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {/* Modal إضافة طلاب */}
       {showAddModal && (
@@ -387,25 +378,20 @@ return (
                     style={inputStyle}
                   />
                   <input
-                    value={form.guardianPhone}
-                    onChange={(e) => {
-                      const raw = e.target.value
-                      const sanitized = raw.replace(/[^\d+]/g, '')
-                      const withoutDuplicatePlus = sanitized.startsWith('+')
-                        ? `+${sanitized.slice(1).replace(/\+/g, '')}`
-                        : sanitized.replace(/\+/g, '')
-                      handleFormChange(idx, 'guardianPhone', withoutDuplicatePlus)
-                    }}
-                    onBlur={(e) => {
-                      const value = e.target.value
-                      if (value && !isValidPhone(value)) {
-                        toast.error('رقم الجوال يجب أن يبدأ بـ 05 أو يحتوي على 966 أو +966')
-                      }
-                    }}
-                    placeholder="05xxxxxxxx أو +966... أو 966..."
-                    maxLength={10}
-                    style={inputStyle}
-                  />
+  value={form.guardianPhone}
+  onChange={(e) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+    handleFormChange(idx, 'guardianPhone', val)
+  }}
+  onBlur={(e) => {
+    if (e.target.value && !e.target.value.startsWith('05')) {
+      toast.error('رقم الجوال يجب أن يبدأ بـ 05')
+    }
+  }}
+  placeholder="05xxxxxxxx"
+  maxLength={10}
+  style={inputStyle}
+/>
                   <button
                     onClick={() => handleRemoveRow(idx)}
                     disabled={forms.length === 1}
@@ -513,24 +499,4 @@ const inputStyle: React.CSSProperties = {
   height: '38px', border: '1px solid #E5E7EB', borderRadius: '8px',
   padding: '0 12px', fontSize: '13px', textAlign: 'right',
   outline: 'none', width: '100%', boxSizing: 'border-box',
-}
-
-const findColumnIndex = (headers: unknown[], candidates: string[]) => {
-  const normalized = headers.map((header, index) => ({
-    index,
-    value: String(header ?? '').trim().toLowerCase(),
-  }))
-
-  for (const candidate of candidates) {
-    const target = candidate.toLowerCase()
-    const match = normalized.find(item => item.value === target)
-    if (match) return match.index
-  }
-
-  return -1
-}
-
-const getCellValue = (row: unknown[], index: number) => {
-  const value = row[index]
-  return typeof value === 'string' ? value.trim() : String(value ?? '')
 }
