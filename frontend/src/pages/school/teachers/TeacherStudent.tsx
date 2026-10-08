@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { X, User, Plus, Search, Minus, Save, Image, Video, Ban } from 'lucide-react'
+import { X, User, Plus, Minus, Save, Image, Video, Ban, CalendarCheck } from 'lucide-react'
 import api from '../../../api/axios'
 import toast from 'react-hot-toast'
 import { AxiosError } from 'axios'
@@ -19,10 +19,46 @@ interface Student {
   score: number
 }
 
+interface AttendanceRecord {
+  id: number
+  date: string
+  status: AttendanceStatus
+  studentId: number
+  studentName: string
+}
+
+const today = new Date()
+const todayIso = today.toISOString().slice(0, 10)
+const todayDayName = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(today)
+
+const STATUS_LABELS: Record<AttendanceStatus, string> = {
+  present: 'حاضر',
+  absence: 'غياب',
+  delay: 'تأخير',
+  permission: 'استئذان',
+}
+
+const STATUS_COLORS: Record<AttendanceStatus, { bg: string; color: string }> = {
+  present: { bg: '#DCFCE7', color: '#16A34A' },
+  absence: { bg: '#FEE2E2', color: '#DC2626' },
+  delay: { bg: '#FEF3C7', color: '#D97706' },
+  permission: { bg: '#EDE9FE', color: '#7C3AED' },
+}
+
+interface BehaviorRecord {
+  id: number
+  statement: string
+  operationType: 'add' | 'deduct'
+  points: number
+  expectedScore: number
+  createdAt: string
+  studentId: number
+  studentName: string
+}
+
 export default function TeacherStudent({ classroomId, classroomName, schemaName, onClose }: Props) {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
 
   // حالات نافذة رصد السلوك
   const [showBehaviorModal, setShowBehaviorModal] = useState(false)
@@ -36,6 +72,13 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
 
   const [attendanceMap, setAttendanceMap] = useState<Record<number, AttendanceStatus>>({})
   const [savingAttendance, setSavingAttendance] = useState(false)
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false)
+
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [recordsLoading, setRecordsLoading] = useState(true)
+
+  const [behaviorRecords, setBehaviorRecords] = useState<BehaviorRecord[]>([])
+  const [behaviorRecordsLoading, setBehaviorRecordsLoading] = useState(true)
 
   interface ApiStudent {
     id: number;
@@ -59,7 +102,6 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
       const initialMap: Record<number, AttendanceStatus> = {}
       fetchedStudents.forEach(s => { initialMap[s.id] = 'present' })
       setAttendanceMap(initialMap)
-
     } catch {
       toast.error('تعذر تحميل الطلاب')
     } finally {
@@ -67,12 +109,51 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
     }
   }, [schemaName, classroomId])
 
+  const fetchAttendanceRecords = useCallback(async () => {
+    setRecordsLoading(true)
+    try {
+      const res = await api.get<AttendanceRecord[]>(
+        `/api/school/${schemaName}/attendance/classroom/${classroomId}`
+      )
+      setAttendanceRecords(res.data)
+
+      // تعبئة حضور اليوم الحالي في نموذج "إضافة حضور" إن كان محفوظاً مسبقاً
+      setAttendanceMap(prev => {
+        const updated = { ...prev }
+        res.data
+          .filter(record => record.date === todayIso)
+          .forEach(record => { updated[record.studentId] = record.status })
+        return updated
+      })
+    } catch {
+      toast.error('تعذر تحميل سجل الحضور')
+    } finally {
+      setRecordsLoading(false)
+    }
+  }, [schemaName, classroomId])
+
+  const fetchBehaviorRecords = useCallback(async () => {
+    setBehaviorRecordsLoading(true)
+    try {
+      const res = await api.get<BehaviorRecord[]>(
+        `/api/school/${schemaName}/classrooms/${classroomId}/behavior`
+      )
+      setBehaviorRecords(res.data)
+    } catch {
+      toast.error('تعذر تحميل سجل السلوك')
+    } finally {
+      setBehaviorRecordsLoading(false)
+    }
+  }, [schemaName, classroomId])
+
   useEffect(() => {
     void Promise.resolve().then(fetchStudents)
-  }, [fetchStudents])
+    void Promise.resolve().then(fetchAttendanceRecords)
+    void Promise.resolve().then(fetchBehaviorRecords)
+  }, [fetchStudents, fetchAttendanceRecords, fetchBehaviorRecords])
 
-  const handleOpenBehaviorModal = (student: Student) => {
-    setSelectedStudent(student)
+  const handleOpenBehaviorModal = () => {
+    setSelectedStudent(null)
     setBehaviorStatement('')
     setBehaviorPoints(5)
     setBehaviorOperation('add')
@@ -82,7 +163,10 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
   }
 
   const handleSaveBehavior = async () => {
-    if (!selectedStudent) return
+    if (!selectedStudent) {
+      toast.error('يرجى اختيار الطالب')
+      return
+    }
     if (behaviorStatement.trim().length < 5) {
       toast.error('يرجى كتابة بيان سلوك واضح')
       return
@@ -110,6 +194,7 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
       toast.success('تم تسجيل السلوك بنجاح')
       setShowBehaviorModal(false)
       fetchStudents()
+      fetchBehaviorRecords()
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>
       toast.error(error.response?.data?.message || 'تعذر حفظ السلوك')
@@ -125,17 +210,19 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
   const handleSaveAttendance = async () => {
     setSavingAttendance(true)
     try {
-      // هنا يتم لاحقاً ربط الطلب مع API الحضور الفعلي وإرسال attendanceMap
-      // await api.post(`/api/school/${schemaName}/classrooms/${classroomId}/attendance`, { attendance: attendanceMap })
+      await api.post(`/api/school/${schemaName}/attendance/classroom/${classroomId}`, {
+        date: todayIso,
+        attendance: attendanceMap,
+      })
       toast.success('تم حفظ تحضير الطلاب بنجاح')
+      setShowAttendanceModal(false)
+      fetchAttendanceRecords()
     } catch {
       toast.error('تعذر حفظ التحضير')
     } finally {
       setSavingAttendance(false)
     }
   }
-
-  const filteredStudents = students.filter(s => s.fullName.includes(searchQuery))
 
   return (
     <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #E5E7EB' }}>
@@ -146,110 +233,223 @@ export default function TeacherStudent({ classroomId, classroomName, schemaName,
         </button>
       </div>
 
-      <div style={blueHeader}>قائمة الطلاب والإجراءات</div>
+      <div style={blueHeader}>الحضور والسلوك</div>
 
-      <div style={{ marginBottom: '20px', position: 'relative' }}>
-        <input 
-          type="text" 
-          placeholder="ابحث عن اسم طالب..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={searchInputStyle}
-        />
-        <Search size={18} color="#9CA3AF" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '32px', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setShowAttendanceModal(true)}
+          disabled={loading}
+          style={{ ...actionBtnStyle('#2D7D82', '#fff'), padding: '10px 20px', fontSize: '13px' }}
+        >
+          <CalendarCheck size={16} /> إضافة حضور
+        </button>
+        <button
+          onClick={handleOpenBehaviorModal}
+          disabled={loading}
+          style={{ ...actionBtnStyle('#7C3AED', '#fff'), padding: '10px 20px', fontSize: '13px' }}
+        >
+          <Plus size={16} /> إضافة سلوك
+        </button>
       </div>
 
-      {loading ? <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p> : (
-        <>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={tableStyle}>
-            <thead>
-              <tr style={{ backgroundColor: '#F9FAFB' }}>
-                <th style={thStyle}>اسم الطالب</th>
-                <th style={thStyle}>الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.map((student) => (
-                <tr key={student.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={avatarStyle}><User size={16} color="#9CA3AF" /></div>
-                      {student.fullName}
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', gap: '12px', borderLeft: '1px solid #E5E7EB', paddingLeft: '12px', marginLeft: '8px' }}>
-                        <label style={radioLabelStyle}>
-                          <input
-                            type="radio"
-                            name={`att-${student.id}`}
-                            checked={attendanceMap[student.id] === 'present'}
-                            onChange={() => handleAttendanceAction(student.id, 'present')}
-                          />
-                          حاضر
-                        </label>
-                        <label style={radioLabelStyle}>
-                          <input
-                            type="radio"
-                            name={`att-${student.id}`}
-                            checked={attendanceMap[student.id] === 'absence'}
-                            onChange={() => handleAttendanceAction(student.id, 'absence')}
-                          />
-                          غياب
-                        </label>
-                        <label style={radioLabelStyle}>
-                          <input
-                            type="radio"
-                            name={`att-${student.id}`}
-                            checked={attendanceMap[student.id] === 'delay'}
-                            onChange={() => handleAttendanceAction(student.id, 'delay')}
-                          />
-                          تأخير
-                        </label>
-                        <label style={radioLabelStyle}>
-                          <input
-                            type="radio"
-                            name={`att-${student.id}`}
-                            checked={attendanceMap[student.id] === 'permission'}
-                            onChange={() => handleAttendanceAction(student.id, 'permission')}
-                          />
-                          استئذان
-                        </label>
-                      </div>
-                      <button onClick={() => handleOpenBehaviorModal(student)} style={actionBtnStyle('#E8F4F5', '#2D7D82')}>
-                        <Plus size={14} /> السلوك
-                      </button>
-                    </div>
-                  </td>
+      {/* سجل الحضور */}
+      <div style={{ marginTop: '32px' }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 700, color: '#374151' }}>سجل الحضور</h3>
+
+        {recordsLoading ? (
+          <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
+        ) : attendanceRecords.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
+            لا توجد سجلات حضور بعد.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableStyle}>
+              <thead>
+                <tr style={{ backgroundColor: '#F9FAFB' }}>
+                  <th style={thStyle}>اسم الطالب</th>
+                  <th style={thStyle}>التاريخ</th>
+                  <th style={thStyle}>الحالة</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {attendanceRecords.map(record => (
+                  <tr key={record.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>{record.studentName}</td>
+                    <td style={tdStyle}>{record.date}</td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        display: 'inline-block', padding: '4px 12px', borderRadius: '20px',
+                        fontSize: '12px', fontWeight: 700,
+                        backgroundColor: STATUS_COLORS[record.status].bg,
+                        color: STATUS_COLORS[record.status].color,
+                      }}>
+                        {STATUS_LABELS[record.status]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button 
-            onClick={handleSaveAttendance}
-            disabled={savingAttendance}
-            style={{ ...saveBtn, width: 'auto', padding: '10px 30px', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Save size={18} />
-            {savingAttendance ? 'جارٍ الحفظ...' : 'حفظ الحضور'}
-          </button>
-        </div>
-        </>
-      )}
+      {/* سجل السلوك */}
+      <div style={{ marginTop: '32px' }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 700, color: '#374151' }}>سجل السلوك</h3>
 
-      {showBehaviorModal && selectedStudent && (
+        {behaviorRecordsLoading ? (
+          <p style={{ textAlign: 'center', color: '#9CA3AF' }}>جارٍ التحميل...</p>
+        ) : behaviorRecords.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '32px', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
+            لا توجد سجلات سلوك بعد. استخدم زر "إضافة سلوك" أعلاه لإضافة سجل.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableStyle}>
+              <thead>
+                <tr style={{ backgroundColor: '#F9FAFB' }}>
+                  <th style={thStyle}>اسم الطالب</th>
+                  <th style={thStyle}>البيان</th>
+                  <th style={thStyle}>النقاط</th>
+                  <th style={thStyle}>الدرجة المتوقعة</th>
+                  <th style={thStyle}>التاريخ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {behaviorRecords.map(record => (
+                  <tr key={record.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>{record.studentName}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>{record.statement}</td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        display: 'inline-block', padding: '4px 12px', borderRadius: '20px',
+                        fontSize: '12px', fontWeight: 700,
+                        backgroundColor: record.operationType === 'add' ? '#DCFCE7' : '#FEE2E2',
+                        color: record.operationType === 'add' ? '#16A34A' : '#DC2626',
+                      }}>
+                        {record.operationType === 'add' ? `+${record.points}` : `-${record.points}`}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>{record.expectedScore}</td>
+                    <td style={tdStyle}>{new Date(record.createdAt).toLocaleDateString('ar-SA')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal إضافة حضور */}
+      {showAttendanceModal && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>رصد سلوك: {selectedStudent.fullName}</h3>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>إضافة حضور — {classroomName}</h3>
+              <button onClick={() => setShowAttendanceModal(false)} style={closeBtnStyle}><X size={16} /></button>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '20px', color: '#2D7D82', fontSize: '13px', fontWeight: 700 }}>
+              تحضير اليوم: {todayDayName} — {todayIso}
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={{ backgroundColor: '#F9FAFB' }}>
+                    <th style={thStyle}>اسم الطالب</th>
+                    <th style={thStyle}>الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={avatarStyle}><User size={16} color="#9CA3AF" /></div>
+                          {student.fullName}
+                        </div>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <label style={radioLabelStyle}>
+                            <input
+                              type="radio"
+                              name={`att-${student.id}`}
+                              checked={attendanceMap[student.id] === 'present'}
+                              onChange={() => handleAttendanceAction(student.id, 'present')}
+                            />
+                            حاضر
+                          </label>
+                          <label style={radioLabelStyle}>
+                            <input
+                              type="radio"
+                              name={`att-${student.id}`}
+                              checked={attendanceMap[student.id] === 'absence'}
+                              onChange={() => handleAttendanceAction(student.id, 'absence')}
+                            />
+                            غياب
+                          </label>
+                          <label style={radioLabelStyle}>
+                            <input
+                              type="radio"
+                              name={`att-${student.id}`}
+                              checked={attendanceMap[student.id] === 'delay'}
+                              onChange={() => handleAttendanceAction(student.id, 'delay')}
+                            />
+                            تأخير
+                          </label>
+                          <label style={radioLabelStyle}>
+                            <input
+                              type="radio"
+                              name={`att-${student.id}`}
+                              checked={attendanceMap[student.id] === 'permission'}
+                              onChange={() => handleAttendanceAction(student.id, 'permission')}
+                            />
+                            استئذان
+                          </label>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+              <button onClick={handleSaveAttendance} disabled={savingAttendance} style={{ ...saveBtn, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Save size={18} />
+                {savingAttendance ? 'جارٍ الحفظ...' : 'حفظ الحضور'}
+              </button>
+              <button onClick={() => setShowAttendanceModal(false)} style={cancelBtn}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBehaviorModal && (
+        <div style={modalOverlayStyle}>
+          <div style={modalContentStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>رصد سلوك — {classroomName}</h3>
               <button onClick={() => setShowBehaviorModal(false)} style={closeBtnStyle}><X size={16} /></button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>الطالب</label>
+                <select
+                  value={selectedStudent?.id ?? ''}
+                  onChange={(e) => setSelectedStudent(students.find(s => s.id === Number(e.target.value)) || null)}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  <option value="">اختر الطالب</option>
+                  {students.map(student => (
+                    <option key={student.id} value={student.id}>{student.fullName}</option>
+                  ))}
+                </select>
+              </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>البيان</label>
                 <textarea value={behaviorStatement} onChange={(e) => setBehaviorStatement(e.target.value)} style={{ ...inputStyle, height: '80px', paddingTop: '10px' }} placeholder="مثال: مشاركة متميزة..." />
@@ -323,7 +523,6 @@ const headerRow: React.CSSProperties = { display: 'flex', justifyContent: 'space
 const closeHeaderBtnStyle: React.CSSProperties = { border: 'none', background: '#F3F4F6', borderRadius: '10px', width: '38px', height: '38px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const closeBtnStyle: React.CSSProperties = { border: 'none', background: '#F3F4F6', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const blueHeader: React.CSSProperties = { background: '#9EC5C7', color: '#fff', padding: '12px', borderRadius: '10px', textAlign: 'center', fontWeight: 600, fontSize: '15px', marginBottom: '20px' }
-const searchInputStyle: React.CSSProperties = { width: '100%', height: '38px', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '0 40px 0 12px', fontSize: '13px', outline: 'none', textAlign: 'right' }
 const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' }
 const thStyle: React.CSSProperties = { border: '1px solid #E5E7EB', padding: '10px', textAlign: 'center', color: '#6B7280', fontSize: '12px', fontWeight: 600 }
 const tdStyle: React.CSSProperties = { border: '1px solid #E5E7EB', padding: '10px', textAlign: 'center', color: '#374151', fontSize: '13px' }
